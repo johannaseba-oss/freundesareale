@@ -24,10 +24,12 @@ let switching = false;
 export function initAreas() {
   const wrap = $('#scene-wrap');
   scene = new AreaScene($('#scene'), wrap, {
+    // Antippen: hat das Pokémon Münzen/Beeren, werden nur diese eingesammelt – sonst öffnet sich die Einzelansicht
     onTap: (p, pos) => {
+      const hasLoot = p.coinsReady > 0 || Object.values(p.berriesReady || {}).some((n) => n > 0);
+      if (!hasLoot) return openSheet(p);
       const r = collectWithFx([p], () => pos);
-      if (r.ok) scene.react(p.uid, r.total ? 'coin' : 'heart');
-      openSheet(p);
+      if (r.ok) { scene.react(p.uid, r.total ? 'coin' : 'heart'); haptic('tick'); }
     },
     onDrag: (dx) => { if (!switching) wrap.style.transform = `translateX(${dx * 0.6}px)`; },
     onSwipeEnd: (dir) => switchArea(dir),
