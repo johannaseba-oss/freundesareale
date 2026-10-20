@@ -2,7 +2,7 @@
 // Läuft in festen Schritten, damit Hunger, Zufriedenheit, Beeren-Effekte, Gruppen-/Legendären-Boni und Level
 // sich korrekt gegenseitig beeinflussen, auch wenn die App tagelang geschlossen war.
 // (Wer in welchem Areal wohnt, ändert sich nur durch Aktionen – die Boni sind also während eines Laufs konstant.)
-import { CFG } from '../config.js';
+import { CFG, isHairy } from '../config.js';
 import { HOUR } from '../time.js';
 import { hashString } from '../rng.js';
 import { xpForLevel } from './state.js';
@@ -42,6 +42,12 @@ function stepPokemon(p, t, dtH, m, fit, social) {
   const decay = p.fullness < n.hungryBelow ? n.satisfactionDecayHungryPerHour : n.satisfactionDecayPerHour;
   p.satisfaction = clamp(p.satisfaction - decay * m.sat * dtH + (n.habitatPerHour || 0) * fit * dtH + (CFG.social.socialPerHour || 0) * social * dtH);
   if (p.petBoost && p.petBoost.until <= t) p.petBoost = null;
+  // Sauberkeit (nur haarige Pokémon): sinkt langsam, wirkt leicht auf die Zufriedenheit
+  if (p.cleanliness != null && isHairy(p.dex)) {
+    const G = CFG.grooming;
+    p.cleanliness = clamp(p.cleanliness - G.cleanPerHour * dtH);
+    p.satisfaction = clamp(p.satisfaction + G.effectPerHour * ((p.cleanliness - 50) / 50) * dtH);
+  }
   if (n.affectionDecayPerDay) p.affection = clamp(p.affection - (n.affectionDecayPerDay / 24) * dtH);
 
   if (p.level < L.max) {

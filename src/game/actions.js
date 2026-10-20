@@ -1,6 +1,6 @@
 // Alle Spieleraktionen. Jede Aktion verändert den Spielstand und gibt {ok, msg} zurück.
 // Der Aufrufer (main.js) speichert danach automatisch in der Cloud.
-import { CFG, areaById, berryById } from '../config.js';
+import { CFG, areaById, berryById, isHairy } from '../config.js';
 import { dayKey } from '../time.js';
 import { capacityOf, residents, rollGender } from './state.js';
 import { modsFor } from './bonuses.js';
@@ -108,7 +108,7 @@ export function draw(s, t, key) {
   const p = {
     uid: s.nextUid++, dex: ball.dex, ball: ball.ball, caughtAt: t, area: null,
     level: 1, xp: 0, fullness: CFG.balance.newPokemon.fullness, satisfaction: CFG.balance.newPokemon.satisfaction, affection: CFG.balance.newPokemon.affection,
-    gender: rollGender(ball.dex), coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
+    gender: rollGender(ball.dex), cleanliness: isHairy(ball.dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
   };
   s.pokemon.push(p);
   return { ok: true, pokemon: p, ball, free };
@@ -144,4 +144,17 @@ export function pickGroundBerry(s, areaId, id) {
   const g = st.ground.splice(i, 1)[0];
   s.berries[g.berry] = (s.berries[g.berry] || 0) + 1;
   return { ok: true, berry: g.berry };
+}
+
+// Putz-Minispiel geschafft: Sauberkeit voll, Zufriedenheit etwas höher, Stimmung (wie beim Betüdeln, hält einen Tag) höher
+// frac = entfernter Anteil des Schmutzes (0-1); ab 90 % gilt es als geschafft, sonst wird es nur anteilig sauberer
+export function groomed(s, p, t, frac = 1) {
+  if (!isHairy(p.dex)) return fail();
+  const R = CFG.grooming.reward, P = CFG.social.pet;
+  if (frac < 0.9) { p.cleanliness = clamp(p.cleanliness + frac * (R.cleanliness - p.cleanliness)); return { ok: true, partial: true }; }
+  p.cleanliness = R.cleanliness;
+  p.satisfaction = clamp(p.satisfaction + R.satisfaction);
+  const cur = p.petBoost && p.petBoost.until > t ? p.petBoost.value : 0;
+  p.petBoost = { value: Math.min(P.maxBoost, cur + R.mood), until: t + P.hours * 3600e3 };
+  return { ok: true };
 }

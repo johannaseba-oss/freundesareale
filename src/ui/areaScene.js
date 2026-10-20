@@ -20,7 +20,7 @@ export function preloadArea(area) {
   return (img.decode ? img.decode() : Promise.resolve()).catch(() => {});
 }
 
-const ICON = { coin: iconCanvas('coin', 1), food: iconCanvas('food', 1), heart: iconCanvas('heart', 1) };
+const ICON = { coin: iconCanvas('coin', 1), food: iconCanvas('food', 1), heart: iconCanvas('heart', 1), dirt: iconCanvas('dirt', 1) };
 const rand = (a, b) => a + Math.random() * (b - a);
 // Bereiche oben/unten, die von der schwebenden Oberfläche belegt sind (CSS-Pixel) – dort laufen keine Pokémon
 const SAFE = { top: 110, bottom: 110, side: 24 };
@@ -181,6 +181,12 @@ export class AreaScene {
       if (berryIds.length) {
         const c = berryCanvas(berryIds[0]), bw = 10 * s;
         ctx.drawImage(c, Math.round(a.x - bw / 2 + (a.p.coinsReady > 0 ? -12 * s : 0)), Math.round(top - bw), bw, bw);
+      }
+      if (a.p.cleanliness != null && a.p.cleanliness < CFG.grooming.dirtyBelow) {
+        const c = ICON.dirt, cw = c.width * s, drift = Math.sin(this.time * 2 + a.p.uid) * 2 * s;
+        ctx.globalAlpha = 0.85;
+        ctx.drawImage(c, Math.round(a.x - cw - 4 * s + drift), Math.round(a.y - 10 * s), cw, c.height * s);
+        ctx.globalAlpha = 1;
       }
       if (a.p.fullness < CFG.balance.needs.hungryBelow) {
         const c = ICON.food, cw = c.width * s;

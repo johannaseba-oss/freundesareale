@@ -1,5 +1,6 @@
 // Detailansicht eines Pokémon: Pflege (Streicheln durch Reiben, Füttern), Beeren, Areal-Zuweisung.
-import { CFG, species, areaById } from '../config.js';
+import { CFG, species, areaById, isHairy } from '../config.js';
+import { openGrooming } from './groom.js';
 import { app } from '../app.js';
 import { now, fmtDuration } from '../time.js';
 import * as A from '../game/actions.js';
@@ -115,7 +116,12 @@ export function openSheet(p) {
 
   // ---- Kurzinfos (nur das Nötigste) ----
   const line = (label) => { const v = h('span'); return { el: h('div.info-line', h('span.k', label), v), v }; };
-  const lCoin = line('Nächste Münze'), lSat = line('Stimmung'), lHun = line('Sättigung'), lFav = line('Lieblingsareal');
+  const lCoin = line('Nächste Münze'), lSat = line('Stimmung'), lHun = line('Sättigung'), lFav = line('Lieblingsareal'), lCln = line('Sauberkeit');
+  const clnBar = bar('clean', 0);
+  const clnWrap = h('span.satwrap', clnBar);
+  lCln.v.replaceWith(clnWrap);
+  clnWrap.append(lCln.v);
+  const hairy = isHairy(p.dex);
   const hunBar = bar('hunger', 0);
   const hunWrap = h('span.satwrap', hunBar);
   lHun.v.replaceWith(hunWrap);
@@ -153,8 +159,10 @@ export function openSheet(p) {
     satBar.firstChild.style.width = md + '%';
     lSat.v.textContent = Math.round(md) + ' %';
     hunBar.firstChild.style.width = p.fullness + '%';
+    if (hairy) { clnBar.firstChild.style.width = (p.cleanliness ?? 0) + '%'; lCln.v.textContent = Math.round(p.cleanliness ?? 0) + ' %'; }
     lHun.v.textContent = Math.round(p.fullness) + ' %';
     const notes = [];
+    if (hairy && (p.cleanliness ?? 100) < CFG.grooming.dirtyBelow) notes.push(h('div.note.warn', 'Das Fell ist schmutzig – Zeit zum Putzen!'));
     if (p.area && p.fullness < CFG.balance.needs.hungryBelow) notes.push(h('div.note.warn', 'Hat Hunger – gib ihm eine Beere!'));
     if (p.area) {
       const mates = residents(st, p.area).filter((q) => q.uid !== p.uid).map((q) => ({ q, v: affinity(p.dex, q.dex) }));
@@ -198,8 +206,13 @@ export function openSheet(p) {
 
   root.replaceChildren(h('div.sheet-inner.compact',
     head, stage,
-    h('div.info', lSat.el, lHun.el, lCoin.el, lFav.el), extra,
+    h('div.info', lSat.el, lHun.el, hairy ? lCln.el : null, lCoin.el, lFav.el), extra,
     h('div.row.actions', feedLabel, ...berryBtns),
+    hairy ? h('div.row', h('button.btn.groom-btn', { onclick: () => {
+      if ((p.cleanliness ?? 0) >= 97) return toast(`${sp.name} ist schon ganz sauber.`);
+      closeSheet();
+      openGrooming(p, () => openSheet(p));
+    } }, '🧽 Fell putzen')) : null,
     moveRow));
 
   current = { update, raf: 0 };

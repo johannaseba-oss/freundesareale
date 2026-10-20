@@ -19,6 +19,14 @@ const MAPS = {
     '..ODDDDDO..',
     '...OOOOO...',
   ],
+  dirt: [
+    '..pp.p..',
+    '.pbbpbp.',
+    'pbBbbbbp',
+    '.bbBbbp.',
+    'pbbbBbbp',
+    '.p.pp.p.',
+  ],
   heart: [
     '.OO...OO.',
     'ORRO.ORRO',

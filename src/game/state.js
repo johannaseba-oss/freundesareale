@@ -1,4 +1,4 @@
-import { CFG, areaById, species } from '../config.js';
+import { CFG, areaById, species, isHairy } from '../config.js';
 import { hashString } from '../rng.js';
 
 export const SCHEMA = 1;
@@ -41,6 +41,7 @@ export function migrate(s) {
     p.effects ||= [];
     p.pet ||= { day: '', amount: 0 };
     p.berriesReady ||= {};
+    if (isHairy(p.dex) && p.cleanliness == null) p.cleanliness = CFG.grooming.startCleanliness;
     if (p.gender === undefined) p.gender = rollGender(p.dex, hashString('g' + p.uid) / 4294967296);
     if (p.area && !areaById(p.area)) p.area = null; // Areal wurde aus der Konfiguration entfernt
   }
