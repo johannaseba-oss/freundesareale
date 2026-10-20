@@ -1,7 +1,7 @@
 {
   "_hinweis": "Alle Spielwerte. Zeiten in Stunden, Werte 0-100. Nach Änderung einfach neu laden (Web) bzw. neu bauen (iOS).",
   "start": {
-    "coins": 10
+    "coins": 200
   },
   "simulation": {
     "stepMinutes": 10,
@@ -90,7 +90,7 @@
     }
   ],
   "gacha": {
-    "drawCost": 5,
+    "drawCost": 50,
     "ballsPerDay": 50,
     "dayStartsAtHour": 0,
     "balls": [
@@ -118,7 +118,8 @@
         "rarity": "legendaer",
         "weight": 0.5
       }
-    ]
+    ],
+    "freeDrawEveryHours": 2
   },
   "rarityNames": {
     "gewoehnlich": "Gewöhnlich",

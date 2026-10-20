@@ -51,6 +51,8 @@ Seltenheit automatisch (PokeAPI-Daten): Grundstufen mit Entwicklung + Babys = ge
 - Das Areal füllt den ganzen Bildschirm. **Wischen** links/rechts wechselt das Areal (am Computer auch Pfeiltasten).
 - **Pokémon antippen**: sammelt seine fertigen Münzen/Beeren ein (Flug-Animation) und öffnet sein Porträt mit allen Werten.
 - **☰** unten links: Areal-Menü (alles einsammeln, vergrößern, Boni, Bewohner, Pokémon einziehen lassen).
+- **Automat**: Vollbild; Drehknopf mit dem Finger im Uhrzeigersinn drehen (oder kurz antippen). Haptik beim Drehen, Herausfallen und Öffnen. Ziehung 50 Münzen, Start 200, alle 2 Stunden eine Gratis-Ziehung (`balance.json → gacha`).
+- **Drag & Drop**: Pokémon festhalten und an den linken/rechten Rand (Nachbar-Areal) oder nach unten (Beutel) ziehen.
 - Im Entwicklungsmodus kann man mit `http://localhost:5190/?devcloud` ohne echte Datenbank testen.
 
 ## Startwerte & Arealpassung

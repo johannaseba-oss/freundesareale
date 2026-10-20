@@ -1,4 +1,5 @@
-// Bildschirm "Automat": tägliche Bälle in der Glaskugel, Kurbel-Animation, Enthüllung.
+// Bildschirm "Automat" (Vollbild): tägliche Bälle in der Glaskugel. Den Drehknopf dreht man mit dem Finger
+// (oder kurz antippen = automatisch drehen). Haptisches Feedback beim Drehen, beim Herausfallen und beim Öffnen.
 import { CFG, species, ballById, areaById } from '../config.js';
 import { app } from '../app.js';
 import { now, nextDayStart, fmtDuration } from '../time.js';
@@ -8,14 +9,17 @@ import { habitatFit } from '../game/habitat.js';
 import { ballCanvas, BALL_PIXELS } from '../gfx/balls.js';
 import { iconCanvas, iconImg } from '../gfx/icons.js';
 import { loadSprites, frameOf } from '../gfx/sprites.js';
+import { haptic } from '../haptics.js';
 import { $, h, toast } from './dom.js';
 
 const BASE = import.meta.env.BASE_URL;
 const PX = 7; // Pixelgröße der Bälle in der Kugel (Automatenbild ist ~8x vergrößerte Pixel-Art)
 const R = (BALL_PIXELS * PX) / 2;
-let meta, machine, knob, ctx, canvas;
-let balls = []; // {key, id, x, y, vx, vy, gone}
-let anim = null;
+const TAU = Math.PI * 2;
+let meta, machine, knob, ctx, canvas, plateColor = '#9ea3b5';
+let balls = [];
+let anim = null; // Ziehung läuft: {phase: 'drop', t, ball, result}
+let crank = { active: false, auto: false, angle: 0, accum: 0, t: 0, ticks: 0, coin: 0 };
 let poolDay = '';
 let lastInfo = '';
 
@@ -26,16 +30,93 @@ export async function initGacha() {
   [machine, knob] = await Promise.all([load(`${BASE}art/automat.png`), load(`${BASE}art/knob.png`)]);
   canvas = $('#machine');
   canvas.width = meta.width; canvas.height = meta.height;
-  ctx = canvas.getContext('2d');
-  $('#gacha-draw').onclick = startDraw;
+  ctx = canvas.getContext('2d', { willReadFrequently: true });
+  // Farben für Plattenhintergrund und Bildschirmränder aus dem Bild nehmen
+  ctx.drawImage(knob, 0, 0);
+  const pc = ctx.getImageData(4, 4, 1, 1).data; plateColor = `rgb(${pc[0]},${pc[1]},${pc[2]})`;
+  ctx.drawImage(machine, 0, 0);
+  const top = ctx.getImageData(10, 10, 1, 1).data, bot = ctx.getImageData(10, meta.height - 10, 1, 1).data;
+  $('#scr-gacha').style.background = `linear-gradient(rgb(${top[0]},${top[1]},${top[2]}) 50%, rgb(${bot[0]},${bot[1]},${bot[2]}) 50%)`;
+  bindKnob();
   app.views.add(renderInfo);
   let last = performance.now();
   const loop = (t) => {
     const dt = Math.min(0.05, (t - last) / 1000); last = t;
-    if (!$('#scr-gacha').classList.contains('hidden')) { step(dt); draw(t); }
+    if (!$('#scr-gacha').classList.contains('hidden')) { stepCrank(dt); step(dt); draw(t); }
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
+}
+
+// Bildschirm -> Bildkoordinaten (Canvas wird mit object-fit: contain dargestellt)
+function toImage(cx, cy) {
+  const r = canvas.getBoundingClientRect();
+  const k = Math.min(r.width / canvas.width, r.height / canvas.height);
+  const ox = r.left + (r.width - canvas.width * k) / 2, oy = r.top + (r.height - canvas.height * k) / 2;
+  return { x: (cx - ox) / k, y: (cy - oy) / k };
+}
+
+function bindKnob() {
+  let grab = null;
+  const K = () => meta.knob;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (anim || crank.active || crank.auto) return;
+    const p = toImage(e.clientX, e.clientY);
+    if (Math.hypot(p.x - K().x, p.y - K().y) > 130) return;
+    const s = app.state, t = now();
+    if (!A.canDraw(s, t)) {
+      haptic('medium');
+      toast(!s.gacha?.balls.length ? 'Der Automat ist für heute leer.' : 'Nicht genug Glücksmünzen.', true);
+      return;
+    }
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* ok */ }
+    grab = { a: Math.atan2(p.y - K().y, p.x - K().x), moved: 0 };
+    crank = { active: true, auto: false, angle: crank.angle, accum: 0, t: 0, ticks: 0, coin: A.freeDrawReady(s, t) ? 0 : 0.001 };
+    haptic('tick');
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!grab || !crank.active) return;
+    const p = toImage(e.clientX, e.clientY);
+    const a = Math.atan2(p.y - K().y, p.x - K().x);
+    let d = a - grab.a;
+    if (d > Math.PI) d -= TAU;
+    if (d < -Math.PI) d += TAU;
+    grab.a = a;
+    grab.moved += Math.abs(d);
+    if (d > 0) turn(d); // nur im Uhrzeigersinn
+  });
+  const end = () => {
+    if (!grab) return;
+    const g = grab; grab = null;
+    if (!crank.active) return;
+    if (g.moved < 0.35) { crank.active = false; crank.auto = true; return; } // kurz angetippt -> automatisch drehen
+    if (crank.accum < TAU) { crank.active = false; crank.accum = 0; crank.coin = 0; } // nicht ganz gedreht -> abbrechen
+  };
+  canvas.addEventListener('pointerup', end);
+  canvas.addEventListener('pointercancel', end);
+}
+
+// Knopf um d (Radiant) weiterdrehen; alle 90° ein Haptik-Tick, nach einer vollen Umdrehung wird gezogen
+function turn(d) {
+  crank.angle += d;
+  crank.accum += d;
+  const ticks = Math.floor(crank.accum / (Math.PI / 2));
+  if (ticks > crank.ticks) { crank.ticks = ticks; haptic(ticks >= 4 ? 'medium' : 'tick'); }
+  if (crank.accum >= TAU) finishCrank();
+}
+
+function stepCrank(dt) {
+  if (crank.active || crank.auto) crank.t += dt;
+  if (crank.coin > 0) crank.coin += dt;
+  if (crank.auto) turn((dt * TAU) / 1.1);
+}
+
+function finishCrank() {
+  crank.active = false; crank.auto = false; crank.accum = 0; crank.coin = 0;
+  const r = app.act((s, t) => A.draw(s, t), true);
+  if (!r.ok) return;
+  anim = { phase: 'drop', t: 0, ball: r.ball, result: r, landed: false };
+  renderInfo();
 }
 
 // Kugel-Inhalt an den Spielstand anpassen (der gerade gezogene Ball bleibt bis zum Ende der Animation sichtbar)
@@ -60,18 +141,17 @@ function step(dt) {
   syncBalls();
   if (anim) anim.t += dt;
   const G = meta.globe;
-  const cranking = anim?.phase === 'crank';
-  const chosen = anim && anim.phase !== 'coin' ? balls.find((x) => x.key === anim.ball.seed) : null;
+  const cranking = crank.active || crank.auto;
+  const chosen = anim?.phase === 'drop' ? balls.find((x) => x.key === anim.ball.seed) : null;
   const h = dt / SUB;
   for (let sub = 0; sub < SUB; sub++) {
     for (const b of balls) {
-      if (b === chosen && anim.phase !== 'crank') continue;
+      if (b === chosen) continue;
       b.vy += GRAV * h;
       if (cranking) {
         // sanftes Schwappen: das Rad unten schiebt die unteren Bälle hin und her
         const low = Math.max(0, (b.y - (G.cy - 40)) / (G.bottom - G.cy + 40));
-        b.vx += Math.sin(anim.t * Math.PI * 2.6) * 1100 * low * h;
-        if (b === chosen) { b.vx += (G.cx - b.x) * 6 * h; b.vy += 400 * h; } // gezogener Ball rutscht zur Öffnung
+        b.vx += Math.sin(crank.t * Math.PI * 2.6) * 1100 * low * h;
       }
       const v = Math.hypot(b.vx, b.vy);
       if (v > MAXV) { b.vx *= MAXV / v; b.vy *= MAXV / v; }
@@ -114,63 +194,45 @@ function draw() {
   ctx.fillStyle = 'rgba(255,255,255,.28)';
   for (let i = 0; i < 6; i++) ctx.fillRect(170 + i * 16, 230 - i * 10, 40, 8);
   const K = meta.knob;
-  if (anim) {
+  // Drehknopf (dreht sich in der Platte)
+  ctx.save();
+  ctx.beginPath(); ctx.arc(K.x, K.y, 66, 0, TAU); ctx.clip();
+  ctx.fillStyle = plateColor; ctx.fillRect(K.x - 70, K.y - 70, 140, 140);
+  ctx.translate(K.x, K.y); ctx.rotate(crank.angle);
+  ctx.drawImage(knob, -knob.width / 2, -knob.height / 2);
+  ctx.restore();
+  // Münze fällt in den Schlitz
+  if (crank.coin > 0 && crank.coin < 0.5) {
+    const c = iconCanvas('coin', 6), p = Math.min(1, crank.coin / 0.45);
+    ctx.globalAlpha = 1 - Math.max(0, p - 0.8) * 5;
+    ctx.drawImage(c, K.x - c.width / 2, 700 + p * 145 - c.height / 2);
+    ctx.globalAlpha = 1;
+  }
+  if (anim?.phase === 'drop') {
     const t = anim.t;
-    if (anim.phase === 'coin') {
-      const c = iconCanvas('coin', 6), p = Math.min(1, t / 0.45);
-      ctx.drawImage(c, K.x - c.width / 2, 700 + p * 145 - c.height / 2);
-      if (t > 0.5) { anim.phase = 'crank'; anim.t = 0; }
-    }
-    if (anim.phase === 'crank') {
-      // Drehknopf dreht sich (gestauchte Breite = Drehung)
-      const sx = Math.cos(t * Math.PI * 3);
-      ctx.fillStyle = '#9ea3b5';
-      ctx.fillRect(K.x - 78, K.y - 48, 156, 96);
-      ctx.save(); ctx.translate(K.x, K.y); ctx.scale(Math.abs(sx) < 0.15 ? 0.15 * Math.sign(sx || 1) : sx, 1);
-      ctx.drawImage(knob, -knob.width / 2, -knob.height / 2); ctx.restore();
-      if (t > 1.3) { anim.phase = 'drop'; anim.t = 0; }
-    }
-    if (anim.phase === 'drop') {
-      // Ball rollt aus dem Schacht
-      if (t < 0.3) return;
+    if (t >= 0.3) {
       const c = ballCanvas(anim.ball.ball, PX), p = Math.min(1, (t - 0.3) / 0.5);
       const y = meta.chute.y - 70 + p * 70 + Math.abs(Math.sin(p * Math.PI * 2)) * -14 * (1 - p);
       ctx.drawImage(c, meta.chute.x - R, y - R);
-      if (t > 1.2) { anim.phase = 'done'; reveal(anim.result); }
+      if (p >= 1 && !anim.landed) { anim.landed = true; haptic('strong'); }
     }
+    if (t > 1.2) { anim.phase = 'done'; reveal(anim.result); }
   }
 }
 
 function renderInfo() {
   const s = app.state;
   if (!s?.gacha || !meta) return;
-  const g = s.gacha, cfg = CFG.balance.gacha;
-  const counts = {};
-  for (const b of g.balls) counts[b.ball] = (counts[b.ball] || 0) + 1;
-  const next = fmtDuration(nextDayStart(now(), cfg.dayStartsAtHour) - now());
-  const key = [g.balls.length, s.coins, next, !!anim].join('|');
+  const cfg = CFG.balance.gacha, t = now();
+  const empty = !s.gacha.balls.length, free = !empty && A.freeDrawReady(s, t);
+  const text = empty ? `Für heute leer · neue Füllung in ${fmtDuration(nextDayStart(t, cfg.dayStartsAtHour) - t)}`
+    : free ? '✦ Gratis-Ziehung bereit ✦' : `· gratis in ${fmtDuration(s.freeDrawAt - t)}`;
+  const key = text + '|' + !!anim;
   if (key === lastInfo) return;
   lastInfo = key;
-  const info = $('#gacha-info');
-  info.replaceChildren(
-    h('b', `Heute im Automaten: ${g.balls.length} / ${cfg.ballsPerDay}`),
-    h('small', `Neue Füllung in ${next}`),
-    h('div.row', { style: { justifyContent: 'center', marginTop: '6px' } }, cfg.balls.map((b) => {
-      const c = ballCanvas(b.id, 2); c.className = 'ico';
-      return h('span.chip', { title: b.name }, c, ' ', counts[b.id] || 0);
-    })));
-  const btn = $('#gacha-draw');
-  btn.replaceChildren('Kurbeln · ', iconImg('coin', 3), cfg.drawCost);
-  btn.disabled = !!anim || !g.balls.length || s.coins < cfg.drawCost;
-  if (!g.balls.length) btn.replaceChildren('Für heute leer');
-}
-
-function startDraw() {
-  if (anim) return;
-  const r = app.act((s, t) => A.draw(s, t), true);
-  if (!r.ok) return;
-  anim = { phase: 'coin', t: 0, ball: r.ball, result: r };
-  renderInfo();
+  $('#gacha-info').replaceChildren(...(empty || free ? [text] : ['Ziehung ', iconImg('coin', 2), ` ${cfg.drawCost} ${text}`]));
+  $('#gacha-info').classList.toggle('free', !!free);
+  $('#gacha-hint').classList.toggle('hidden', !!anim || empty);
 }
 
 // ---- Enthüllung ----
@@ -205,6 +267,7 @@ function reveal(r) {
       c.save(); c.translate(cx, cy + 40); c.rotate(wob); c.drawImage(big, -big.width / 2, -big.height); c.restore();
       if (t > wobbleEnd) { c.fillStyle = `rgba(255,255,255,${(t - wobbleEnd) / (openAt - wobbleEnd)})`; c.fillRect(0, 0, 380, 380); }
     } else {
+      if (!opened) { opened = true; haptic('strong'); }
       const k = t - openAt;
       if (k < 0.4) { c.fillStyle = `rgba(255,255,255,${1 - k / 0.4})`; c.fillRect(0, 0, 380, 380); }
       const open = ballCanvas(ball.id, 6, true);
@@ -225,6 +288,7 @@ function reveal(r) {
     raf = requestAnimationFrame(frame);
   };
   const close = () => { cancelAnimationFrame(raf); el.remove(); anim = null; lastInfo = ''; app.refresh(); };
+  let opened = false;
   const showText = () => {
     const free = CFG.areas.filter((a) => app.state.areas[a.id].unlocked && residents(app.state, a.id).length < capacityOf(app.state, a.id));
     const sel = h('select', free.map((a) => h('option', { value: a.id }, `${a.name} (${residents(app.state, a.id).length}/${capacityOf(app.state, a.id)})${['  ✕ unwohl', '', '  ♥ passt'][habitatFit(p.dex, a.id).fit + 1]}`)));

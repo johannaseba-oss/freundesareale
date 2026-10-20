@@ -94,9 +94,11 @@ export function upgradeArea(s, areaId) {
 export function draw(s, t) {
   const cost = CFG.balance.gacha.drawCost;
   if (!s.gacha?.balls.length) return fail('Der Automat ist für heute leer.');
-  if (s.coins < cost) return fail('Nicht genug Glücksmünzen.');
+  const free = freeDrawReady(s, t);
+  if (!free && s.coins < cost) return fail('Nicht genug Glücksmünzen.');
   const ball = takeRandomBall(s);
-  s.coins -= cost;
+  if (free) s.freeDrawAt = t + CFG.balance.gacha.freeDrawEveryHours * 3600e3;
+  else s.coins -= cost;
   s.stats.draws++;
   const p = {
     uid: s.nextUid++, dex: ball.dex, ball: ball.ball, caughtAt: t, area: null,
@@ -104,5 +106,9 @@ export function draw(s, t) {
     gender: rollGender(ball.dex), coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
   };
   s.pokemon.push(p);
-  return { ok: true, pokemon: p, ball };
+  return { ok: true, pokemon: p, ball, free };
 }
+
+// Gratis-Ziehung: steht alle paar Stunden (balance.json gacha.freeDrawEveryHours) wieder bereit
+export const freeDrawReady = (s, t) => !s.freeDrawAt || t >= s.freeDrawAt;
+export const canDraw = (s, t) => !!s.gacha?.balls.length && (freeDrawReady(s, t) || s.coins >= CFG.balance.gacha.drawCost);

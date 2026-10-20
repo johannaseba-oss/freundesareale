@@ -12,6 +12,7 @@ import { iconImg } from '../gfx/icons.js';
 import { AreaScene } from './areaScene.js';
 import { openSheet, emotionOf, closeSheet } from './sheet.js';
 import { $, h, bar, toast, modal, confirmDialog } from './dom.js';
+import { haptic } from '../haptics.js';
 
 let idx = 0;
 let scene;
@@ -29,11 +30,13 @@ export function initAreas() {
     },
     onDrag: (dx) => { if (!switching) wrap.style.transform = `translateX(${dx * 0.6}px)`; },
     onSwipeEnd: (dir) => switchArea(dir),
-    onDragStart: (p) => showZones(p),
+    onDragStart: (p) => { haptic('tick'); showZones(p); },
     onDragMove: (p, x, y) => highlightZone(x, y),
     onDragEnd: (p, x, y) => dropOn(p, x, y),
   });
   $('#area-menu-btn').onclick = openMenu;
+  $('#area-prev').onclick = () => switchArea(-1);
+  $('#area-next').onclick = () => switchArea(1);
   if (import.meta.env.DEV) app.scene = scene;
   app.views.add(() => render());
   let last = performance.now();
@@ -98,14 +101,19 @@ function zoneAt(x, y) {
   }
   return null;
 }
+let lastHot = null;
 function highlightZone(x, y) {
   const hit = zoneAt(x, y);
+  if (hit && hit !== lastHot) haptic('tick');
+  lastHot = hit;
   for (const el of document.querySelectorAll('#drop-zones .dz')) el.classList.toggle('hot', el === hit);
 }
 function dropOn(p, x, y) {
   const hit = zoneAt(x, y);
   $('#drop-zones').classList.add('hidden');
   $('#app').classList.remove('dragging');
+  lastHot = null;
+  haptic(hit ? 'medium' : 'tick');
   if (!hit) return false;
   const sp = species(p.dex);
   if (hit.dataset.zone === 'bag') {

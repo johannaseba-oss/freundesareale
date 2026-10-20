@@ -33,6 +33,8 @@
         <div class="scene-lock hidden" id="scene-lock"></div>
         <div class="scene-empty hidden" id="scene-empty">Hier wohnt noch niemand.<br>Tippe auf ☰, um Pokémon einziehen zu lassen.</div>
         <button class="fab" id="area-menu-btn" aria-label="Areal-Menü">☰</button>
+        <button class="edge-arrow left" id="area-prev" aria-label="Vorheriges Areal">‹</button>
+        <button class="edge-arrow right" id="area-next" aria-label="Nächstes Areal">›</button>
         <div class="drop-zones hidden" id="drop-zones">
           <div class="dz left" data-zone="prev"></div>
           <div class="dz right" data-zone="next"></div>
@@ -42,10 +44,10 @@
 
       <section id="scr-collection" class="screen hidden"></section>
 
-      <section id="scr-gacha" class="screen hidden">
+      <section id="scr-gacha" class="screen">
+        <canvas id="machine"></canvas>
         <div class="gacha-info" id="gacha-info"></div>
-        <div class="machine-wrap"><canvas id="machine"></canvas></div>
-        <div class="gacha-actions"><button class="btn big" id="gacha-draw"></button></div>
+        <div class="gacha-hint" id="gacha-hint">↻ Drehknopf drehen</div>
       </section>
     </main>
 
