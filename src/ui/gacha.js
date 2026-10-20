@@ -381,7 +381,7 @@ function reveal(r) {
   let opened = false;
   const showText = () => {
     const free = CFG.areas.filter((a) => app.state.areas[a.id].unlocked && residents(app.state, a.id).length < capacityOf(app.state, a.id));
-    const sel = h('select', free.map((a) => h('option', { value: a.id }, `${a.name} (${residents(app.state, a.id).length}/${capacityOf(app.state, a.id)})${['  ✕ unwohl', '', '  ♥ passt'][habitatFit(p.dex, a.id).fit + 1]}`)));
+    const sel = h('select', free.map((a) => h('option', { value: a.id }, `${a.name} (${residents(app.state, a.id).length}/${capacityOf(app.state, a.id)})${['  ✕ unwohl, keine Münzen', '', '  ♥ passt'][habitatFit(p.dex, a.id).fit + 1]}`)));
     const best = free.find((a) => habitatFit(p.dex, a.id).fit > 0);
     if (best) sel.value = best.id;
     txt.append(

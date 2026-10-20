@@ -6,6 +6,7 @@ import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
 import { areaBonuses } from '../game/bonuses.js';
 import { habitatFit } from '../game/habitat.js';
+import { typeColor } from '../game/types.js';
 import { collectWithFx } from './collect.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import { iconImg, berryUrl } from '../gfx/icons.js';
@@ -145,7 +146,7 @@ function dropOn(p, x, y) {
   }
   const target = zoneTargets[hit.dataset.zone];
   const r = app.act((s) => A.assign(s, p, target.id), true);
-  if (r.ok) toast(`${sp.name} zieht in ${target.name}.`);
+  if (r.ok) toast(habitatFit(p.dex, target.id).fit < 0 ? `${sp.name} zieht in ${target.name} – fühlt sich dort aber unwohl und produziert keine Münzen.` : `${sp.name} zieht in ${target.name}.`);
   return r.ok;
 }
 
@@ -164,11 +165,12 @@ function render(force = false) {
   scene.setArea(area, st.unlocked ? res : [], st.unlocked ? st.ground || [] : []);
 
   const ownedList = owned();
-  const key = [area.id, s.coins, st.unlocked, st.level, res.length, ownedList.length].join('|');
+  const key = [area.id, s.coins, st.unlocked, st.level, res.length, ownedList.length, CFG.types ? 1 : 0].join('|');
   if (force || key !== lastKey) {
     lastKey = key;
     $('#area-name').textContent = area.name;
-    $('#area-cap').textContent = st.unlocked ? `${res.length}/${cap}` : '🔒';
+    $('#area-cap').textContent = st.unlocked ? `${res.length} / ${cap} Pokémon` : '🔒';
+    $('#area-types').replaceChildren(...(area.likes || []).map((t) => h('span.type-chip', { style: { background: typeColor(t) } }, t)));
     $('#area-dots').replaceChildren(...(ownedList.length > 1 ? ownedList.map((i) => h('i' + (i === idx ? '.on' : ''))) : []));
     for (const id of ['#area-prev', '#area-next']) $(id).classList.toggle('hidden', ownedList.length < 2);
     $('#shop-btn').classList.toggle('hidden', ownedList.length === CFG.areas.length);
@@ -242,7 +244,7 @@ function fillMenu(el, close) {
     h('p.effects', 'Balken: Sättigung · Zufriedenheit · Zuneigung')].filter(Boolean));
 }
 
-const fitMark = (dex, areaId) => { const f = habitatFit(dex, areaId).fit; return f > 0 ? h('span.fit.good', '♥ passt') : f < 0 ? h('span.fit.bad', '✕ unwohl') : null; };
+const fitMark = (dex, areaId) => { const f = habitatFit(dex, areaId).fit; return f > 0 ? h('span.fit.good', '♥ passt') : f < 0 ? h('span.fit.bad', '✕ keine Münzen') : null; };
 
 function pickResident(area) {
   const s = app.state;

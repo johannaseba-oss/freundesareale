@@ -155,7 +155,8 @@ export function openSheet(p) {
     const st = app.state, t = now();
     sub.replaceChildren(`Lv. ${p.level} · `, h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity]));
     const cr = coinRange(p);
-    lCoin.v.textContent = p.area ? (p.coinsReady ? `${p.coinsReady} bereit` : `in ${fmtDuration(msToNextCoin(st, p, t))} · ${cr[0]}–${cr[1]} Stück`) : 'ruht im Beutel';
+    const unsuited = p.area && habitatFit(p.dex, p.area).fit < 0;
+    lCoin.v.textContent = !p.area ? 'ruht im Beutel' : p.coinsReady ? `${p.coinsReady} bereit` : unsuited ? 'keine – Areal ungeeignet' : `in ${fmtDuration(msToNextCoin(st, p, t))} · ${cr[0]}–${cr[1]} Stück`;
     const md = mood(p, t), boost = petBoost(p, t);
     satBar.firstChild.style.width = md + '%';
     lSat.v.textContent = Math.round(md) + ' %';
@@ -182,7 +183,7 @@ export function openSheet(p) {
       else notes.push(h('div.note', `🔮 Ab ${CFG.balance.gacha.psychic.minMood} % Stimmung (und in einem Areal) kann es in den Automaten blicken.`));
     }
     if (boost) notes.push(h('div.note', `♥ Betüdelt: Stimmung +${Math.round(boost)} (noch ${fmtDuration(p.petBoost.until - t)})`));
-    if (p.area) { const hf = habitatFit(p.dex, p.area).fit; if (hf < 0) notes.push(h('div.note.warn', `Fühlt sich in ${areaById(p.area).name} nicht wohl.`)); }
+    if (p.area) { const hf = habitatFit(p.dex, p.area).fit; if (hf < 0) notes.push(h('div.note.warn', `Fühlt sich in ${areaById(p.area).name} nicht wohl und produziert hier keine Münzen.`)); }
     if (p.area && CFG.berryProducers.has(p.dex)) notes.push(h('div.note', `Beeren: nächste in ${fmtDuration(msToNextBerry(st, p))}`));
     const m = p.area ? modsFor(st, p) : null;
     if (m?.sources.length) notes.push(h('div.note', 'Boni: ' + [...new Set(m.sources.map((x) => x.name))].join(', ')));

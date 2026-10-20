@@ -6,6 +6,7 @@ import { dirFromVector, portraitUrl } from '../gfx/sprites.js';
 import { affinity, mood } from '../game/mood.js';
 import { habitatFit } from '../game/habitat.js';
 import { weightedPick } from '../rng.js';
+import { dominates } from '../game/types.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const portraits = new Map();
@@ -22,7 +23,7 @@ export class SocialDirector {
     this.onResult = onResult;
     this.reset();
   }
-  reset() { this.active = []; this.bubbles = []; this.wait = rand(2, 4); }
+  reset() { this.active = []; this.bubbles = []; this.wait = rand(2, 4); this.scan = 0; this.cool = new Map(); }
 
   update(dt) {
     const B = CFG.social.behavior;
@@ -30,6 +31,9 @@ export class SocialDirector {
     this.bubbles = this.bubbles.filter((b) => b.t < b.life);
     for (const it of this.active) this.step(it, dt);
     this.active = this.active.filter((it) => !it.done);
+    // Typ-Überlegenheit: zu nahe gekommen -> Jagd
+    this.scan -= dt;
+    if (this.scan <= 0) { this.scan = 0.5; this.checkHunt(); }
     this.wait -= dt;
     if (this.wait <= 0) {
       this.wait = rand(B.everySeconds[0], B.everySeconds[1]);
@@ -63,6 +67,49 @@ export class SocialDirector {
     const table = negative ? B.negative : { ...B.positive, chase: B.positive.chase + (young ? B.youngPlayBonus : 0), play: B.positive.play + (young ? B.youngPlayBonus : 0) };
     const kind = weightedPick(Object.keys(table), (k) => table[k]);
     this.begin(kind, a, b, !negative);
+  }
+
+  checkHunt() {
+    const S = this.scene, H = CFG.social.hunt;
+    if (!H) return;
+    const free = [...S.actors.values()].filter((a) => !a.busy && !a.dragging && a.sprites.ready && a.state !== 'sleep');
+    const W = S.bg.naturalWidth, now = performance.now();
+    for (let i = 0; i < free.length; i++) for (let j = 0; j < free.length; j++) {
+      if (i === j) continue;
+      const hunter = free[i], prey = free[j];
+      if (hunter.busy || prey.busy) continue;
+      if (Math.hypot(hunter.x - prey.x, hunter.y - prey.y) > H.triggerDistance * W) continue;
+      if (!dominates(hunter.p.dex, prey.p.dex)) continue;
+      const key = hunter.p.uid + '>' + prey.p.uid;
+      if ((this.cool.get(key) || 0) > now) continue;
+      this.cool.set(key, now + H.cooldownSeconds * 1000);
+      if (Math.random() > H.chance) continue;
+      this.beginHunt(hunter, prey);
+    }
+  }
+
+  beginHunt(hunter, prey) {
+    const H = CFG.social.hunt;
+    const it = { kind: 'hunt', a: hunter, b: prey, positive: false, phase: 'act', t: 0, dur: rand(H.seconds[0], H.seconds[1]) };
+    hunter.busy = prey.busy = it;
+    it.flee = this.fleePoint(prey, hunter);
+    this.say(hunter, face(hunter.p, ['Determined', 'Angry']), 2.2);
+    this.say(prey, face(prey.p, ['Teary-Eyed', 'Worried', 'Sad']), 2.2);
+    this.active.push(it);
+  }
+
+  // Fluchtpunkt: vom Jäger weg, innerhalb des Areals
+  fleePoint(prey, hunter) {
+    const S = this.scene, s = S.area.spriteScale;
+    let dx = prey.x - hunter.x, dy = prey.y - hunter.y;
+    const d = Math.hypot(dx, dy) || 1;
+    dx /= d; dy /= d;
+    for (let k = 0; k < 6; k++) {
+      const ang = Math.atan2(dy, dx) + rand(-0.9, 0.9);
+      const pt = S.clampSafe({ x: prey.x + Math.cos(ang) * 70 * s, y: prey.y + Math.sin(ang) * 45 * s });
+      if (Math.hypot(pt.x - hunter.x, pt.y - hunter.y) > d) return pt;
+    }
+    return S.randomPoint();
   }
 
   begin(kind, a, b, positive) {
@@ -113,6 +160,18 @@ export class SocialDirector {
       return;
     }
     // Phase "act"
+    if (it.kind === 'hunt') {
+      const H = CFG.social.hunt, s = S.area.spriteScale;
+      if (this.moveTo(b, it.flee, speed * H.preySpeed, dt)) it.flee = this.fleePoint(b, a);
+      this.moveTo(a, { x: b.x, y: b.y }, speed * H.hunterSpeed, dt);
+      // kommt der Jäger zu nahe: neuer Fluchtweg, ängstlicher Blick
+      if (Math.hypot(a.x - b.x, a.y - b.y) < 14 * s && it.t - (it.close || -9) > 1.2) {
+        it.close = it.t;
+        it.flee = this.fleePoint(b, a);
+        this.say(b, face(b.p, ['Teary-Eyed', 'Worried', 'Sad']), 1.4);
+        this.say(a, face(a.p, ['Determined', 'Angry']), 1.4);
+      }
+    }
     if (it.kind === 'chase') {
       if (this.moveTo(a, it.target, speed * 1.9, dt)) it.target = S.randomPoint();
       this.moveTo(b, { x: a.x - 10, y: a.y }, speed * 1.8, dt);
@@ -158,4 +217,10 @@ export class SocialDirector {
       ctx.globalAlpha = 1;
     }
   }
+}
+
+// erstes vorhandene Porträt aus einer Wunschliste
+function face(p, list) {
+  const sp = species(p.dex);
+  return list.find((e) => sp.portraits.includes(e)) || 'Normal';
 }

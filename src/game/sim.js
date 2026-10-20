@@ -24,6 +24,7 @@ export const coinRange = (p) => coinTable(p).coins;
 
 export function coinRatePerHour(p, t, m) {
   const c = CFG.balance.coins;
+  if (p.area && habitatFit(p.dex, p.area).fit < 0) return 0; // fühlt sich im Areal unwohl -> produziert keine Münzen
   let rate = (60 / cycleMinutes(p)) * levelFactor(p) * tierFactor(c.satisfactionFactor, mood(p, t));
   for (const e of p.effects) if (e.type === 'produktion' && e.until > t) rate *= e.factor;
   return rate * (m?.coin ?? 1);
@@ -109,7 +110,8 @@ export function simulate(s, nowMs) {
 
 // Zeit bis zur nächsten Münze / Beere (Schätzung mit aktueller Rate inkl. Boni)
 export function msToNextCoin(s, p, t) {
-  return ((1 - p.coinProgress) / coinRatePerHour(p, t, modsFor(s, p))) * HOUR;
+  const r = coinRatePerHour(p, t, modsFor(s, p));
+  return r ? ((1 - p.coinProgress) / r) * HOUR : Infinity;
 }
 export function msToNextBerry(s, p) {
   const r = berryRatePerHour(p, modsFor(s, p), Date.now());

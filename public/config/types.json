@@ -1,0 +1,28 @@
+{
+  "_hinweis": "Offizielle Typen-Effektivität (ab Gen. 6) und Typfarben. se = sehr effektiv (x2), nve = nicht sehr effektiv (x0,5), ne = keine Wirkung (x0).",
+  "colors": {
+    "Normal": "#A8A77A", "Feuer": "#EE8130", "Wasser": "#6390F0", "Elektro": "#F7D02C", "Pflanze": "#7AC74C", "Eis": "#96D9D6",
+    "Kampf": "#C22E28", "Gift": "#A33EA1", "Boden": "#E2BF65", "Flug": "#A98FF3", "Psycho": "#F95587", "Käfer": "#A6B91A",
+    "Gestein": "#B6A136", "Geist": "#735797", "Drache": "#6F35FC", "Unlicht": "#705746", "Stahl": "#B7B7CE", "Fee": "#D685AD"
+  },
+  "chart": {
+    "Normal": { "se": [], "nve": ["Gestein", "Stahl"], "ne": ["Geist"] },
+    "Feuer": { "se": ["Pflanze", "Eis", "Käfer", "Stahl"], "nve": ["Feuer", "Wasser", "Gestein", "Drache"], "ne": [] },
+    "Wasser": { "se": ["Feuer", "Boden", "Gestein"], "nve": ["Wasser", "Pflanze", "Drache"], "ne": [] },
+    "Elektro": { "se": ["Wasser", "Flug"], "nve": ["Elektro", "Pflanze", "Drache"], "ne": ["Boden"] },
+    "Pflanze": { "se": ["Wasser", "Boden", "Gestein"], "nve": ["Feuer", "Pflanze", "Gift", "Flug", "Käfer", "Drache", "Stahl"], "ne": [] },
+    "Eis": { "se": ["Pflanze", "Boden", "Flug", "Drache"], "nve": ["Feuer", "Wasser", "Eis", "Stahl"], "ne": [] },
+    "Kampf": { "se": ["Normal", "Eis", "Gestein", "Unlicht", "Stahl"], "nve": ["Gift", "Flug", "Psycho", "Käfer", "Fee"], "ne": ["Geist"] },
+    "Gift": { "se": ["Pflanze", "Fee"], "nve": ["Gift", "Boden", "Gestein", "Geist"], "ne": ["Stahl"] },
+    "Boden": { "se": ["Feuer", "Elektro", "Gift", "Gestein", "Stahl"], "nve": ["Pflanze", "Käfer"], "ne": ["Flug"] },
+    "Flug": { "se": ["Pflanze", "Kampf", "Käfer"], "nve": ["Elektro", "Gestein", "Stahl"], "ne": [] },
+    "Psycho": { "se": ["Kampf", "Gift"], "nve": ["Psycho", "Stahl"], "ne": ["Unlicht"] },
+    "Käfer": { "se": ["Pflanze", "Psycho", "Unlicht"], "nve": ["Feuer", "Kampf", "Gift", "Flug", "Geist", "Stahl", "Fee"], "ne": [] },
+    "Gestein": { "se": ["Feuer", "Eis", "Flug", "Käfer"], "nve": ["Kampf", "Boden", "Stahl"], "ne": [] },
+    "Geist": { "se": ["Psycho", "Geist"], "nve": ["Unlicht"], "ne": ["Normal"] },
+    "Drache": { "se": ["Drache"], "nve": ["Stahl"], "ne": ["Fee"] },
+    "Unlicht": { "se": ["Psycho", "Geist"], "nve": ["Kampf", "Unlicht", "Fee"], "ne": [] },
+    "Stahl": { "se": ["Eis", "Gestein", "Fee"], "nve": ["Feuer", "Wasser", "Elektro", "Stahl"], "ne": [] },
+    "Fee": { "se": ["Kampf", "Drache", "Unlicht"], "nve": ["Feuer", "Gift", "Stahl"], "ne": [] }
+  }
+}

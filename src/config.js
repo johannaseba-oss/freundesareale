@@ -1,5 +1,5 @@
 // Lädt die anpassbaren Spieldaten aus public/config und public/data.
-export const CFG = { balance: null, areas: [], dex: [], dexById: new Map(), bonuses: null, social: null, grooming: null, berryProducers: new Map() };
+export const CFG = { balance: null, areas: [], dex: [], dexById: new Map(), bonuses: null, social: null, grooming: null, types: null, berryProducers: new Map() };
 
 export async function loadConfig() {
   const base = import.meta.env.BASE_URL;
@@ -7,7 +7,7 @@ export async function loadConfig() {
     if (!r.ok) throw new Error(`${p}: ${r.status}`);
     return r.json();
   });
-  const [balance, areas, dex, bonuses, social, grooming] = await Promise.all([get('config/balance.json'), get('config/areas.json'), get('data/pokedex.json'), get('config/bonuses.json'), get('config/social.json'), get('config/grooming.json')]);
+  const [balance, areas, dex, bonuses, social, grooming, types] = await Promise.all([get('config/balance.json'), get('config/areas.json'), get('data/pokedex.json'), get('config/bonuses.json'), get('config/social.json'), get('config/grooming.json'), get('config/types.json')]);
   CFG.balance = balance;
   CFG.areas = areas.areas;
   CFG.areaAliases = areas.aliases || {};
@@ -16,6 +16,7 @@ export async function loadConfig() {
   CFG.bonuses = bonuses;
   CFG.social = social;
   CFG.grooming = grooming;
+  CFG.types = types;
   CFG.berryProducers = new Map();
   for (const g of balance.berryProduction.producers) for (const d of g.dex) CFG.berryProducers.set(d, g.berries);
 }
