@@ -10,7 +10,7 @@ import { collectWithFx } from './collect.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import { iconImg, berryUrl } from '../gfx/icons.js';
 import { fly } from './fly.js';
-import { AreaScene } from './areaScene.js';
+import { AreaScene, preloadArea } from './areaScene.js';
 import { openSheet, emotionOf, closeSheet } from './sheet.js';
 import { $, h, bar, toast, modal, confirmDialog } from './dom.js';
 import { haptic } from '../haptics.js';
@@ -43,6 +43,7 @@ export function initAreas() {
   $('#area-menu-btn').onclick = openMenu;
   $('#area-prev').onclick = () => switchArea(-1);
   $('#area-next').onclick = () => switchArea(1);
+  $('#shop-btn').onclick = openShop;
   if (import.meta.env.DEV) app.scene = scene;
   app.views.add(() => render());
   let last = performance.now();
@@ -59,22 +60,35 @@ export function initAreas() {
   });
 }
 
+// Indizes der freigeschalteten Areale (nur durch diese wird gewischt)
+const owned = () => CFG.areas.map((_, i) => i).filter((i) => app.state?.areas[CFG.areas[i].id]?.unlocked);
+
 // dir 1 = nächstes Areal (nach links gewischt), -1 = vorheriges, 0 = zurückschnappen
 async function switchArea(dir) {
   const wrap = $('#scene-wrap');
-  const from = wrap.style.transform || 'translateX(0)';
-  if (!dir || switching) {
-    await wrap.animate([{ transform: from }, { transform: 'translateX(0)' }], { duration: 160, easing: 'ease-out' }).finished;
-    wrap.style.transform = '';
-    return;
-  }
+  const from = wrap.style.transform || 'translateX(0px)';
+  const list = owned();
+  const snapBack = async () => {
+    const an = wrap.animate([{ transform: from }, { transform: 'translateX(0px)' }], { duration: 160, easing: 'ease-out', fill: 'forwards' });
+    await an.finished; wrap.style.transform = ''; an.cancel();
+  };
+  if (!dir || switching || list.length < 2) return snapBack();
   switching = true;
+  const pos = list.indexOf(idx);
+  const nextIdx = list[(pos + dir + list.length) % list.length];
   const W = wrap.clientWidth;
-  await wrap.animate([{ transform: from, opacity: 1 }, { transform: `translateX(${-dir * W}px)`, opacity: 0.3 }], { duration: 180, easing: 'ease-in' }).finished;
-  idx = (idx + dir + CFG.areas.length) % CFG.areas.length;
+  const ready = preloadArea(CFG.areas[nextIdx]); // schon während des Hinausgleitens laden
+  // fill: 'forwards' hält jede Endposition, damit nichts zwischen den Animationen zurückspringt
+  const out = wrap.animate([{ transform: from, opacity: 1 }, { transform: `translateX(${-dir * W}px)`, opacity: 0.2 }], { duration: 170, easing: 'ease-in', fill: 'forwards' });
+  await Promise.all([out.finished, ready]);
+  idx = nextIdx;
   render(true);
-  await wrap.animate([{ transform: `translateX(${dir * W}px)`, opacity: 0.3 }, { transform: 'translateX(0)', opacity: 1 }], { duration: 220, easing: 'ease-out' }).finished;
+  haptic('tick');
+  const inn = wrap.animate([{ transform: `translateX(${dir * W}px)`, opacity: 0.2 }, { transform: 'translateX(0px)', opacity: 1 }], { duration: 210, easing: 'ease-out', fill: 'forwards' });
+  out.cancel();
+  await inn.finished;
   wrap.style.transform = '';
+  inn.cancel();
   switching = false;
 }
 
@@ -142,16 +156,21 @@ export function showArea(areaId) {
 function render(force = false) {
   const s = app.state;
   if (!s) return;
+  if (!s.areas[CFG.areas[idx].id]?.unlocked) idx = owned()[0] ?? 0;
   const area = CFG.areas[idx], st = s.areas[area.id];
   const res = residents(s, area.id), cap = capacityOf(s, area.id);
   scene.setArea(area, st.unlocked ? res : [], st.unlocked ? st.ground || [] : []);
 
-  const key = [area.id, s.coins, st.unlocked, st.level, res.length].join('|');
+  const ownedList = owned();
+  const key = [area.id, s.coins, st.unlocked, st.level, res.length, ownedList.length].join('|');
   if (force || key !== lastKey) {
     lastKey = key;
     $('#area-name').textContent = area.name;
     $('#area-cap').textContent = st.unlocked ? `${res.length}/${cap}` : '🔒';
-    $('#area-dots').replaceChildren(...CFG.areas.map((a, i) => h('i' + (i === idx ? '.on' : '') + (s.areas[a.id].unlocked ? '' : '.locked'))));
+    $('#area-dots').replaceChildren(...(ownedList.length > 1 ? ownedList.map((i) => h('i' + (i === idx ? '.on' : ''))) : []));
+    for (const id of ['#area-prev', '#area-next']) $(id).classList.toggle('hidden', ownedList.length < 2);
+    $('#shop-btn').classList.toggle('hidden', ownedList.length === CFG.areas.length);
+    for (const a of ownedList) preloadArea(CFG.areas[a]);
     const lock = $('#scene-lock');
     if (!st.unlocked) {
       lock.classList.remove('hidden');
@@ -242,5 +261,34 @@ function pickResident(area) {
       } }, h('img.portrait', { src: portraitUrl(p.dex), alt: '' }), h('div.nm', sp.name, h('span.gender.' + p.gender, genderSymbol(p))), h('div.sub', `Lv. ${p.level}`), fitMark(p.dex, area.id));
     })));
     el.append(h('button.btn', { onclick: close }, 'Schließen'));
+  });
+}
+
+// ---- Shop: noch nicht freigeschaltete Areale ----
+function openShop() {
+  closeSheet();
+  modal((el, close) => {
+    const fill = () => {
+      const s = app.state;
+      const locked = CFG.areas.filter((x) => !s.areas[x.id].unlocked).sort((x, y) => x.unlockCost - y.unlockCost);
+      el.replaceChildren(
+        h('div.row', h('h3', { style: { margin: 0, flex: 1 } }, 'Areal-Shop'), h('button.btn.small', { onclick: close, style: { flex: 'none' } }, '✕')),
+        h('p.effects', 'Neue Freundesareale für deine Pokémon.'),
+        locked.length ? h('div.shop-list', locked.map((x) => h('div.shop-item',
+          h('div.shop-thumb', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/areale/${x.image})` } }),
+          h('div.shop-text',
+            h('b', x.name),
+            h('small', `Platz für ${x.capacity[0]}–${x.capacity[x.capacity.length - 1]} Pokémon`),
+            h('small', 'Mögen es: ' + ((x.likes || []).join(', ') || '–')),
+            h('button.btn.gold.small', { disabled: s.coins < x.unlockCost, onclick: () => {
+              const r = app.act((s2) => A.unlockArea(s2, x.id), true);
+              if (!r.ok) return;
+              haptic('strong');
+              close();
+              toast(`${x.name} gehört jetzt dir!`);
+              showArea(x.id);
+            } }, 'Freischalten ', iconImg('coin', 2), x.unlockCost))))) : h('p', 'Du besitzt schon alle Areale!'));
+    };
+    fill();
   });
 }

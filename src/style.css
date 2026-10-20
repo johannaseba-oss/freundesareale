@@ -272,3 +272,15 @@ main { position: absolute; inset: 0; }
 
 .auth-card .remember { display: flex; align-items: center; gap: 8px; font-size: 15px; cursor: pointer; }
 .auth-card .remember input { width: 20px; height: 20px; accent-color: var(--green-d); margin: 0; }
+
+/* Areal-Shop */
+.fab.right { left: auto; right: 12px; font-size: 20px; }
+#tabs { left: 50%; }
+.shop-list { display: grid; gap: 10px; }
+.shop-item { display: flex; gap: 10px; align-items: stretch; background: var(--paper2); border: 2px solid var(--line); border-radius: 12px; padding: 6px; }
+.shop-thumb { width: 64px; min-height: 100px; border-radius: 8px; border: 2px solid var(--line); background-size: cover; background-position: center; image-rendering: pixelated; flex: none; }
+.shop-text { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.shop-text small { color: var(--ink-soft); font-size: 13px; }
+.shop-text .btn { align-self: flex-start; margin-top: auto; }
+#tabs { left: 50%; gap: 4px; }
+#tabs button { padding: 7px 10px; font-size: 13px; }

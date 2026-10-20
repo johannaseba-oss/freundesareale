@@ -14,6 +14,12 @@ function bgImage(file) {
   }
   return imgCache.get(file);
 }
+// Bild laden und dekodieren (verhindert ein leeres Bild beim Arealwechsel)
+export function preloadArea(area) {
+  const img = bgImage(area.image);
+  return (img.decode ? img.decode() : Promise.resolve()).catch(() => {});
+}
+
 const ICON = { coin: iconCanvas('coin', 1), food: iconCanvas('food', 1), heart: iconCanvas('heart', 1) };
 const rand = (a, b) => a + Math.random() * (b - a);
 // Bereiche oben/unten, die von der schwebenden Oberfläche belegt sind (CSS-Pixel) – dort laufen keine Pokémon
@@ -39,7 +45,7 @@ export class AreaScene {
     this.ground = ground;
     this.bg = bgImage(area.image);
     if (changed) { this.actors.clear(); this.particles = []; this.social.reset(); }
-    const ready = () => { this.resize(); this.sync(residents); };
+    const ready = () => { if (changed || !this.k) this.resize(); this.sync(residents); };
     if (this.bg.complete && this.bg.naturalWidth) ready(); else this.bg.onload = ready;
   }
 
@@ -48,7 +54,8 @@ export class AreaScene {
     const dpr = Math.min(window.devicePixelRatio || 1, 3);
     const W = Math.round(this.wrap.clientWidth * dpr), H = Math.round(this.wrap.clientHeight * dpr);
     if (!W || !H) return;
-    this.canvas.width = W; this.canvas.height = H;
+    if (this.canvas.width !== W) this.canvas.width = W; // Neusetzen leert die Leinwand -> nur bei Änderung
+    if (this.canvas.height !== H) this.canvas.height = H;
     this.dpr = dpr;
     const iw = this.bg.naturalWidth, ih = this.bg.naturalHeight;
     this.k = H / ih; // Bild immer in voller Höhe; seitlich ggf. beschnitten oder mit Rand
