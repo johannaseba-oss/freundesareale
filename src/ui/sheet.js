@@ -10,6 +10,7 @@ import { modsFor, bonusTraits } from '../game/bonuses.js';
 import { habitatText, habitatFit } from '../game/habitat.js';
 import { mood, petBoost, affinity } from '../game/mood.js';
 import { isPsychic, canForesee, revealActive } from '../game/gacha.js';
+import { typeChip } from '../game/types.js';
 import { collectWithFx } from './collect.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconCanvas, iconImg, berryImg } from '../gfx/icons.js';
@@ -153,7 +154,8 @@ export function openSheet(p) {
 
   const update = () => {
     const st = app.state, t = now();
-    sub.replaceChildren(`Lv. ${p.level} · `, h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity]));
+    if (!sub.dataset.done) { sub.dataset.done = '1'; sub.replaceChildren(h('div', `Lv. ${p.level} · `, h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity])), h('div.type-chips.left', ...sp.types.map((ty) => typeChip(ty)))); }
+    else sub.firstChild.firstChild.textContent = `Lv. ${p.level} · `;
     const cr = coinRange(p);
     const unsuited = p.area && habitatFit(p.dex, p.area).fit < 0;
     lCoin.v.textContent = !p.area ? 'ruht im Beutel' : p.coinsReady ? `${p.coinsReady} bereit` : unsuited ? 'keine – Areal ungeeignet' : `in ${fmtDuration(msToNextCoin(st, p, t))} · ${cr[0]}–${cr[1]} Stück`;

@@ -338,3 +338,10 @@ img.ico[src*="muenze"] { image-rendering: pixelated; vertical-align: middle; }
 .area-title { white-space: normal; max-width: calc(100% - 120px); border-radius: 14px; padding: 3px 10px 4px; }
 .type-chips { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin-top: 2px; }
 .type-chip { color: #fff; font-size: 10px; font-weight: 600; line-height: 1; padding: 2px 5px 3px; border-radius: 999px; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+
+.type-chip.all { background: linear-gradient(90deg, #EE8130, #F7D02C, #7AC74C, #6390F0, #A98FF3, #F95587); }
+.type-chip.muted { opacity: .55; }
+.type-chips.left { justify-content: flex-start; margin-top: 3px; }
+.type-chips.dislike { align-items: center; }
+.type-chips.dislike small { font-size: 11px; color: var(--ink-soft); }
+.sheet-head .type-chip { font-size: 11px; padding: 2px 6px 3px; }

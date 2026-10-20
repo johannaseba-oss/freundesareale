@@ -6,7 +6,7 @@ import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
 import { areaBonuses } from '../game/bonuses.js';
 import { habitatFit } from '../game/habitat.js';
-import { typeColor } from '../game/types.js';
+import { typeColor, typeChip, areaTypeChips } from '../game/types.js';
 import { collectWithFx } from './collect.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import { iconImg, berryUrl } from '../gfx/icons.js';
@@ -170,7 +170,7 @@ function render(force = false) {
     lastKey = key;
     $('#area-name').textContent = area.name;
     $('#area-cap').textContent = st.unlocked ? `${res.length} / ${cap} Pokémon` : '🔒';
-    $('#area-types').replaceChildren(...(area.likes || []).map((t) => h('span.type-chip', { style: { background: typeColor(t) } }, t)));
+    $('#area-types').replaceChildren(...areaTypeChips(area));
     $('#area-dots').replaceChildren(...(ownedList.length > 1 ? ownedList.map((i) => h('i' + (i === idx ? '.on' : ''))) : []));
     for (const id of ['#area-prev', '#area-next']) $(id).classList.toggle('hidden', ownedList.length < 2);
     $('#shop-btn').classList.toggle('hidden', ownedList.length === CFG.areas.length);
@@ -283,7 +283,8 @@ function openShop() {
           h('div.shop-text',
             h('b', x.name),
             h('small', `Platz für ${x.capacity[0]}–${x.capacity[x.capacity.length - 1]} Pokémon`),
-            h('small', 'Mögen es: ' + ((x.likes || []).join(', ') || '–')),
+            h('div.type-chips.left', ...areaTypeChips(x)),
+            (x.dislikes || []).length > 0 && !x.allTypes ? h('div.type-chips.left.dislike', h('small', 'ungeeignet: '), ...x.dislikes.map((t) => typeChip(t, 'muted'))) : null,
             h('button.btn.gold.small', { disabled: s.coins < x.unlockCost, onclick: () => {
               const r = app.act((s2) => A.unlockArea(s2, x.id), true);
               if (!r.ok) return;

@@ -19,3 +19,20 @@ export function dominates(dexA, dexB) {
   return ab >= 2 && ab > ba;
 }
 export const typeColor = (t) => CFG.types?.colors[t] || '#999';
+
+// Typ-Kärtchen (DOM) – für Areal-Anzeige, Shop und Einzelansicht
+export function typeChip(t, extraClass = '') {
+  const el = document.createElement('span');
+  el.className = 'type-chip' + (extraClass ? ' ' + extraClass : '');
+  el.style.background = typeColor(t);
+  el.textContent = t;
+  return el;
+}
+export function allTypesChip() {
+  const el = document.createElement('span');
+  el.className = 'type-chip all';
+  el.textContent = 'Alle Typen';
+  return el;
+}
+// Kärtchen der Wohlfühl-Typen eines Areals
+export const areaTypeChips = (area) => [...(area.allTypes ? [allTypesChip()] : []), ...(area.likes || []).map((t) => typeChip(t))];
