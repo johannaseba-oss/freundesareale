@@ -164,6 +164,7 @@ export function openSheet(p) {
     if (hairy) { clnBar.firstChild.style.width = (p.cleanliness ?? 0) + '%'; lCln.v.textContent = Math.round(p.cleanliness ?? 0) + ' %'; }
     lHun.v.textContent = Math.round(p.fullness) + ' %';
     const notes = [];
+    if (p.shineUntil && p.shineUntil > t) notes.push(h('div.note', `✨ Glänzt frisch geputzt (noch ${fmtDuration(p.shineUntil - t)})`));
     if (hairy && (p.cleanliness ?? 100) < CFG.grooming.dirtyBelow) notes.push(h('div.note.warn', 'Das Fell ist schmutzig – Zeit zum Putzen!'));
     if (p.area && p.fullness < CFG.balance.needs.hungryBelow) notes.push(h('div.note.warn', 'Hat Hunger – gib ihm eine Beere!'));
     if (p.area) {

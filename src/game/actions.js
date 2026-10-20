@@ -154,6 +154,7 @@ export function groomed(s, p, t, frac = 1) {
   if (frac < 0.9) { p.cleanliness = clamp(p.cleanliness + frac * (R.cleanliness - p.cleanliness)); return { ok: true, partial: true }; }
   p.cleanliness = R.cleanliness;
   p.satisfaction = clamp(p.satisfaction + R.satisfaction);
+  p.shineUntil = t + (CFG.grooming.shineHours || 1) * 3600e3; // glänzt eine Stunde lang im Areal
   const cur = p.petBoost && p.petBoost.until > t ? p.petBoost.value : 0;
   p.petBoost = { value: Math.min(P.maxBoost, cur + R.mood), until: t + P.hours * 3600e3 };
   return { ok: true };

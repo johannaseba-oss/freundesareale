@@ -30,13 +30,14 @@ export function openGrooming(p, onDone) {
   const cv = h('canvas.groom-cv');
   const bar = h('i', { style: { width: '0%' } });
   const portrait = h('img.portrait', { src: portraitUrl(p.dex, 'Worried'), alt: '' });
+  const titleEl = h('b', `${sp.name} putzen`);
   const hint = h('div.groom-hint', 'Zieh die Seife über den Dreck!');
   const soapBtn = h('div.tool', { 'data-tool': 'soap' }, h('img', { src: ART + 'seife.png', alt: 'Seife', draggable: false }));
   const waterBtn = h('div.tool', { 'data-tool': 'water' }, h('img', { src: ART + 'brause.png', alt: 'Brause', draggable: false }));
   const done = h('div.groom-done.hidden');
   const el = h('div.groom',
     cv,
-    h('div.groom-top', portrait, h('div.groom-title', h('b', `${sp.name} putzen`), h('div.bar.clean', bar)), h('button.btn.small', { onclick: () => finish(false) }, '✕')),
+    h('div.groom-top', portrait, h('div.groom-title', titleEl, h('div.bar.clean', bar)), h('button.btn.small', { onclick: () => finish(false) }, '✕')),
     hint,
     h('div.tool-tray', soapBtn, waterBtn),
     done);
@@ -50,15 +51,21 @@ export function openGrooming(p, onDone) {
   };
   resize();
 
-  // Dreckhaufen verteilen: je schmutziger, desto mehr; große Haufen brauchen mehr Schrubben
-  const dirtiness = 100 - (p.cleanliness ?? 50);
-  const count = Math.max(G.dirtCount.min, Math.min(G.dirtCount.max, Math.round(dirtiness / 7)));
+  // Verschmutzungsgrad würfeln (schmutzigere Pokémon sind eher stark/extrem verschmutzt)
+  const dirtiness = Math.min(1, Math.max(0, (100 - (p.cleanliness ?? 50)) / 100));
+  const sev = weighted(G.severity.map((v) => ({ ...v, weight: v.weightClean + (v.weightDirty - v.weightClean) * dirtiness })));
+  titleEl.textContent = `${sp.name} putzen · ${sev.name}`;
+  const count = Math.round(rand(sev.count[0], sev.count[1] + 0.99) - 0.49);
+  // Härtere Schmutzarten werden bei starker Verschmutzung häufiger
+  const kinds = G.dirt.map((k) => ({ ...k, weight: k.weight * (k.hp >= 7 ? sev.heavy : 1) }));
   const dirts = [];
   for (let i = 0; i < count; i++) {
-    const kind = weighted(G.dirt);
-    const stage0 = kind.id === 'klette' ? 0 : kind.id === 'schlamm' ? 1 : 2; // Startstufe: Klumpen / rund / Krümel
-    const hp = kind.hp + (2 - stage0);
-    dirts.push({ x: rand(50, W - 50), y: rand(140, H - 190), hp, max: hp, stage0, size: [86, 72, 58, 40][stage0], rot: rand(-0.25, 0.25), wipe: 0, shake: 0, pop: 0 });
+    const kind = weighted(kinds);
+    const stage0 = kind.stage ?? 2;
+    const hp = kind.hp + (kind.hp > 1 ? sev.extraHp : 0);
+    const size = [86, 72, 58, 40][stage0] * sev.sizeScale * (kind.size || 1) * rand(0.9, 1.1);
+    // bei extremer Verschmutzung dicht an dicht über das ganze Fell
+    dirts.push({ x: rand(36, W - 36), y: rand(130, H - 175), hp, max: hp, stage0, size, rot: rand(-0.3, 0.3), wipe: 0, shake: 0, pop: 0, kind: kind.id });
   }
   const totalHp = dirts.reduce((s, d) => s + d.max, 0);
   const soap = []; // Bläschen und Schaumreste, die abgespült werden müssen
@@ -216,6 +223,7 @@ export function openGrooming(p, onDone) {
       const jx = d.shake > 0 ? rand(-2, 2) : 0;
       d.shake = Math.max(0, d.shake - dt);
       drawSprite(STAGES[st], d.x + jx, d.y, w, d.rot, d.hp <= 0 ? Math.max(0, d.pop) : 1);
+      if (d.kind === 'kruste' && d.hp > 0) drawSprite(STAGES[st], d.x + jx, d.y, w * 0.9, d.rot + 0.4, 0.55 * left);
     }
     // Schaum & Bläschen (abgespülte rutschen nach unten und verblassen)
     const t = now / 1000;

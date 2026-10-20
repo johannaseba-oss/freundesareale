@@ -127,30 +127,94 @@
     "satisfaction": 4,
     "mood": 8
   },
-  "_dirt": "Schmutzarten: hp = wie oft man darüberwischen muss. Anzahl richtet sich nach der Verschmutzung.",
+  "_dirt": "Schmutzarten: hp = wie oft man darüberwischen muss (leicht = 1). stage = Start-Sprite (0 Klumpen, 1 rund, 2 Krümel). weight = Häufigkeit.",
   "dirt": [
     {
       "id": "staub",
       "name": "Staub",
       "hp": 1,
-      "weight": 3
+      "stage": 2,
+      "weight": 4
     },
     {
       "id": "schlamm",
       "name": "Schlamm",
-      "hp": 3,
-      "weight": 2
+      "hp": 4,
+      "stage": 1,
+      "weight": 3
     },
     {
       "id": "klette",
       "name": "Klette",
-      "hp": 5,
-      "weight": 1
+      "hp": 7,
+      "stage": 0,
+      "weight": 2
+    },
+    {
+      "id": "kruste",
+      "name": "Verkrustung",
+      "hp": 10,
+      "stage": 0,
+      "weight": 1,
+      "size": 1.25
     }
   ],
-  "dirtCount": {
-    "min": 5,
-    "max": 16
-  },
-  "wipePerHit": 55
+  "wipePerHit": 55,
+  "_severity": "Verschmutzungsgrade, beim Öffnen des Minispiels gewürfelt. weightClean/weightDirty = Häufigkeit bei sauberem bzw. sehr schmutzigem Pokémon (dazwischen gemischt). count = Anzahl Dreckhaufen, extraHp = zusätzliche Hartnäckigkeit, heavy = Häufigkeits-Faktor für Kletten/Verkrustung, sizeScale = Größe.",
+  "severity": [
+    {
+      "id": "leicht",
+      "name": "leicht verschmutzt",
+      "weightClean": 6,
+      "weightDirty": 1,
+      "count": [
+        3,
+        6
+      ],
+      "extraHp": 0,
+      "heavy": 0.3,
+      "sizeScale": 0.9
+    },
+    {
+      "id": "normal",
+      "name": "verschmutzt",
+      "weightClean": 3,
+      "weightDirty": 3,
+      "count": [
+        7,
+        12
+      ],
+      "extraHp": 0,
+      "heavy": 1,
+      "sizeScale": 1
+    },
+    {
+      "id": "stark",
+      "name": "stark verschmutzt",
+      "weightClean": 1,
+      "weightDirty": 4,
+      "count": [
+        13,
+        20
+      ],
+      "extraHp": 1,
+      "heavy": 1.8,
+      "sizeScale": 1.1
+    },
+    {
+      "id": "extrem",
+      "name": "extrem dreckig",
+      "weightClean": 0.2,
+      "weightDirty": 2,
+      "count": [
+        26,
+        38
+      ],
+      "extraHp": 2,
+      "heavy": 2.5,
+      "sizeScale": 1.35
+    }
+  ],
+  "_shine": "Glanz nach vollständiger Reinigung (Stunden), sichtbar im Areal.",
+  "shineHours": 1
 }

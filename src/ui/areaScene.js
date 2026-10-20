@@ -162,6 +162,7 @@ export class AreaScene {
       a.box = { x: a.x - Math.max(w / 2, 14 * s), y: a.y - hgt * 0.62, w: Math.max(w, 28 * s), h: hgt * 0.62 + 6 * s };
       ctx.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(a.x - w / 2), Math.round(a.y - hgt / 2 - 4 * s - (a.dragging ? 6 * s : 0)), w, hgt);
       ctx.globalAlpha = 1;
+      if (a.p.shineUntil && a.p.shineUntil > Date.now()) this.drawShine(a, s);
     }
     for (const a of list) {
       if (!a.box) continue;
@@ -208,6 +209,24 @@ export class AreaScene {
   groundPos(g) {
     const w = this.area.walk, W = this.bg.naturalWidth, H = this.bg.naturalHeight;
     return this.clampSafe({ x: (w.cx + g.u * w.rx) * W, y: (w.cy + g.v * w.ry) * H });
+  }
+
+  // Dezentes Glitzern nach dem Putzen: kleine Pixelsterne, die nacheinander aufblitzen
+  drawShine(a, s) {
+    const ctx = this.ctx, b = a.box;
+    for (let i = 0; i < 4; i++) {
+      const ph = (this.time * 0.9 + i * 0.27 + a.p.uid * 0.13) % 1.1;
+      if (ph > 0.6) continue;
+      const tw = Math.sin((ph / 0.6) * Math.PI);
+      const sx = b.x + ((Math.sin(i * 12.9898 + a.p.uid) * 0.5 + 0.5) * 0.8 + 0.1) * b.w;
+      const sy = b.y + ((Math.sin(i * 78.233 + a.p.uid) * 0.5 + 0.5) * 0.7 + 0.05) * b.h;
+      const len = Math.max(1, Math.round((1 + tw * 2) * s * 0.9)), px = Math.max(1, Math.round(s * 0.9));
+      ctx.globalAlpha = 0.9 * tw;
+      ctx.fillStyle = '#fffbe0';
+      ctx.fillRect(Math.round(sx - len), Math.round(sy - px / 2), len * 2 + px, px);
+      ctx.fillRect(Math.round(sx - px / 2 + px / 2), Math.round(sy - len), px, len * 2 + px);
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Bildkoordinaten -> Bildschirmkoordinaten (für fliegende Münzen)
