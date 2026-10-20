@@ -1,0 +1,187 @@
+// Detailansicht eines Pokémon: Pflege (Streicheln durch Reiben, Füttern), Beeren, Areal-Zuweisung.
+import { CFG, species, areaById } from '../config.js';
+import { app } from '../app.js';
+import { now, fmtDuration } from '../time.js';
+import * as A from '../game/actions.js';
+import { capacityOf, residents, xpForLevel, genderSymbol } from '../game/state.js';
+import { msToNextCoin, msToNextBerry } from '../game/sim.js';
+import { modsFor, bonusTraits } from '../game/bonuses.js';
+import { habitatText, habitatFit } from '../game/habitat.js';
+import { collectWithFx } from './collect.js';
+import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
+import { iconCanvas, iconImg, berryImg } from '../gfx/icons.js';
+import { ballCanvas } from '../gfx/balls.js';
+import { $, h, bar, toast } from './dom.js';
+
+let current = null;
+
+export function emotionOf(p) {
+  const n = CFG.balance.needs;
+  if (p.fullness < n.hungryBelow / 2) return 'Sad';
+  if (p.fullness < n.hungryBelow) return 'Worried';
+  if (p.satisfaction >= 80) return 'Happy';
+  return 'Normal';
+}
+
+export function closeSheet() {
+  if (!current) return;
+  cancelAnimationFrame(current.raf);
+  app.views.delete(current.update);
+  current = null;
+  $('#sheet').classList.add('hidden');
+  $('#sheet').replaceChildren();
+}
+
+export function openSheet(p) {
+  closeSheet();
+  const sp = species(p.dex);
+  const root = $('#sheet');
+  root.classList.remove('hidden');
+  root.onclick = (e) => { if (e.target === root) closeSheet(); };
+
+  const portrait = h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p)), alt: '' });
+  const sub = h('div.sub');
+  const head = h('div.sheet-head', portrait,
+    h('div', h('h2', sp.name, h('span.gender.' + p.gender, genderSymbol(p))), sub),
+    h('button.btn.small.close', { onclick: closeSheet }, '✕'));
+
+  // ---- Bühne zum Streicheln / Füttern ----
+  const cv = h('canvas');
+  const stage = h('div.pet-stage', cv, h('div.pet-hint', p.area ? 'Zum Streicheln reiben' : 'Schläft im Beutel'));
+  const sprites = loadSprites(p.dex, p.gender);
+  const fx = { anim: 'Idle', t: 0, until: 0, hearts: [], bowl: 0 };
+  const heart = iconCanvas('heart', 1), bowl = iconCanvas('food', 1);
+  let last = performance.now();
+  const drawStage = () => {
+    const nowT = performance.now(), dt = (nowT - last) / 1000; last = nowT;
+    const dpr = Math.min(devicePixelRatio || 1, 3);
+    const W = cv.clientWidth * dpr, H = cv.clientHeight * dpr;
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    // Hintergrund: Wiese mit Pixelstreifen
+    ctx.fillStyle = '#cfe6b5'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#bcdba0';
+    const px = Math.round(4 * dpr);
+    for (let y = H * 0.55; y < H; y += px * 6) for (let x = (y / px) % 3 * px * 4; x < W; x += px * 12) ctx.fillRect(x, y, px * 2, px);
+    const scale = Math.max(3, Math.floor((H * 0.75) / 40));
+    fx.t += dt * 1000;
+    if (fx.until && nowT > fx.until) { fx.anim = 'Idle'; fx.until = 0; fx.t = 0; }
+    const cx = W / 2, cy = H * 0.72;
+    ctx.fillStyle = 'rgba(30,40,20,.25)';
+    ctx.beginPath(); ctx.ellipse(cx, cy, 11 * scale, 4 * scale, 0, 0, Math.PI * 2); ctx.fill();
+    if (fx.bowl > nowT) ctx.drawImage(bowl, cx - 6 * scale * 0.8, cy - 2 * scale, 12 * scale * 0.8, 6 * scale * 0.8);
+    if (sprites.ready) {
+      const sleeping = !p.area;
+      const f = frameOf(sprites, sleeping ? 'Sleep' : fx.anim, 0, fx.t);
+      const w = f.fw * scale, hh = f.fh * scale;
+      fx.box = { x: cx - w / 2, y: cy - hh * 0.75, w, h: hh * 0.8 };
+      ctx.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(cx - w / 2), Math.round(cy - hh / 2 - 4 * scale), w, hh);
+    }
+    for (const q of fx.hearts) {
+      q.y -= 40 * dpr * dt; q.life -= dt;
+      ctx.globalAlpha = Math.max(0, Math.min(1, q.life * 2));
+      ctx.drawImage(heart, q.x, q.y, 9 * px * 0.8, 8 * px * 0.8);
+    }
+    ctx.globalAlpha = 1;
+    fx.hearts = fx.hearts.filter((q) => q.life > 0);
+    if (current) current.raf = requestAnimationFrame(drawStage);
+  };
+  const play = (anim, ms) => { fx.anim = anim; fx.t = 0; fx.until = performance.now() + ms; };
+
+  // Reiben = Streicheln
+  let rub = null;
+  cv.addEventListener('pointerdown', (e) => { rub = { x: e.clientX, y: e.clientY, dist: 0 }; try { cv.setPointerCapture(e.pointerId); } catch { /* ok */ } });
+  cv.addEventListener('pointermove', (e) => {
+    if (!rub || !p.area) return;
+    const r = cv.getBoundingClientRect(), dpr = cv.width / r.width;
+    const x = (e.clientX - r.left) * dpr, y = (e.clientY - r.top) * dpr, b = fx.box;
+    if (!b || x < b.x || x > b.x + b.w || y < b.y || y > b.y + b.h) { rub.x = e.clientX; rub.y = e.clientY; return; }
+    rub.dist += Math.hypot(e.clientX - rub.x, e.clientY - rub.y);
+    rub.x = e.clientX; rub.y = e.clientY;
+    if (rub.dist > 160) {
+      rub.dist = 0;
+      app.act((s, t) => A.pet(s, p, t));
+      fx.hearts.push({ x: x - 10, y: y - 20, life: 1 });
+      if (fx.anim !== 'Hop') play('Hop', 700);
+      portrait.src = portraitUrl(p.dex, 'Joyous');
+    }
+  });
+  const endRub = () => { rub = null; };
+  cv.addEventListener('pointerup', endRub);
+  cv.addEventListener('pointercancel', endRub);
+
+  // ---- Kurzinfos (nur das Nötigste) ----
+  const line = (label) => { const v = h('span'); return { el: h('div.info-line', h('span.k', label), v), v }; };
+  const lCoin = line('Nächste Münze'), lSat = line('Zufriedenheit'), lFav = line('Lieblingsareal');
+  const satBar = bar('sat', 0);
+  const satWrap = h('span.satwrap', satBar);
+  lSat.v.replaceWith(satWrap);
+  satWrap.append(lSat.v);
+  const extra = h('div.info-extra');
+  const favs = CFG.areas.filter((a) => habitatFit(p.dex, a.id).fit > 0).map((a) => a.name);
+  lFav.v.textContent = favs.length ? favs.slice(0, 2).join(', ') : 'keins besonders';
+
+  const feedBtn = h('button.btn.primary', { onclick: () => {
+    if (!p.area) return toast('Erst in ein Areal einziehen lassen.', true);
+    const r = app.act((s2) => A.feed(s2, p));
+    if (r.ok) { fx.bowl = performance.now() + 2200; play('Eat', 2200); portrait.src = portraitUrl(p.dex, 'Happy'); }
+  } }, iconImg('food', 2), 'Füttern');
+  const berryBtns = CFG.balance.berries.map((b) => {
+    const btn = h('button.btn.small', { title: b.name + ': ' + b.text, onclick: () => {
+      const r = app.act((s2, t) => A.giveBerry(s2, p, b.id, t));
+      if (r.ok) { toast(`${b.name}: ${b.text}`); play('Eat', 1600); }
+    } });
+    btn.dataset.id = b.id;
+    return btn;
+  });
+
+  const sel = h('select', { onchange: () => {
+    if (!sel.value) return;
+    const r = app.act((s2) => A.assign(s2, p, sel.value), true);
+    if (r.ok) { toast(`${sp.name} zieht in ${areaById(sel.value).name} ein.`); closeSheet(); }
+  } });
+  const moveRow = h('div.row');
+
+  const update = () => {
+    const st = app.state, t = now();
+    sub.replaceChildren(`Lv. ${p.level} · `, h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity]));
+    lCoin.v.textContent = p.area ? (p.coinsReady ? `${p.coinsReady} bereit` : `in ${fmtDuration(msToNextCoin(st, p, t))}`) : 'ruht im Beutel';
+    satBar.firstChild.style.width = p.satisfaction + '%';
+    lSat.v.textContent = Math.round(p.satisfaction) + ' %';
+    const notes = [];
+    if (p.area && p.fullness < CFG.balance.needs.hungryBelow) notes.push(h('div.note.warn', 'Hat Hunger!'));
+    if (p.area) { const hf = habitatFit(p.dex, p.area).fit; if (hf < 0) notes.push(h('div.note.warn', `Fühlt sich in ${areaById(p.area).name} nicht wohl.`)); }
+    if (p.area && CFG.berryProducers.has(p.dex)) notes.push(h('div.note', `Beeren: nächste in ${fmtDuration(msToNextBerry(st, p))}`));
+    const m = p.area ? modsFor(st, p) : null;
+    if (m?.sources.length) notes.push(h('div.note', 'Boni: ' + [...new Set(m.sources.map((x) => x.name))].join(', ')));
+    const eff = p.effects.filter((e) => e.until > t);
+    if (eff.length) notes.push(h('div.note', eff.map((e) => `${CFG.balance.berries.find((b) => b.id === e.berry)?.name}: noch ${fmtDuration(e.until - t)}`).join(' · ')));
+    const nk = notes.map((n) => n.textContent).join('|');
+    if (extra.dataset.k !== nk) { extra.dataset.k = nk; extra.replaceChildren(...notes); }
+    for (const btn of berryBtns) {
+      const id = btn.dataset.id, n = st.berries[id] || 0, b = CFG.balance.berries.find((x) => x.id === id);
+      const label = n ? '×' + n : String(b.cost);
+      if (btn.dataset.l !== label) { btn.dataset.l = label; btn.replaceChildren(berryImg(id, 2), ...(n ? [label] : [iconImg('coin', 1), label])); }
+    }
+    // Pokémon im Beutel: direkt einziehen lassen (im Areal geht Umziehen per Drag & Drop)
+    const selKey = p.area + '|' + CFG.areas.map((a) => (st.areas[a.id].unlocked ? a.id + residents(st, a.id).length + '/' + capacityOf(st, a.id) : '')).join();
+    if (sel.dataset.key !== selKey) {
+      sel.dataset.key = selKey;
+      sel.replaceChildren(h('option', { value: '' }, 'Einziehen in …'),
+        ...CFG.areas.filter((a) => st.areas[a.id].unlocked).map((a) => h('option', { value: a.id, disabled: residents(st, a.id).length >= capacityOf(st, a.id) }, `${a.name} (${residents(st, a.id).length}/${capacityOf(st, a.id)})${['  ✕', '', '  ♥'][habitatFit(p.dex, a.id).fit + 1]}`)));
+      moveRow.replaceChildren(...(p.area ? [] : [sel]));
+    }
+  };
+
+  root.replaceChildren(h('div.sheet-inner.compact',
+    head, stage,
+    h('div.info', lCoin.el, lSat.el, lFav.el), extra,
+    h('div.row.actions', feedBtn, ...berryBtns),
+    moveRow));
+
+  current = { update, raf: 0 };
+  update();
+  app.views.add(update);
+  current.raf = requestAnimationFrame(drawStage);
+}

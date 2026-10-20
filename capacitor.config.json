@@ -1,0 +1,6 @@
+{
+  "appId": "de.freundesareale.app",
+  "appName": "Freundesareale",
+  "webDir": "dist",
+  "ios": { "contentInset": "never", "backgroundColor": "#e9f3d6" }
+}

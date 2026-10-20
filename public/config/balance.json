@@ -1,0 +1,195 @@
+{
+  "_hinweis": "Alle Spielwerte. Zeiten in Stunden, Werte 0-100. Nach Änderung einfach neu laden (Web) bzw. neu bauen (iOS).",
+  "start": {
+    "coins": 10
+  },
+  "simulation": {
+    "stepMinutes": 10,
+    "maxOfflineDays": 60
+  },
+  "coins": {
+    "baseIntervalHours": 8,
+    "levelSpeedupPerLevel": 0.03,
+    "satisfactionFactor": [
+      {
+        "min": 80,
+        "factor": 1.3
+      },
+      {
+        "min": 50,
+        "factor": 1
+      },
+      {
+        "min": 20,
+        "factor": 0.8
+      },
+      {
+        "min": 0,
+        "factor": 0.5
+      }
+    ],
+    "storageCapPerPokemon": 0
+  },
+  "needs": {
+    "hungerPerHour": 1.6,
+    "hungryBelow": 30,
+    "feedAmount": 35,
+    "feedSatisfaction": 5,
+    "feedAffection": 1,
+    "satisfactionDecayPerHour": 0.25,
+    "satisfactionDecayHungryPerHour": 0.9,
+    "petSatisfaction": 2,
+    "petAffection": 1,
+    "petAffectionPerDayMax": 12,
+    "affectionDecayPerDay": 0,
+    "_habitat": "Arealpassung: pro Stunde ändert sich die Zufriedenheit um habitatPerHour x Passung (+1 passt gut, -1 passt schlecht). 0.15 = ca. +-3.6 pro Tag.",
+    "habitatPerHour": 0.15
+  },
+  "level": {
+    "max": 100,
+    "xpPerHour": 1,
+    "xpForLevel": {
+      "base": 6,
+      "exponent": 1.35
+    },
+    "satisfactionFactor": [
+      {
+        "min": 80,
+        "factor": 1.5
+      },
+      {
+        "min": 50,
+        "factor": 1
+      },
+      {
+        "min": 0,
+        "factor": 0.5
+      }
+    ],
+    "affectionBonusAt100": 0.5
+  },
+  "berries": [
+    {
+      "id": "sinelbeere",
+      "name": "Sinelbeere",
+      "effect": "zeitsprung",
+      "hours": 4,
+      "cost": 3,
+      "text": "Die nächste Glücksmünze kommt 4 Stunden früher.",
+      "sprite": ""
+    },
+    {
+      "id": "tsitrubeere",
+      "name": "Tsitrubeere",
+      "effect": "produktion",
+      "factor": 2,
+      "hours": 48,
+      "cost": 8,
+      "text": "Doppelte Glücksmünzen-Produktion für 2 Tage.",
+      "sprite": ""
+    }
+  ],
+  "gacha": {
+    "drawCost": 5,
+    "ballsPerDay": 50,
+    "dayStartsAtHour": 0,
+    "balls": [
+      {
+        "id": "pokeball",
+        "name": "Pokéball",
+        "rarity": "gewoehnlich",
+        "weight": 66
+      },
+      {
+        "id": "superball",
+        "name": "Superball",
+        "rarity": "selten",
+        "weight": 25
+      },
+      {
+        "id": "hyperball",
+        "name": "Hyperball",
+        "rarity": "sehr_selten",
+        "weight": 8.5
+      },
+      {
+        "id": "meisterball",
+        "name": "Meisterball",
+        "rarity": "legendaer",
+        "weight": 0.5
+      }
+    ]
+  },
+  "rarityNames": {
+    "gewoehnlich": "Gewöhnlich",
+    "selten": "Selten",
+    "sehr_selten": "Sehr selten",
+    "legendaer": "Legendär"
+  },
+  "berryProduction": {
+    "_hinweis": "Pokémon, die Beeren produzieren. berries = Gewichte, welche Beere entsteht. Eigene Beeren-Sprites: assets-input/items/<beeren-id>.png, dann npm run assets:art.",
+    "baseIntervalHours": 24,
+    "storageCapPerPokemon": 0,
+    "producers": [
+      {
+        "dex": [
+          1,
+          2,
+          3,
+          43,
+          44,
+          45,
+          182,
+          69,
+          70,
+          71,
+          114,
+          465,
+          152,
+          153,
+          154,
+          187,
+          188,
+          189,
+          191,
+          192,
+          273,
+          274,
+          275,
+          315,
+          406,
+          407,
+          548,
+          549,
+          710,
+          711
+        ],
+        "berries": {
+          "sinelbeere": 3,
+          "tsitrubeere": 1
+        }
+      },
+      {
+        "dex": [
+          102,
+          103,
+          357,
+          420,
+          421,
+          459,
+          460
+        ],
+        "berries": {
+          "sinelbeere": 1,
+          "tsitrubeere": 2
+        }
+      }
+    ]
+  },
+  "newPokemon": {
+    "_hinweis": "Startwerte frisch gezogener Pokémon (neutral: nicht hungrig, nicht traurig).",
+    "fullness": 80,
+    "satisfaction": 60,
+    "affection": 10
+  }
+}

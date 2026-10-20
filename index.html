@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#cfe8b8" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Freundesareale" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>Freundesareale</title>
+</head>
+<body>
+  <div id="boot" class="boot"><div class="boot-ball"></div><p id="boot-msg">Lade …</p></div>
+
+  <div id="auth" class="auth hidden"></div>
+
+  <div id="app" class="hidden">
+    <header id="hud">
+      <div class="coins pill" id="hud-coins"></div>
+      <button class="bag pill" id="hud-box" aria-label="Pokémon-Beutel"></button>
+      <button class="bag pill" id="hud-bag" aria-label="Beeren"></button>
+      <div class="save-state" id="hud-save" title="Speicherstatus"></div>
+      <button class="icon-btn" id="hud-settings" aria-label="Einstellungen">⚙</button>
+    </header>
+    <div id="banner" class="banner hidden"></div>
+
+    <main>
+      <section id="scr-areas" class="screen">
+        <div class="scene-wrap" id="scene-wrap"><canvas id="scene"></canvas></div>
+        <div class="area-title"><b id="area-name"></b> <small id="area-cap"></small><div class="dots" id="area-dots"></div></div>
+        <div class="scene-lock hidden" id="scene-lock"></div>
+        <div class="scene-empty hidden" id="scene-empty">Hier wohnt noch niemand.<br>Tippe auf ☰, um Pokémon einziehen zu lassen.</div>
+        <button class="fab" id="area-menu-btn" aria-label="Areal-Menü">☰</button>
+        <div class="drop-zones hidden" id="drop-zones">
+          <div class="dz left" data-zone="prev"></div>
+          <div class="dz right" data-zone="next"></div>
+          <div class="dz bottom" data-zone="bag">In den Beutel</div>
+        </div>
+      </section>
+
+      <section id="scr-collection" class="screen hidden"></section>
+
+      <section id="scr-gacha" class="screen hidden">
+        <div class="gacha-info" id="gacha-info"></div>
+        <div class="machine-wrap"><canvas id="machine"></canvas></div>
+        <div class="gacha-actions"><button class="btn big" id="gacha-draw"></button></div>
+      </section>
+    </main>
+
+    <nav id="tabs">
+      <button data-tab="areas" class="active">Areale</button>
+      <button data-tab="collection">Sammlung</button>
+      <button data-tab="gacha">Automat</button>
+    </nav>
+  </div>
+
+  <div id="sheet" class="sheet hidden"></div>
+  <div id="modal" class="modal hidden"></div>
+  <div id="toast" class="toast"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

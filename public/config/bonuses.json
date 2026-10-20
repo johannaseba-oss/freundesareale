@@ -1,0 +1,91 @@
+{
+  "_hinweis": "Gruppen-, Paar- und Legendären-Boni. Gelten nur für Pokémon, die im selben Areal wohnen. coin = schnellere Glücksmünzen-Produktion (0.1 = +10 %). Alle Werte frei anpassbar.",
+
+  "groups": [
+    { "id": "rudel", "name": "Rudel", "text": "Hunde-, wolfs- und fuchsähnliche Pokémon fühlen sich im Rudel wohl.", "min": 2, "coinPerMember": 0.05, "maxCoin": 0.25,
+      "members": [37, 38, 58, 59, 133, 134, 135, 136, 196, 197, 470, 471, 700, 209, 210, 228, 229, 261, 262, 309, 310, 447, 448, 506, 507, 508, 570, 571, 653, 654, 655, 676] },
+    { "id": "herde", "name": "Herde", "text": "Schaf-, Ziegen-, Rinder- und hirschähnliche Pokémon leben gern in der Herde.", "min": 2, "coinPerMember": 0.05, "maxCoin": 0.25,
+      "members": [179, 180, 181, 128, 241, 234, 585, 586, 672, 673, 626] },
+    { "id": "pferde", "name": "Pferdeherde", "text": "Pferdeähnliche Pokémon galoppieren am liebsten gemeinsam.", "min": 2, "coinPerMember": 0.06, "maxCoin": 0.25,
+      "members": [77, 78, 522, 523] }
+  ],
+
+  "_social": "Artgenossen-Boni aus dem Sozialverhalten (Wildnisprofile). Zählt Pokémon derselben Entwicklungsfamilie im Areal.",
+  "socialGroups": {
+    "Gruppe (meist 4-12)": { "name": "Gruppe", "min": 3, "coinPerMember": 0.04, "maxCoin": 0.2 },
+    "Gruppe / Schwarm (6-20)": { "name": "Schwarm", "min": 3, "coinPerMember": 0.04, "maxCoin": 0.24 },
+    "Kolonie (oft 10+)": { "name": "Kolonie", "min": 4, "coinPerMember": 0.04, "maxCoin": 0.3 }
+  },
+
+  "_pairs": "Paar-Bonus: ein männliches + ein weibliches Pokémon derselben Familie, wenn die Art paarweise lebt (Sozialverhalten 'Paar / Zweierteam'), oder eines der extra Paare. Jedes Pokémon zählt nur in einem Paar.",
+  "pairs": {
+    "name": "Pärchen",
+    "socialTypes": ["Paar / Zweierteam"],
+    "coin": 0.15,
+    "extra": [
+      { "a": [29, 30, 31], "b": [32, 33, 34], "name": "Nidoran-Pärchen" },
+      { "a": [313], "b": [314], "name": "Volbeat & Illumise" },
+      { "a": [128], "b": [241], "name": "Tauros & Miltank" },
+      { "a": [380], "b": [381], "name": "Latias & Latios" }
+    ]
+  },
+
+  "_legendary": "Passive Areal-Effekte legendärer Pokémon. Typen: muenzTempo (Produktionszeit aller Pokémon im Areal -x), beerenTempo (Beerenproduktion +x), hunger (Hunger steigt x langsamer), zufriedenheit (Zufriedenheit sinkt x langsamer), xp (Level-Tempo +x).",
+  "legendary": {
+    "144": { "type": "hunger", "value": 0.2 },
+    "145": { "type": "muenzTempo", "value": 0.1 },
+    "146": { "type": "xp", "value": 0.15 },
+    "150": { "type": "xp", "value": 0.2 },
+    "151": { "type": "zufriedenheit", "value": 0.25 },
+    "243": { "type": "muenzTempo", "value": 0.1 },
+    "244": { "type": "xp", "value": 0.15 },
+    "245": { "type": "hunger", "value": 0.2 },
+    "249": { "type": "zufriedenheit", "value": 0.25 },
+    "250": { "type": "muenzTempo", "value": 0.15 },
+    "251": { "type": "beerenTempo", "value": 0.3 },
+    "377": { "type": "hunger", "value": 0.15 },
+    "378": { "type": "zufriedenheit", "value": 0.15 },
+    "379": { "type": "xp", "value": 0.1 },
+    "380": { "type": "zufriedenheit", "value": 0.2 },
+    "381": { "type": "xp", "value": 0.15 },
+    "382": { "type": "beerenTempo", "value": 0.25 },
+    "383": { "type": "beerenTempo", "value": 0.25 },
+    "384": { "type": "muenzTempo", "value": 0.12 },
+    "385": { "type": "muenzTempo", "value": 0.15 },
+    "386": { "type": "xp", "value": 0.2 },
+    "480": { "type": "xp", "value": 0.15 },
+    "481": { "type": "zufriedenheit", "value": 0.25 },
+    "482": { "type": "hunger", "value": 0.15 },
+    "483": { "type": "muenzTempo", "value": 0.15 },
+    "484": { "type": "xp", "value": 0.15 },
+    "485": { "type": "xp", "value": 0.1 },
+    "486": { "type": "muenzTempo", "value": 0.1 },
+    "487": { "type": "hunger", "value": 0.15 },
+    "488": { "type": "zufriedenheit", "value": 0.3 },
+    "489": { "type": "zufriedenheit", "value": 0.15 },
+    "490": { "type": "zufriedenheit", "value": 0.2 },
+    "491": { "type": "xp", "value": 0.2 },
+    "492": { "type": "beerenTempo", "value": 0.35 },
+    "493": { "type": "muenzTempo", "value": 0.2 },
+    "494": { "type": "muenzTempo", "value": 0.15 },
+    "638": { "type": "hunger", "value": 0.15 },
+    "639": { "type": "zufriedenheit", "value": 0.15 },
+    "640": { "type": "beerenTempo", "value": 0.25 },
+    "641": { "type": "muenzTempo", "value": 0.1 },
+    "642": { "type": "muenzTempo", "value": 0.1 },
+    "643": { "type": "xp", "value": 0.15 },
+    "644": { "type": "muenzTempo", "value": 0.12 },
+    "645": { "type": "beerenTempo", "value": 0.3 },
+    "646": { "type": "hunger", "value": 0.2 },
+    "647": { "type": "xp", "value": 0.15 },
+    "648": { "type": "zufriedenheit", "value": 0.3 },
+    "649": { "type": "xp", "value": 0.15 }
+  },
+  "legendaryTexts": {
+    "muenzTempo": "Glücksmünzen-Produktionszeit aller Pokémon im Areal −{p} %",
+    "beerenTempo": "Beerenproduktion aller Pokémon im Areal +{p} %",
+    "hunger": "Alle Pokémon im Areal werden {p} % langsamer hungrig",
+    "zufriedenheit": "Zufriedenheit aller Pokémon im Areal sinkt {p} % langsamer",
+    "xp": "Alle Pokémon im Areal steigen {p} % schneller im Level"
+  }
+}

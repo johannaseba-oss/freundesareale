@@ -1,0 +1,72 @@
+// Bereitet Areal-Hintergründe und den Automaten aus assets-input/ bzw. dem PMD-Hintergrundordner auf.
+// Aufruf: npm run assets:art
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
+
+const ROOT = path.resolve(import.meta.dirname, '..');
+const IN = path.join(ROOT, 'assets-input');
+const BG_SRC = process.env.POKE_BG || 'D:/Pokemon Sprites/Hintergründe';
+const OUT = path.join(ROOT, 'public/art');
+fs.mkdirSync(path.join(OUT, 'areale'), { recursive: true });
+
+// ---- Areal-Hintergründe: eigene Bilder aus assets-input/areale (Dateiname = Areal-ID) ----
+for (const f of fs.readdirSync(path.join(IN, 'areale'))) {
+  if (!/\.(png|jpe?g|webp|gif)$/i.test(f)) continue;
+  const id = f.replace(/\.[^.]+$/, '');
+  await sharp(path.join(IN, 'areale', f)).png().toFile(path.join(OUT, 'areale', `${id}.png`));
+  console.log('Areal-Bild', id);
+}
+// ---- PMD-Dungeon-Hintergründe als Platzhalter-Areale ----
+const PMD = { blaetterhain: 'D24P11A', apfelwald: 'D05P11A', moorsee: 'D09P11A', felsenhoehle: 'D10P41A', kristallhoehle: 'D17P11A', duene: 'D13P11A', klippe: 'D06P11A', felsplateau: 'D12P41A' };
+if (fs.existsSync(BG_SRC)) {
+  const files = fs.readdirSync(BG_SRC);
+  for (const [id, code] of Object.entries(PMD)) {
+    if (fs.existsSync(path.join(IN, 'areale', `${id}.png`))) continue; // eigenes Bild hat Vorrang
+    const f = files.find(x => x.includes(code));
+    if (f) { await sharp(path.join(BG_SRC, f)).png().toFile(path.join(OUT, 'areale', `${id}.png`)); console.log('PMD-Hintergrund', id); }
+  }
+}
+
+// ---- Automat: Kugel und Ausgabeschacht leeren, Bälle zeichnet das Spiel selbst ----
+{
+  const src = path.join(IN, 'automat/automat.webp');
+  const { data, info } = await sharp(src).raw().toBuffer({ resolveWithObject: true });
+  const W = info.width, C = info.channels;
+  const set = (x, y, hex) => { const i = (y * W + x) * C; data[i] = parseInt(hex.slice(0, 2), 16); data[i + 1] = parseInt(hex.slice(2, 4), 16); data[i + 2] = parseInt(hex.slice(4, 6), 16); if (C === 4) data[i + 3] = 255; };
+  const G = { cx: 448, cy: 470, r: 372, top: 238, bottom: 756 };
+  for (let y = G.top; y <= G.bottom; y++) for (let x = G.cx - G.r; x <= G.cx + G.r; x++) {
+    const d = Math.hypot(x - G.cx, y - G.cy);
+    if (d > G.r) continue;
+    // leichte Schattierung: unten etwas dunkler, Rand etwas heller
+    const t = (y - G.top) / (G.bottom - G.top);
+    const band = Math.floor(t * 4); // gestuft wie Pixel-Art
+    set(x, y, ['c1dde8', 'bcd9e5', 'b5d3e0', 'adcddb'][band] || 'adcddb');
+  }
+  for (let y = 1060; y <= 1150; y++) for (let x = 394; x <= 503; x++) set(x, y, y < 1072 ? '3a161b' : '4c1e24');
+  await sharp(data, { raw: { width: W, height: info.height, channels: C } }).png().toFile(path.join(OUT, 'automat.png'));
+  fs.writeFileSync(path.join(OUT, 'automat.json'), JSON.stringify({ width: W, height: info.height, globe: G, chute: { x: 448, y: 1108 }, knob: { x: 448, y: 925, w: 150, h: 96 }, pixel: 8 }, null, 2));
+  // Drehknopf separat ausschneiden (wird beim Kurbeln gedreht)
+  await sharp(src).extract({ left: 448 - 80, top: 925 - 52, width: 160, height: 104 }).png().toFile(path.join(OUT, 'knob.png'));
+  console.log('Automat fertig');
+}
+
+// ---- Item-/Beeren-Sprites: assets-input/items/*.png -> public/art/items (in balance.json bei der Beere als "sprite" eintragen) ----
+{
+  const dir = path.join(IN, 'items');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(path.join(OUT, 'items'), { recursive: true });
+  for (const f of fs.readdirSync(dir).filter((x) => /\.(png|webp|gif)$/i.test(x))) {
+    await sharp(path.join(dir, f)).png().toFile(path.join(OUT, 'items', f.replace(/\.[^.]+$/, '.png')));
+    console.log('Item', f);
+  }
+}
+
+// ---- App-Icons (aus dem Automatenbild) ----
+for (const size of [192, 512, 1024]) {
+  const inner = Math.round(size * 0.86);
+  const img = await sharp(path.join(IN, 'automat/automat.webp')).resize(inner, inner, { fit: 'contain', background: '#e9f3d6', kernel: 'nearest' }).toBuffer();
+  await sharp({ create: { width: size, height: size, channels: 4, background: '#e9f3d6' } })
+    .composite([{ input: img, gravity: 'center' }]).png().toFile(path.join(ROOT, 'public', `icon-${size}.png`));
+}
+console.log('Icons fertig');
