@@ -1,5 +1,8 @@
-// Putz-Minispiel für haarige Pokémon: Schmutz mit dem Finger aus dem Fell wischen.
-// Staub geht mit einem Wisch weg, Schlamm und Kletten brauchen mehrere. Am Ende glänzt das Fell.
+// Putz-Minispiel für haarige Pokémon.
+// 1) Seife aus der Ablage greifen und über die Dreckhaufen schieben: hinter der Seife entstehen Bläschen,
+//    die Haufen schrumpfen Stufe für Stufe und es bleibt Schaum zurück.
+// 2) Brause greifen und über Schaum und Bläschen ziehen: Wasserpixel spülen alles nach unten weg.
+// Erst wenn der Dreck weg und alles abgespült ist, glänzt das Fell.
 import { CFG, species, furOf } from '../config.js';
 import { app } from '../app.js';
 import * as A from '../game/actions.js';
@@ -8,33 +11,17 @@ import { haptic } from '../haptics.js';
 import { h, toast } from './dom.js';
 
 const BASE = import.meta.env.BASE_URL;
-const PALETTE = {
-  staub: ['#b9ab97', '#a2937d', '#cfc3b1', '#8f806b'],
-  schlamm: ['#5b3a22', '#6e4728', '#47301b', '#83593a'],
-  klette: ['#6b6a2c', '#8a8636', '#4f4e1f', '#a3a04a'],
-};
+const ART = `${BASE}art/putzen/`;
 const rand = (a, b) => a + Math.random() * (b - a);
-
-// Pixel-Schmutzfleck als kleines Canvas (wird groß und kantig skaliert)
-function dirtSprite(type) {
-  const n = type === 'klette' ? 11 : type === 'schlamm' ? 14 : 12;
-  const c = document.createElement('canvas');
-  c.width = c.height = n;
-  const ctx = c.getContext('2d');
-  const pal = PALETTE[type];
-  const lobes = Array.from({ length: 5 }, () => ({ a: rand(0, Math.PI * 2), r: rand(0.15, 0.35) }));
-  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-    const dx = (x + 0.5) / n - 0.5, dy = (y + 0.5) / n - 0.5, d = Math.hypot(dx, dy), ang = Math.atan2(dy, dx);
-    let edge = type === 'klette' ? 0.3 + (Math.cos(ang * 7) > 0.3 ? 0.17 : 0) : 0.3;
-    for (const l of lobes) edge += Math.max(0, Math.cos(ang - l.a)) ** 6 * l.r * (type === 'staub' ? 0.6 : 0.4);
-    if (d > edge) continue;
-    if (type === 'staub' && Math.random() < 0.35) continue; // Staub ist fleckig
-    const shade = dy < -0.12 && dx < 0 ? 3 : d > edge - 0.07 ? 2 : Math.random() < 0.2 ? 1 : 0;
-    ctx.fillStyle = pal[shade];
-    ctx.fillRect(x, y, 1, 1);
-  }
-  return c;
-}
+const imgs = new Map();
+const img = (name) => { if (!imgs.has(name)) { const i = new Image(); i.src = ART + name + '.png'; imgs.set(name, i); } return imgs.get(name); };
+const ready = (i) => i.complete && i.naturalWidth;
+// Schrumpf-Stufen der Dreckhaufen (groß -> klein)
+const STAGES = ['dreck_klumpen', 'dreck_rund', 'dreck_kruemel', 'dreck_punkte'];
+const MUD = ['#5b3a22', '#7a4a2c', '#9a6040', '#4a2c1a'];
+const WATER = ['#7fc8f0', '#a9dcf7', '#5aa9e0', '#d4effc'];
+let bubbleCount = 31;
+fetch(ART + 'putzen.json').then((r) => r.json()).then((m) => { bubbleCount = m.bubbles || bubbleCount; }).catch(() => {});
 
 export function openGrooming(p, onDone) {
   const G = CFG.grooming, sp = species(p.dex);
@@ -43,11 +30,15 @@ export function openGrooming(p, onDone) {
   const cv = h('canvas.groom-cv');
   const bar = h('i', { style: { width: '0%' } });
   const portrait = h('img.portrait', { src: portraitUrl(p.dex, 'Worried'), alt: '' });
+  const hint = h('div.groom-hint', 'Zieh die Seife über den Dreck!');
+  const soapBtn = h('div.tool', { 'data-tool': 'soap' }, h('img', { src: ART + 'seife.png', alt: 'Seife', draggable: false }));
+  const waterBtn = h('div.tool', { 'data-tool': 'water' }, h('img', { src: ART + 'brause.png', alt: 'Brause', draggable: false }));
   const done = h('div.groom-done.hidden');
   const el = h('div.groom',
     cv,
     h('div.groom-top', portrait, h('div.groom-title', h('b', `${sp.name} putzen`), h('div.bar.clean', bar)), h('button.btn.small', { onclick: () => finish(false) }, '✕')),
-    h('div.groom-hint', 'Wisch den Schmutz aus dem Fell!'),
+    hint,
+    h('div.tool-tray', soapBtn, waterBtn),
     done);
   document.body.append(el);
   const ctx = cv.getContext('2d');
@@ -59,19 +50,20 @@ export function openGrooming(p, onDone) {
   };
   resize();
 
-  // Schmutz verteilen: je schmutziger, desto mehr
+  // Dreckhaufen verteilen: je schmutziger, desto mehr; große Haufen brauchen mehr Schrubben
   const dirtiness = 100 - (p.cleanliness ?? 50);
-  const count = Math.max(G.dirtCount.min, Math.min(G.dirtCount.max, Math.round(dirtiness / 6)));
+  const count = Math.max(G.dirtCount.min, Math.min(G.dirtCount.max, Math.round(dirtiness / 7)));
   const dirts = [];
   for (let i = 0; i < count; i++) {
-    const type = weighted(G.dirt);
-    const size = type.id === 'schlamm' ? rand(52, 70) : type.id === 'klette' ? rand(38, 48) : rand(44, 60);
-    dirts.push({ type: type.id, hp: type.hp, max: type.hp, size, x: rand(40, W - 40), y: rand(130, H - 90), rot: rand(-0.3, 0.3), sprite: dirtSprite(type.id), wipe: 0, pop: 0 });
+    const kind = weighted(G.dirt);
+    const stage0 = kind.id === 'klette' ? 0 : kind.id === 'schlamm' ? 1 : 2; // Startstufe: Klumpen / rund / Krümel
+    const hp = kind.hp + (2 - stage0);
+    dirts.push({ x: rand(50, W - 50), y: rand(140, H - 190), hp, max: hp, stage0, size: [86, 72, 58, 40][stage0], rot: rand(-0.25, 0.25), wipe: 0, shake: 0, pop: 0 });
   }
   const totalHp = dirts.reduce((s, d) => s + d.max, 0);
+  const soap = []; // Bläschen und Schaumreste, die abgespült werden müssen
   const particles = [];
-  const trail = [];
-  let shine = -1, closed = false, raf;
+  let soapMade = 0, tool = null, held = null, shine = -1, closed = false, raf, lastHit = 0;
 
   function weighted(list) {
     const tot = list.reduce((s, x) => s + x.weight, 0);
@@ -79,45 +71,105 @@ export function openGrooming(p, onDone) {
     for (const x of list) { r -= x.weight; if (r < 0) return x; }
     return list[0];
   }
-  const progress = () => 1 - dirts.reduce((s, d) => s + d.hp, 0) / totalHp;
+  const dirtLeft = () => dirts.reduce((s, d) => s + Math.max(0, d.hp), 0);
+  const soapLeft = () => soap.filter((b) => !b.rinse).length;
+  const progress = () => {
+    const dirtFrac = 1 - dirtLeft() / totalHp;
+    const rinseFrac = soapMade ? 1 - soapLeft() / Math.max(soapMade, 1) : 0;
+    return dirtFrac * 0.7 + rinseFrac * 0.3 * (dirtLeft() === 0 ? 1 : dirtFrac);
+  };
+  const updateUi = () => {
+    bar.style.width = Math.round(progress() * 100) + '%';
+    const needRinse = dirtLeft() === 0 && soapLeft() > 0;
+    hint.textContent = needRinse ? 'Jetzt mit der Brause den Schaum abspülen!' : 'Zieh die Seife über den Dreck!';
+    waterBtn.classList.toggle('glow', needRinse);
+    soapBtn.classList.toggle('glow', dirtLeft() > 0 && !tool);
+    if (dirtLeft() === 0 && soapLeft() === 0 && shine < 0) celebrate();
+  };
 
-  // Wischen
-  let last = null;
-  cv.addEventListener('pointerdown', (e) => { last = { x: e.clientX, y: e.clientY }; try { cv.setPointerCapture(e.pointerId); } catch { /* ok */ } });
-  cv.addEventListener('pointermove', (e) => {
-    if (!last || shine >= 0) return;
-    const r = cv.getBoundingClientRect();
-    const x = e.clientX - r.left, y = e.clientY - r.top, dist = Math.hypot(e.clientX - last.x, e.clientY - last.y);
-    last = { x: e.clientX, y: e.clientY };
-    if (Math.random() < 0.6) trail.push({ x, y, life: 0.6, s: rand(4, 9) });
+  function addSoap(x, y, kind) {
+    if (kind === 'bubble' && soap.length > 240) return; // genug Bläschen – nichts verschwindet ohne Abspülen
+    const b = kind === 'foam'
+      ? { kind, x: x + rand(-14, 14), y: y + rand(-10, 10), size: rand(46, 62), rot: rand(-0.3, 0.3), born: performance.now() }
+      : { kind: 'bubble', n: Math.floor(Math.random() * bubbleCount), x: x + rand(-18, 18), y: y + rand(-14, 14), size: rand(14, 30), rot: 0, born: performance.now(), wob: rand(0, 6) };
+    soap.push(b);
+    soapMade++;
+  }
+
+  // ---- Werkzeuge greifen (aus der Ablage ziehen) ----
+  const toLocal = (e) => { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  for (const btn of [soapBtn, waterBtn]) {
+    btn.addEventListener('pointerdown', (e) => {
+      if (shine >= 0) return;
+      e.preventDefault();
+      tool = btn.dataset.tool;
+      const pt = toLocal(e);
+      held = { x: pt.x, y: pt.y - 40, lx: pt.x, ly: pt.y - 40, id: e.pointerId };
+      btn.classList.add('out');
+      try { el.setPointerCapture(e.pointerId); } catch { /* ok */ }
+      haptic('tick');
+      updateUi();
+    });
+  }
+  el.addEventListener('pointermove', (e) => {
+    if (!held || e.pointerId !== held.id) return;
+    const pt = toLocal(e);
+    held.x = pt.x; held.y = pt.y - 40; // Werkzeug etwas über dem Finger, damit man es sieht
+    const dist = Math.hypot(held.x - held.lx, held.y - held.ly);
+    if (dist < 1) return;
+    if (tool === 'soap') scrub(dist);
+    held.lx = held.x; held.ly = held.y;
+  });
+  const drop = (e) => {
+    if (!held || (e && e.pointerId !== held.id)) return;
+    held = null; tool = null;
+    soapBtn.classList.remove('out'); waterBtn.classList.remove('out');
+    updateUi();
+  };
+  el.addEventListener('pointerup', drop);
+  el.addEventListener('pointercancel', drop);
+
+  // Seife: Bläschen hinter der Seife, Dreck darunter wird kleiner, Schaum bleibt zurück
+  function scrub(dist) {
+    held.trail = (held.trail || 0) + dist;
+    while (held.trail > 24) { held.trail -= 24; addSoap(held.lx, held.ly, 'bubble'); }
     for (const d of dirts) {
-      if (d.hp <= 0 || Math.hypot(d.x - x, d.y - y) > d.size * 0.6) continue;
+      if (d.hp <= 0 || Math.hypot(d.x - held.x, d.y - held.y) > d.size * 0.7 + 20) continue;
       d.wipe += dist;
       d.shake = 0.15;
-      if (Math.random() < 0.5) particles.push(crumb(d, x, y));
+      if (Math.random() < 0.3) particles.push(crumb(d.x, d.y));
       if (d.wipe >= G.wipePerHit) {
         d.wipe = 0; d.hp--;
-        for (let i = 0; i < 6; i++) particles.push(crumb(d, d.x, d.y));
-        if (d.hp <= 0) { d.pop = 1; haptic('medium'); for (let i = 0; i < 10; i++) particles.push(bubble(d.x, d.y)); }
+        addSoap(d.x, d.y, 'foam');
+        for (let i = 0; i < 5; i++) particles.push(crumb(d.x, d.y));
+        if (d.hp <= 0) { d.pop = 1; haptic('medium'); addSoap(d.x, d.y, 'foam'); }
         else haptic('tick');
-        bar.style.width = progress() * 100 + '%';
-        if (progress() >= 1) celebrate();
+        updateUi();
       }
     }
-  });
-  const up = () => { last = null; };
-  cv.addEventListener('pointerup', up);
-  cv.addEventListener('pointercancel', up);
-
-  function crumb(d, x, y) { const pal = PALETTE[d.type]; return { x, y, vx: rand(-90, 90), vy: rand(-140, -30), g: 420, life: rand(0.4, 0.8), s: rand(3, 6), c: pal[Math.floor(Math.random() * pal.length)] }; }
-  function bubble(x, y) { return { x, y, vx: rand(-60, 60), vy: rand(-90, -20), g: -20, life: rand(0.6, 1.1), s: rand(5, 11), c: 'bubble' }; }
+  }
+  // Brause: Wasserpixel, Schaum und Bläschen darunter werden nach unten weggespült
+  function rinse() {
+    if (tool !== 'water' || !held) return;
+    const nx = held.x - 26, ny = held.y - 24; // Brausekopf (oben links im Sprite)
+    for (let i = 0; i < 6; i++) particles.push({ x: nx + rand(-14, 14), y: ny + rand(0, 8), vx: rand(-25, 25), vy: rand(260, 380), g: 600, life: rand(0.45, 0.8), s: rand(3, 6), c: WATER[Math.floor(Math.random() * 4)] });
+    let hit = false;
+    for (const b of soap) {
+      if (b.rinse) continue;
+      if (Math.abs(b.x - nx) < 46 && b.y > ny - 20 && b.y < ny + 230) { b.rinse = { vy: rand(120, 220), vx: rand(-20, 20) }; hit = true; }
+    }
+    if (hit && performance.now() - lastHit > 90) { lastHit = performance.now(); haptic('tick'); updateUi(); }
+  }
+  function crumb(x, y) { return { x: x + rand(-10, 10), y: y + rand(-10, 10), vx: rand(-90, 90), vy: rand(-140, -30), g: 420, life: rand(0.4, 0.8), s: rand(3, 6), c: MUD[Math.floor(Math.random() * 4)] }; }
 
   function celebrate() {
     shine = 0;
     haptic('strong');
+    held = null; tool = null;
     portrait.src = portraitUrl(p.dex, 'Joyous');
+    hint.remove();
+    el.querySelector('.tool-tray')?.remove();
     done.classList.remove('hidden');
-    el.querySelector('.groom-hint')?.remove();
     done.replaceChildren(h('img.portrait.big', { src: portraitUrl(p.dex, 'Joyous'), alt: '' }), h('h2', 'Blitzsauber!'), h('p', `${sp.name} fühlt sich pudelwohl.`), h('button.btn.primary', { onclick: () => finish(true) }, 'Fertig'));
   }
 
@@ -135,50 +187,60 @@ export function openGrooming(p, onDone) {
     onDone?.();
   }
 
+  const drawSprite = (name, x, y, w, rot = 0, alpha = 1) => {
+    const i = img(name);
+    if (!ready(i)) return;
+    const hgt = w * (i.naturalHeight / i.naturalWidth);
+    ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y); ctx.rotate(rot);
+    ctx.drawImage(i, -w / 2, -hgt / 2, w, hgt);
+    ctx.restore();
+  };
+
   let prev = performance.now();
   const frame = () => {
     const now = performance.now(), dt = Math.min(0.05, (now - prev) / 1000); prev = now;
     if (cv.clientWidth !== W || cv.clientHeight !== H) resize();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
-    // Fell (füllt den Bildschirm)
-    if (fur.complete && fur.naturalWidth) {
+    if (ready(fur)) {
       const k = Math.max(W / fur.naturalWidth, H / fur.naturalHeight);
       ctx.drawImage(fur, (W - fur.naturalWidth * k) / 2, (H - fur.naturalHeight * k) / 2, fur.naturalWidth * k, fur.naturalHeight * k);
     } else { ctx.fillStyle = '#c9b9a0'; ctx.fillRect(0, 0, W, H); }
-    // Schmutz
+    // Dreckhaufen: Stufe nach verbleibender Härte
     for (const d of dirts) {
       if (d.hp <= 0 && d.pop <= 0) continue;
-      let alpha = 1, scale = 1;
-      if (d.hp <= 0) { d.pop -= dt * 4; alpha = Math.max(0, d.pop); scale = 1 + (1 - d.pop) * 0.4; }
-      else { const f = d.hp / d.max; alpha = 0.45 + 0.55 * f; scale = 0.7 + 0.3 * f; }
+      const left = Math.max(0, d.hp) / d.max;
+      const st = d.hp <= 0 ? 3 : Math.min(3, d.stage0 + Math.floor((1 - left) * (4 - d.stage0)));
+      const w = d.size * (d.hp <= 0 ? d.pop * 0.6 : 0.55 + 0.45 * left) * (st === 3 ? 0.7 : 1);
+      if (d.hp <= 0) d.pop -= dt * 3;
       const jx = d.shake > 0 ? rand(-2, 2) : 0;
-      d.shake = Math.max(0, (d.shake || 0) - dt);
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.translate(d.x + jx, d.y); ctx.rotate(d.rot); ctx.scale(scale, scale);
-      ctx.drawImage(d.sprite, -d.size / 2, -d.size / 2, d.size, d.size);
-      ctx.restore();
+      d.shake = Math.max(0, d.shake - dt);
+      drawSprite(STAGES[st], d.x + jx, d.y, w, d.rot, d.hp <= 0 ? Math.max(0, d.pop) : 1);
     }
-    ctx.globalAlpha = 1;
-    // Wisch-Spur (Schaum)
-    for (const t of trail) {
-      t.life -= dt;
-      ctx.globalAlpha = Math.max(0, t.life / 0.6) * 0.8;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(Math.round(t.x - t.s / 2), Math.round(t.y - t.s / 2), t.s, t.s);
+    // Schaum & Bläschen (abgespülte rutschen nach unten und verblassen)
+    const t = now / 1000;
+    for (const b of soap) {
+      let alpha = 1;
+      if (b.rinse) { b.rinse.vy += 500 * dt; b.x += b.rinse.vx * dt; b.y += b.rinse.vy * dt; b.rinse.a = (b.rinse.a ?? 1) - dt * 1.6; alpha = Math.max(0, b.rinse.a); }
+      const appear = Math.min(1, (now - b.born) / 150);
+      if (b.kind === 'foam') drawSprite('schaum', b.x, b.y, b.size * appear, b.rot, alpha * 0.95);
+      else drawSprite(`blase_${b.n}`, b.x + Math.sin(t * 2 + b.wob) * 1.2, b.y, b.size * appear, 0, alpha);
     }
-    for (let i = trail.length - 1; i >= 0; i--) if (trail[i].life <= 0) trail.splice(i, 1);
-    // Krümel & Bläschen
+    for (let i = soap.length - 1; i >= 0; i--) if (soap[i].rinse && soap[i].rinse.a <= 0) soap.splice(i, 1);
+    rinse();
+    // Krümel & Wasserpixel
     for (const q of particles) {
       q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt;
       ctx.globalAlpha = Math.max(0, Math.min(1, q.life * 2));
-      if (q.c === 'bubble') { ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 2; ctx.strokeRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
-      else { ctx.fillStyle = q.c; ctx.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s); }
+      ctx.fillStyle = q.c;
+      ctx.fillRect(Math.round(q.x), Math.round(q.y), q.s, q.s);
     }
     for (let i = particles.length - 1; i >= 0; i--) if (particles[i].life <= 0) particles.splice(i, 1);
     ctx.globalAlpha = 1;
-    // Glanzeffekt am Ende: Lichtstreifen + Funkeln
+    // gehaltenes Werkzeug
+    if (held && tool === 'soap') drawSprite('seife', held.x, held.y, 92, Math.sin(t * 10) * 0.06);
+    if (held && tool === 'water') drawSprite('brause', held.x, held.y, 84, -0.15);
+    // Glanzeffekt am Ende
     if (shine >= 0) {
       shine += dt;
       const x = (shine / 1.1) * (W + H) - H;
@@ -187,16 +249,15 @@ export function openGrooming(p, onDone) {
       ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
       for (let i = 0; i < 18; i++) {
         const sx = (Math.sin(i * 12.9898) * 0.5 + 0.5) * W, sy = (Math.sin(i * 78.233) * 0.5 + 0.5) * H;
-        const tw = Math.max(0, Math.sin(shine * 6 + i));
-        const s = 3 + tw * 6;
-        ctx.globalAlpha = tw;
-        ctx.fillStyle = '#fffbe0';
+        const tw = Math.max(0, Math.sin(shine * 6 + i)), s = 3 + tw * 6;
+        ctx.globalAlpha = tw; ctx.fillStyle = '#fffbe0';
         ctx.fillRect(sx - s / 2, sy - 1, s, 2); ctx.fillRect(sx - 1, sy - s / 2, 2, s);
       }
       ctx.globalAlpha = 1;
     }
     raf = requestAnimationFrame(frame);
   };
+  updateUi();
   raf = requestAnimationFrame(frame);
-  if (import.meta.env.DEV) app.groom = { dirts, progress, finish, celebrate };
+  if (import.meta.env.DEV) app.groom = { dirts, soap, progress, finish, celebrate, get tool() { return tool; } };
 }

@@ -318,3 +318,12 @@ main { position: absolute; inset: 0; }
 .groom-done .portrait.big { width: 80px; height: 80px; border: var(--px) solid var(--line); border-radius: 12px; }
 .groom-done { left: 0; right: 0; top: 0; bottom: 0; margin: auto; transform: none; width: max-content; height: max-content; max-width: 86vw; }
 .groom-done:not(.hidden) ~ .groom-hint, .groom:has(.groom-done:not(.hidden)) .groom-hint { display: none; }
+/* Putz-Werkzeuge */
+.tool-tray { position: absolute; left: 0; right: 0; bottom: calc(14px + var(--safe-b)); display: flex; justify-content: center; gap: 22px; pointer-events: none; }
+.tool { pointer-events: auto; width: 96px; height: 80px; display: grid; place-items: center; background: rgba(255, 251, 234, .88); border: var(--px) solid var(--line);
+  border-radius: 16px; touch-action: none; cursor: grab; transition: transform .12s, opacity .12s; }
+.tool img { max-width: 76px; max-height: 60px; image-rendering: pixelated; pointer-events: none; }
+.tool.out { opacity: .35; transform: scale(.9); }
+.tool.glow { animation: toolglow 1.2s ease-in-out infinite; }
+@keyframes toolglow { 50% { box-shadow: 0 0 0 4px rgba(127, 199, 217, .9), 0 0 18px rgba(127, 199, 217, .9); transform: translateY(-3px); } }
+.groom-hint { bottom: calc(112px + var(--safe-b)); }

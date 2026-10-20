@@ -62,3 +62,31 @@ for (const size of [192, 512, 1024]) {
     .composite([{ input: img, gravity: 'center' }]).png().toFile(path.join(ROOT, 'public', `icon-${size}.png`));
 }
 console.log('Icons fertig');
+
+// ---- Putz-Minispiel: Sprites aus assets-input/putzen -> public/art/putzen; Blasen-Sheet (8x4) wird in Einzelblasen zerlegt ----
+{
+  const dir = path.join(IN, 'putzen'), out = path.join(OUT, 'putzen');
+  if (fs.existsSync(dir)) {
+    fs.mkdirSync(out, { recursive: true });
+    const meta = { bubbles: 0 };
+    for (const f of fs.readdirSync(dir)) {
+      const id = f.replace(/\.[^.]+$/, '');
+      if (id === 'blasen_sheet') {
+        const m = await sharp(path.join(dir, f)).metadata();
+        const cw = Math.floor(m.width / 8), ch = Math.floor(m.height / 4);
+        let n = 0;
+        for (let r = 0; r < 4; r++) for (let c = 0; c < 8; c++) {
+          const cell = await sharp(path.join(dir, f)).extract({ left: c * cw, top: r * ch, width: cw, height: ch }).png().toBuffer();
+          const st = await sharp(cell).stats();
+          if (st.channels[3].max < 10) continue; // leere Zelle
+          await sharp(cell).trim({ threshold: 1 }).png().toFile(path.join(out, `blase_${n++}.png`));
+        }
+        meta.bubbles = n;
+      } else {
+        await sharp(path.join(dir, f)).trim({ threshold: 1 }).png().toFile(path.join(out, `${id}.png`));
+      }
+    }
+    fs.writeFileSync(path.join(out, 'putzen.json'), JSON.stringify(meta));
+    console.log('Putz-Sprites fertig, Blasen:', meta.bubbles);
+  }
+}
