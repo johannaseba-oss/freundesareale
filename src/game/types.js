@@ -35,4 +35,4 @@ export function allTypesChip() {
   return el;
 }
 // Kärtchen der Wohlfühl-Typen eines Areals
-export const areaTypeChips = (area) => [...(area.allTypes ? [allTypesChip()] : []), ...(area.likes || []).map((t) => typeChip(t))];
+export const areaTypeChips = (area) => (area.allTypes ? [allTypesChip()] : (area.likes || []).map((t) => typeChip(t)));
