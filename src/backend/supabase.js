@@ -1,8 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
+// "Angemeldet bleiben": an = Anmeldung in localStorage (bleibt nach Schließen des Browsers),
+// aus = nur sessionStorage (endet mit dem Browser-Tab). Gespeichert wird hier nur die Anmeldung, nie der Spielstand.
+const REMEMBER = 'freundesareale.remember';
+export const getRemember = () => { try { return localStorage.getItem(REMEMBER) !== '0'; } catch { return true; } };
+const authStorage = {
+  getItem: (k) => { try { return localStorage.getItem(k) ?? sessionStorage.getItem(k); } catch { return null; } },
+  setItem: (k, v) => {
+    try {
+      if (getRemember()) { localStorage.setItem(k, v); sessionStorage.removeItem(k); }
+      else { sessionStorage.setItem(k, v); localStorage.removeItem(k); }
+    } catch { /* Speicher blockiert */ }
+  },
+  removeItem: (k) => { try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch { /* ok */ } },
+};
+
 // Cloud-Backend. Die Datenbank ist die maßgebliche Quelle für den Spielstand.
 export function createSupabaseBackend(url, anonKey) {
-  const sb = createClient(url, anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  const sb = createClient(url, anonKey, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storage: authStorage } });
   const redirect = () => window.location.origin + window.location.pathname;
   const unwrap = ({ data, error }) => { if (error) throw error; return data; };
 
@@ -18,7 +33,10 @@ export function createSupabaseBackend(url, anonKey) {
       }
       return { needsConfirmation: !data.session };
     },
-    async signIn(email, password) { unwrap(await sb.auth.signInWithPassword({ email, password })); },
+    async signIn(email, password, remember = true) {
+      try { localStorage.setItem(REMEMBER, remember ? '1' : '0'); } catch { /* ok */ }
+      unwrap(await sb.auth.signInWithPassword({ email, password }));
+    },
     async signOut() { await sb.auth.signOut(); },
     async resetPassword(email) { unwrap(await sb.auth.resetPasswordForEmail(email, { redirectTo: redirect() })); },
     async updatePassword(password) { unwrap(await sb.auth.updateUser({ password })); },

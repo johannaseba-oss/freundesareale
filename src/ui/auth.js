@@ -26,8 +26,11 @@ export function showAuth(backend, mode = 'login') {
   if (mode === 'login') {
     const email = field('email', 'E-Mail', 'email'), pw = field('password', 'Passwort', 'current-password');
     const btn = h('button.btn.primary.big', { type: 'submit' }, 'Anmelden');
-    btn.onclick = () => busy(btn, () => backend.signIn(email.value.trim(), pw.value));
-    card.append(h('p', 'Willkommen zurück!'), email, pw, err, btn, h('div.links', link('Konto erstellen', 'register'), link('Passwort vergessen?', 'forgot')));
+    let remember = true;
+    try { remember = localStorage.getItem('freundesareale.remember') !== '0'; } catch { /* ok */ }
+    const rem = h('input', { type: 'checkbox', checked: remember });
+    btn.onclick = () => busy(btn, () => backend.signIn(email.value.trim(), pw.value, rem.checked));
+    card.append(h('p', 'Willkommen zurück!'), email, pw, h('label.remember', rem, ' Angemeldet bleiben'), err, btn, h('div.links', link('Konto erstellen', 'register'), link('Passwort vergessen?', 'forgot')));
   } else if (mode === 'register') {
     const email = field('email', 'E-Mail (muss freigegeben sein)', 'email'), pw = field('password', 'Passwort (mind. 8 Zeichen)', 'new-password'), pw2 = field('password', 'Passwort wiederholen', 'new-password');
     const btn = h('button.btn.primary.big', { type: 'submit' }, 'Konto erstellen');

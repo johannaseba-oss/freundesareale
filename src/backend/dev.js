@@ -21,7 +21,7 @@ export function createDevBackend() {
       authCb('SIGNED_IN', { id, email });
       return { needsConfirmation: false };
     },
-    async signIn(email, password) {
+    async signIn(email, password, remember = true) {
       await wait(); const d = db();
       const id = Object.keys(d.users).find((k) => d.users[k].email === email && d.users[k].password === password);
       if (!id) throw new Error('Invalid login credentials');
