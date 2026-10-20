@@ -10,7 +10,7 @@ const nice = (e) => MSG[e?.message] || e?.message || String(e);
 
 export function showAuth(backend, mode = 'login') {
   const root = $('#auth');
-  root.style.backgroundImage = `url(${import.meta.env.BASE_URL}art/areale/wiese_route.png)`;
+  root.style.backgroundImage = `url(${import.meta.env.BASE_URL}art/areale/wiese_route.webp)`;
   root.classList.remove('hidden');
   const card = h('form.auth-card', { onsubmit: (e) => e.preventDefault() });
   root.replaceChildren(card);

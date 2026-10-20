@@ -24,6 +24,16 @@ export function newGame(nowMs) {
 export function migrate(s) {
   s.schema = SCHEMA;
   s.areas ||= {};
+  for (const [oldId, newId] of Object.entries(CFG.areaAliases || {})) {
+    const o = s.areas[oldId];
+    if (!o || !areaById(newId) || areaById(oldId)) continue;
+    const n = (s.areas[newId] ||= { unlocked: false, level: 0 });
+    n.unlocked = n.unlocked || o.unlocked;
+    n.level = Math.max(n.level, o.level);
+    n.ground = [...(n.ground || []), ...(o.ground || [])].slice(0, 3);
+    delete s.areas[oldId];
+    for (const p of s.pokemon) if (p.area === oldId) p.area = newId;
+  }
   for (const a of CFG.areas) s.areas[a.id] ||= { unlocked: a.unlockCost === 0, level: 0 };
   s.stats ||= { draws: 0, coinsEarned: 0 };
   s.berries ||= {};

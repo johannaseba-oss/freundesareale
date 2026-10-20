@@ -10,6 +10,7 @@ export async function loadConfig() {
   const [balance, areas, dex, bonuses, social] = await Promise.all([get('config/balance.json'), get('config/areas.json'), get('data/pokedex.json'), get('config/bonuses.json'), get('config/social.json')]);
   CFG.balance = balance;
   CFG.areas = areas.areas;
+  CFG.areaAliases = areas.aliases || {};
   CFG.dex = dex;
   CFG.dexById = new Map(dex.map((p) => [p.dex, p]));
   CFG.bonuses = bonuses;

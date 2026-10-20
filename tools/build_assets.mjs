@@ -6,26 +6,18 @@ import sharp from 'sharp';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const IN = path.join(ROOT, 'assets-input');
-const BG_SRC = process.env.POKE_BG || 'D:/Pokemon Sprites/Hintergründe';
 const OUT = path.join(ROOT, 'public/art');
 fs.mkdirSync(path.join(OUT, 'areale'), { recursive: true });
 
 // ---- Areal-Hintergründe: eigene Bilder aus assets-input/areale (Dateiname = Areal-ID) ----
+// WebP/JPG werden als WebP gespeichert (klein), PNG bleibt PNG. Dateiname in areas.json -> "image".
 for (const f of fs.readdirSync(path.join(IN, 'areale'))) {
   if (!/\.(png|jpe?g|webp|gif)$/i.test(f)) continue;
   const id = f.replace(/\.[^.]+$/, '');
-  await sharp(path.join(IN, 'areale', f)).png().toFile(path.join(OUT, 'areale', `${id}.png`));
+  const asPng = /\.(png|gif)$/i.test(f);
+  const img = sharp(path.join(IN, 'areale', f));
+  await (asPng ? img.png() : img.webp({ quality: 92 })).toFile(path.join(OUT, 'areale', `${id}.${asPng ? 'png' : 'webp'}`));
   console.log('Areal-Bild', id);
-}
-// ---- PMD-Dungeon-Hintergründe als Platzhalter-Areale ----
-const PMD = { blaetterhain: 'D24P11A', apfelwald: 'D05P11A', moorsee: 'D09P11A', felsenhoehle: 'D10P41A', kristallhoehle: 'D17P11A', duene: 'D13P11A', felsplateau: 'D12P41A' };
-if (fs.existsSync(BG_SRC)) {
-  const files = fs.readdirSync(BG_SRC);
-  for (const [id, code] of Object.entries(PMD)) {
-    if (fs.existsSync(path.join(IN, 'areale', `${id}.png`))) continue; // eigenes Bild hat Vorrang
-    const f = files.find(x => x.includes(code));
-    if (f) { await sharp(path.join(BG_SRC, f)).png().toFile(path.join(OUT, 'areale', `${id}.png`)); console.log('PMD-Hintergrund', id); }
-  }
 }
 
 // ---- Automat: Kugel und Ausgabeschacht leeren, Bälle zeichnet das Spiel selbst ----
