@@ -58,7 +58,7 @@ Seltenheit automatisch (PokeAPI-Daten): Grundstufen mit Entwicklung + Babys = ge
 ## Soziales Leben & Stimmung
 
 - `public/config/social.json`: Sympathie zwischen Pokémon (gleiche Art/Familie, gemeinsame Typen, Typ-Konflikte wie Feuer–Eis, Entwicklungsstufen, besondere Beziehungen wie Sengo & Vipitis), Häufigkeit und Arten der Begegnungen (Fangen, Plaudern, zusammen Schlafen, Spielen, Streit, Gereiztheit), Porträt-Dauer.
-- Begegnungen laufen sichtbar, während man im Areal ist, und verschieben die Zufriedenheit leicht. Zusätzlich wirkt die Sympathie zu den Mitbewohnern langfristig (auch bei geschlossener App).
+- Begegnungen laufen sichtbar, während man im Areal ist, und **zeigen** nur, wie sich die Pokémon verstehen (Sympathie + Stimmung + Arealpassung, kaum Zufall) – sie ändern keine Werte. Die Stimmung selbst hängt an Hunger, Arealpassung, Betüdeln und der dauerhaften Beziehung zu den Mitbewohnern und ändert sich langsam über Stunden (auch bei geschlossener App).
 - **Stimmung** = Zufriedenheit + Betüdel-Bonus. Streicheln hebt die Stimmung sofort, der Bonus hält 24 Std. Dauerhaft hilft ein besser passendes Areal.
 - Gefüttert wird mit Beeren aus dem Inventar (`berries[].hunger`). Beeren tauchen zufällig im Areal auf (`social.json → groundBerries`) und werden per Antippen eingesammelt.
 

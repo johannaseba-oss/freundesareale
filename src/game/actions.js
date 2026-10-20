@@ -125,11 +125,3 @@ export function pickGroundBerry(s, areaId, id) {
   s.berries[g.berry] = (s.berries[g.berry] || 0) + 1;
   return { ok: true, berry: g.berry };
 }
-
-// Ergebnis einer sichtbaren Begegnung zweier Pokémon (wirkt leicht auf die Zufriedenheit)
-export function socialEncounter(s, a, b, positive) {
-  const d = positive ? CFG.social.behavior.satisfactionPositive : CFG.social.behavior.satisfactionNegative;
-  a.satisfaction = clamp(a.satisfaction + d);
-  b.satisfaction = clamp(b.satisfaction + d);
-  return { ok: true };
-}

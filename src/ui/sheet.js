@@ -7,7 +7,7 @@ import { capacityOf, residents, xpForLevel, genderSymbol } from '../game/state.j
 import { msToNextCoin, msToNextBerry } from '../game/sim.js';
 import { modsFor, bonusTraits } from '../game/bonuses.js';
 import { habitatText, habitatFit } from '../game/habitat.js';
-import { mood, petBoost } from '../game/mood.js';
+import { mood, petBoost, affinity } from '../game/mood.js';
 import { collectWithFx } from './collect.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconCanvas, iconImg, berryImg } from '../gfx/icons.js';
@@ -155,6 +155,13 @@ export function openSheet(p) {
     lHun.v.textContent = Math.round(p.fullness) + ' %';
     const notes = [];
     if (p.area && p.fullness < CFG.balance.needs.hungryBelow) notes.push(h('div.note.warn', 'Hat Hunger – gib ihm eine Beere!'));
+    if (p.area) {
+      const mates = residents(st, p.area).filter((q) => q.uid !== p.uid).map((q) => ({ q, v: affinity(p.dex, q.dex) }));
+      const good = mates.filter((m) => m.v >= 0.3).map((m) => species(m.q.dex).name);
+      const bad = mates.filter((m) => m.v <= -0.3).map((m) => species(m.q.dex).name);
+      if (good.length) notes.push(h('div.note', 'Versteht sich gut mit ' + [...new Set(good)].slice(0, 3).join(', ')));
+      if (bad.length) notes.push(h('div.note.warn', 'Kommt nicht klar mit ' + [...new Set(bad)].slice(0, 3).join(', ')));
+    }
     if (boost) notes.push(h('div.note', `♥ Betüdelt: Stimmung +${Math.round(boost)} (noch ${fmtDuration(p.petBoost.until - t)})`));
     if (p.area) { const hf = habitatFit(p.dex, p.area).fit; if (hf < 0) notes.push(h('div.note.warn', `Fühlt sich in ${areaById(p.area).name} nicht wohl.`)); }
     if (p.area && CFG.berryProducers.has(p.dex)) notes.push(h('div.note', `Beeren: nächste in ${fmtDuration(msToNextBerry(st, p))}`));

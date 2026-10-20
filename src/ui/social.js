@@ -56,7 +56,8 @@ export class SocialDirector {
     const moodAvg = (mood(a.p, t) + mood(b.p, t)) / 200 - 0.5; // -0.5..0.5
     const unsuitable = habitatFit(a.p.dex, a.p.area).fit < 0 || habitatFit(b.p.dex, b.p.area).fit < 0;
     const score = B.affinityWeight * aff + B.moodWeight * moodAvg * 2 - (unsuitable ? B.unsuitableAreaPenalty : 0);
-    const pNeg = Math.max(0.03, Math.min(0.9, B.negativeBase - score * 0.5));
+    // fast deterministisch: gute Beziehung + gute Laune = freundlich, Abneigung/schlechte Laune = gereizt
+    const pNeg = Math.max(0.02, Math.min(0.98, 0.5 - B.friendlyBias - score * B.steepness));
     const negative = Math.random() < pNeg;
     const young = species(a.p.dex).stage <= 1 && species(b.p.dex).stage <= 1;
     const table = negative ? B.negative : { ...B.positive, chase: B.positive.chase + (young ? B.youngPlayBonus : 0), play: B.positive.play + (young ? B.youngPlayBonus : 0) };
@@ -134,7 +135,6 @@ export class SocialDirector {
   finish(it, completed) {
     it.done = true;
     for (const x of [it.a, it.b]) { if (x.busy === it) x.busy = null; x.state = 'idle'; x.t = 0; x.timer = rand(1, 3); }
-    if (completed) this.onResult?.(it.a.p, it.b.p, it.positive, it.kind);
   }
 
   // Porträt-Blasen über den Köpfen

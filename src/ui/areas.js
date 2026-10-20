@@ -36,7 +36,6 @@ export function initAreas() {
       const r = app.act((s) => A.pickGroundBerry(s, area.id, g.id));
       if (r.ok) { haptic('tick'); fly('berry', pos, 1, '#hud-bag', berryUrl(r.berry)); }
     },
-    onSocial: (a, b, positive) => app.act((s) => A.socialEncounter(s, a, b, positive)),
     onDragStart: (p) => { haptic('tick'); showZones(p); },
     onDragMove: (p, x, y) => highlightZone(x, y),
     onDragEnd: (p, x, y) => dropOn(p, x, y),
