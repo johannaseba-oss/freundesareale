@@ -133,7 +133,7 @@ export function foresee(s, p, t) {
 // Ballpositionen im Automaten speichern (nach dem Zur-Ruhe-Kommen)
 export function storeBallPositions(s, list) {
   const pos = new Map(list.map((b) => [b.key, b]));
-  for (const m of s.gacha.machine) { const q = pos.get(m.key); if (q) { m.x = Math.round(q.x); m.y = Math.round(q.y); } }
+  for (const m of s.gacha.machine) { const q = pos.get(m.key); if (q) { m.x = Math.round(q.x); m.y = Math.round(q.y); m.a = Math.round((q.a ?? 0) * 100) / 100; } }
   return { ok: true };
 }
 

@@ -147,7 +147,8 @@ function syncBalls() {
     const saved = b.x != null && b.y != null;
     balls.push({ key: b.key, id: b.ball, dex: b.dex,
       x: saved ? b.x : G.cx + (Math.random() - 0.5) * G.r * 0.8,
-      y: saved ? b.y : G.top + R - drop++ * 2 * R, vx: 0, vy: 0 });
+      y: saved ? b.y : G.top + R - drop++ * 2 * R, vx: 0, vy: 0,
+      a: b.a ?? ((b.key % 360) * Math.PI) / 180 }); // eigene Drehung je Ball (gespeichert oder aus dem Schlüssel)
     settle = 0;
   }
 }
@@ -173,6 +174,7 @@ function step(dt) {
       const v = Math.hypot(b.vx, b.vy);
       if (v > MAXV) { b.vx *= MAXV / v; b.vy *= MAXV / v; }
       b.x += b.vx * h; b.y += b.vy * h;
+      b.a += (b.vx * h) / R; // rollen: Drehung folgt der Bewegung
       const damp = cranking ? 0.995 : 0.985;
       b.vx *= damp; b.vy *= damp;
       // Glaswand (kaum federnd)
@@ -202,6 +204,15 @@ function step(dt) {
   }
 }
 
+// Ball gedreht zeichnen (scale = Größe beim Versinken)
+function drawBall(id, x, y, a, scale = 1) {
+  const c = ballCanvas(id, PX);
+  ctx.save();
+  ctx.translate(Math.round(x), Math.round(y)); ctx.rotate(a); ctx.scale(scale, scale);
+  ctx.drawImage(c, -R, -R);
+  ctx.restore();
+}
+
 function draw() {
   ctx.imageSmoothingEnabled = false;
   const rv = revealActive(app.state, now());
@@ -214,12 +225,11 @@ function draw() {
       const ex = exitPoint(), p = Math.min(1, anim.t / 0.35), q = Math.max(0, (anim.t - 0.35) / 0.25);
       if (q >= 1) continue;
       const x = anim.from.x + (ex.x - anim.from.x) * p, y = anim.from.y + (ex.y - anim.from.y) * p;
-      const c = ballCanvas(b.id, PX), sz = c.width * (1 - q);
-      ctx.drawImage(c, Math.round(x - sz / 2), Math.round(y - sz / 2 + q * 30), sz, sz);
+      drawBall(b.id, x, y + q * 30, b.a, 1 - q);
       continue;
     }
     if (rev?.has(b.key)) continue; // aufgedeckte Bälle werden darüber gezeichnet
-    ctx.drawImage(ballCanvas(b.id, PX), Math.round(b.x - R), Math.round(b.y - R));
+    drawBall(b.id, b.x, b.y, b.a);
   }
   // Psycho-Blick: wabernde Bälle mit sichtbarem Inhalt
   if (rev) {
@@ -231,7 +241,7 @@ function draw() {
       glow.addColorStop(0, 'rgba(200,120,255,0.55)'); glow.addColorStop(1, 'rgba(200,120,255,0)');
       ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(b.x, b.y, R * 1.7, 0, TAU); ctx.fill();
       ctx.save();
-      ctx.translate(b.x, b.y); ctx.scale(1 + Math.sin(t * 5 + b.key % 5) * 0.06, 1 - Math.sin(t * 5 + b.key % 5) * 0.06);
+      ctx.translate(b.x, b.y); ctx.rotate(b.a); ctx.scale(1 + Math.sin(t * 5 + b.key % 5) * 0.06, 1 - Math.sin(t * 5 + b.key % 5) * 0.06);
       ctx.globalAlpha = 0.85;
       ctx.drawImage(ballCanvas(b.id, PX), -R + wob * 0.3, -R);
       ctx.restore();
