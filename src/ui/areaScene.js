@@ -20,7 +20,7 @@ export function preloadArea(area) {
   return (img.decode ? img.decode() : Promise.resolve()).catch(() => {});
 }
 
-const ICON = { coin: iconCanvas('coin', 1), food: iconCanvas('food', 1), heart: iconCanvas('heart', 1), dirt: iconCanvas('dirt', 1) };
+const ICON = { food: iconCanvas('food', 1), heart: iconCanvas('heart', 1), dirt: iconCanvas('dirt', 1) };
 const rand = (a, b) => a + Math.random() * (b - a);
 // Bereiche oben/unten, die von der schwebenden Oberfläche belegt sind (CSS-Pixel) – dort laufen keine Pokémon
 const SAFE = { top: 110, bottom: 110, side: 24 };
@@ -168,9 +168,9 @@ export class AreaScene {
       const bob = Math.sin(this.time * 4 + a.p.uid) * 1.5 * s;
       const top = a.box.y - 2 * s + bob;
       if (a.p.coinsReady > 0) {
-        const c = ICON.coin, cw = c.width * s;
+        const cw = 11 * s;
         a.coinBox = { x: a.x - cw / 2 - 6 * s, y: top - cw - 6 * s, w: cw + 12 * s, h: cw + 12 * s };
-        if (!drawCoin(ctx, a.x, top - cw / 2, cw * 1.15, this.time * 1000 + a.p.uid * 137)) ctx.drawImage(c, Math.round(a.x - cw / 2), Math.round(top - cw), cw, cw);
+        drawCoin(ctx, a.x, top - cw / 2, cw * 1.15, this.time * 1000 + a.p.uid * 137);
         if (a.p.coinsReady > 1) {
           ctx.font = `bold ${Math.round(7 * s)}px "Pixelify Sans", sans-serif`;
           ctx.fillStyle = '#fff'; ctx.strokeStyle = '#4a3b33'; ctx.lineWidth = s;
@@ -197,6 +197,7 @@ export class AreaScene {
     }
     this.social.draw(ctx, s);
     for (const q of this.particles) {
+      if (q.icon === 'coin') { ctx.globalAlpha = Math.min(1, q.life * 1.5); drawCoin(ctx, q.x, q.y, 11 * s, q.life * 1000 + q.x * 7); continue; }
       const c = ICON[q.icon] || ICON.heart;
       ctx.globalAlpha = Math.min(1, q.life * 1.5);
       ctx.drawImage(c, Math.round(q.x - (c.width * s) / 2), Math.round(q.y), c.width * s, c.height * s);

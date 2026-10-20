@@ -262,9 +262,9 @@ function draw() {
   ctx.restore();
   // Münze fällt in den Schlitz
   if (crank.coin > 0 && crank.coin < 0.5) {
-    const c = iconCanvas('coin', 6), p = Math.min(1, crank.coin / 0.45);
+    const p = Math.min(1, crank.coin / 0.45);
     ctx.globalAlpha = 1 - Math.max(0, p - 0.8) * 5;
-    if (!drawCoin(ctx, K.x, 700 + p * 145, 80, crank.coin * 1000)) ctx.drawImage(c, K.x - c.width / 2, 700 + p * 145 - c.height / 2);
+    drawCoin(ctx, K.x, 700 + p * 145, 80, crank.coin * 1000);
     ctx.globalAlpha = 1;
   }
   if (anim?.phase === 'drop') {
