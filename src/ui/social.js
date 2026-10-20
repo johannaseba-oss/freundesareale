@@ -7,6 +7,7 @@ import { affinity, mood } from '../game/mood.js';
 import { habitatFit } from '../game/habitat.js';
 import { weightedPick } from '../rng.js';
 import { dominates } from '../game/types.js';
+import { isActiveNow } from '../game/activity.js';
 
 const rand = (a, b) => a + Math.random() * (b - a);
 const portraits = new Map();
@@ -65,6 +66,8 @@ export class SocialDirector {
     const negative = Math.random() < pNeg;
     const young = species(a.p.dex).stage <= 1 && species(b.p.dex).stage <= 1;
     const table = negative ? B.negative : { ...B.positive, chase: B.positive.chase + (young ? B.youngPlayBonus : 0), play: B.positive.play + (young ? B.youngPlayBonus : 0) };
+    // gemeinsam schlafen nur, wenn beide gerade nicht in ihrer aktiven Zeit sind
+    if (isActiveNow(a.p.dex) || isActiveNow(b.p.dex)) delete table.sleep;
     const kind = weightedPick(Object.keys(table), (k) => table[k]);
     this.begin(kind, a, b, !negative);
   }

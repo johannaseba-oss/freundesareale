@@ -4,6 +4,7 @@ import { CFG } from '../config.js';
 import { loadSprites, frameOf, dirFromVector } from '../gfx/sprites.js';
 import { iconCanvas, berryCanvas, drawCoin } from '../gfx/icons.js';
 import { SocialDirector } from './social.js';
+import { isActiveNow } from '../game/activity.js';
 
 const imgCache = new Map();
 function bgImage(file) {
@@ -119,8 +120,12 @@ export class AreaScene {
         if (d < 1.5) { a.state = 'idle'; a.t = 0; a.timer = rand(2, 6); }
         else { a.dir = dirFromVector(dx, dy); a.x += (dx / d) * speed * dt; a.y += (dy / d) * speed * dt; }
       } else if (a.timer <= 0) {
-        const sleepy = a.p.fullness < n.hungryBelow || a.p.satisfaction < 25 ? 0.35 : 0.12;
-        if (a.state !== 'sleep' && Math.random() < sleepy) { a.state = 'sleep'; a.t = 0; a.timer = rand(8, 20); }
+        // Schlafen nach Tageszeit: aktive Pokémon dösen selten und kurz, ruhende oft und lange
+        const act = CFG.social.activity, awake = isActiveNow(a.p.dex);
+        const tired = a.p.fullness < n.hungryBelow || a.p.satisfaction < 25 ? act.tiredExtra : 0;
+        const sleepy = (awake ? act.sleepChanceActive : act.sleepChanceResting) + tired;
+        const secs = awake ? act.sleepSecondsActive : act.sleepSecondsResting;
+        if (a.state !== 'sleep' && Math.random() < sleepy) { a.state = 'sleep'; a.t = 0; a.timer = rand(secs[0], secs[1]); }
         else { const pt = this.randomPoint(); a.tx = pt.x; a.ty = pt.y; a.state = 'walk'; a.t = 0; }
       }
     }

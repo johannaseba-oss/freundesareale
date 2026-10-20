@@ -261,5 +261,53 @@
     ],
     "hunterSpeed": 1.6,
     "preySpeed": 1.8
+  },
+  "_activity": "Tag-/Nachtaktivität (Wildnisprofil): in der aktiven Zeit schlafen Pokémon selten und kurz, sonst oft und lange. hours = aktive Stunden (Ortszeit), mehrere Bereiche möglich.",
+  "activity": {
+    "hours": {
+      "Tag": [
+        [
+          7,
+          20
+        ]
+      ],
+      "Nacht": [
+        [
+          20,
+          24
+        ],
+        [
+          0,
+          6
+        ]
+      ],
+      "Dämmerung": [
+        [
+          5,
+          10
+        ],
+        [
+          17,
+          23
+        ]
+      ],
+      "Wechselnd": [
+        [
+          0,
+          24
+        ]
+      ]
+    },
+    "sleepChanceActive": 0.03,
+    "sleepChanceResting": 0.5,
+    "sleepSecondsActive": [
+      5,
+      10
+    ],
+    "sleepSecondsResting": [
+      30,
+      75
+    ],
+    "tiredExtra": 0.1
   }
 }

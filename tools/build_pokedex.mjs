@@ -107,7 +107,7 @@ for (const d of dirs) {
   const spc = species.get(num) || {};
   dex.push({
     dex: num, key: d.slice(5), name: pr.name || d.slice(5).replace(/_/g, ' '), types: pr.typen || [],
-    rarity: rarityOf(num), stage: stageOf(num), family: spc.family || num, genderRate: spc.genderRate ?? -1, social: pr.sozial || '', anims, femaleAnims, portraits,
+    rarity: rarityOf(num), stage: stageOf(num), family: spc.family || num, genderRate: spc.genderRate ?? -1, social: pr.sozial || '', active: pr.aktiv || 'Tag', anims, femaleAnims, portraits,
   });
 }
 
