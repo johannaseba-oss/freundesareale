@@ -25,6 +25,7 @@ export const coinRange = (p) => coinTable(p).coins;
 export function coinRatePerHour(p, t, m) {
   const c = CFG.balance.coins;
   if (p.area && habitatFit(p.dex, p.area).fit < 0) return 0; // fühlt sich im Areal unwohl -> produziert keine Münzen
+  if (CFG.berryProducers.has(p.dex)) return 0; // Beeren-Pokémon produzieren Beeren statt Münzen
   let rate = (60 / cycleMinutes(p)) * levelFactor(p) * tierFactor(c.satisfactionFactor, mood(p, t));
   for (const e of p.effects) if (e.type === 'produktion' && e.until > t) rate *= e.factor;
   return rate * (m?.coin ?? 1);

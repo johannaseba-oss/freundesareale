@@ -35,8 +35,11 @@ export function pet(s, p, t) {
 
 export function collectCoins(s, list) {
   let total = 0;
-  const berries = {};
+  const berries = {}, dropped = [];
+  const drop = CFG.balance.berryDrop;
   for (const p of list) {
+    // seltene Beere, wenn das Pokémon Münzen abgibt
+    if (p.coinsReady > 0 && drop && Math.random() < drop.chance) { s.berries[drop.berry] = (s.berries[drop.berry] || 0) + 1; dropped.push({ uid: p.uid, berry: drop.berry }); }
     total += p.coinsReady; p.coinsReady = 0;
     for (const [id, n] of Object.entries(p.berriesReady || {})) { berries[id] = (berries[id] || 0) + n; s.berries[id] = (s.berries[id] || 0) + n; }
     p.berriesReady = {};
@@ -44,7 +47,7 @@ export function collectCoins(s, list) {
   s.coins += total;
   s.stats.coinsEarned += total;
   const berryCount = Object.values(berries).reduce((x, y) => x + y, 0);
-  return { ok: total > 0 || berryCount > 0, total, berries, berryCount };
+  return { ok: total > 0 || berryCount > 0 || dropped.length > 0, total, berries, berryCount, dropped };
 }
 
 export function giveBerry(s, p, berryId, t) {
@@ -53,6 +56,7 @@ export function giveBerry(s, p, berryId, t) {
   if (p.fullness >= 99 && b.effect !== 'produktion') return fail('Ist gerade satt.');
   // zuerst aus dem Inventar, sonst mit Glücksmünzen kaufen
   if ((s.berries[b.id] || 0) > 0) s.berries[b.id]--;
+  else if (b.buyable === false) return fail(`Keine ${b.name} im Beutel.`);
   else if (s.coins < b.cost) return fail('Keine im Inventar und nicht genug Glücksmünzen.');
   else s.coins -= b.cost;
   p.fullness = clamp(p.fullness + (b.hunger || 0));

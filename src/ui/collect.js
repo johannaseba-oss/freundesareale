@@ -4,7 +4,7 @@ import { app } from '../app.js';
 import * as A from '../game/actions.js';
 import { berryUrl, berryImg } from '../gfx/icons.js';
 import { fly } from './fly.js';
-import { h, modal } from './dom.js';
+import { h, modal, toast } from './dom.js';
 
 // posOf(p) -> {x, y} Bildschirmposition, von der aus die Münzen starten
 export function collectWithFx(list, posOf) {
@@ -16,6 +16,7 @@ export function collectWithFx(list, posOf) {
     if (!pos) continue;
     fly('coin', pos, coins, '#hud-coins');
     for (const [id, n] of Object.entries(berries)) fly('berry', { x: pos.x + 10, y: pos.y }, n, '#hud-bag', berryUrl(id));
+    for (const d of r.dropped || []) if (d.uid === p.uid) { fly('berry', { x: pos.x - 10, y: pos.y - 10 }, 1, '#hud-bag', berryUrl(d.berry)); toast(`Glück gehabt – eine ${CFG.balance.berries.find((x) => x.id === d.berry)?.name || 'Beere'}!`); }
   }
   app.refresh(); // Anzeige zählt erst beim Ankommen der Münzen hoch
   return r;

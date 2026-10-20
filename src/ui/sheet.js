@@ -158,7 +158,7 @@ export function openSheet(p) {
     else sub.firstChild.firstChild.textContent = `Lv. ${p.level} · `;
     const cr = coinRange(p);
     const unsuited = p.area && habitatFit(p.dex, p.area).fit < 0;
-    lCoin.v.textContent = !p.area ? 'ruht im Beutel' : p.coinsReady ? `${p.coinsReady} bereit` : unsuited ? 'keine – Areal ungeeignet' : `in ${fmtDuration(msToNextCoin(st, p, t))} · ${cr[0]}–${cr[1]} Stück`;
+    lCoin.v.textContent = CFG.berryProducers.has(p.dex) ? (p.area ? 'keine – produziert Beeren' : 'ruht im Beutel') : !p.area ? 'ruht im Beutel' : p.coinsReady ? `${p.coinsReady} bereit` : unsuited ? 'keine – Areal ungeeignet' : `in ${fmtDuration(msToNextCoin(st, p, t))} · ${cr[0]}–${cr[1]} Stück`;
     const md = mood(p, t), boost = petBoost(p, t);
     satBar.firstChild.style.width = md + '%';
     lSat.v.textContent = Math.round(md) + ' %';
@@ -196,8 +196,9 @@ export function openSheet(p) {
     if (extra.dataset.k !== nk) { extra.dataset.k = nk; extra.replaceChildren(...notes); }
     for (const btn of berryBtns) {
       const id = btn.dataset.id, n = st.berries[id] || 0, b = CFG.balance.berries.find((x) => x.id === id);
-      const label = n ? '×' + n : String(b.cost);
-      if (btn.dataset.l !== label) { btn.dataset.l = label; btn.replaceChildren(berryImg(id, 2), ...(n ? [label] : [iconImg('coin', 1), label])); }
+      const label = n ? '×' + n : b.buyable === false ? '×0' : String(b.cost);
+      btn.disabled = !n && b.buyable === false;
+      if (btn.dataset.l !== label) { btn.dataset.l = label; btn.replaceChildren(berryImg(id, 2), ...(n || b.buyable === false ? [label] : [iconImg('coin', 1), label])); }
     }
     // Pokémon im Beutel: direkt einziehen lassen (im Areal geht Umziehen per Drag & Drop)
     const selKey = p.area + '|' + CFG.areas.map((a) => (st.areas[a.id].unlocked ? a.id + residents(st, a.id).length + '/' + capacityOf(st, a.id) : '')).join();

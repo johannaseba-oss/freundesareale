@@ -120,7 +120,8 @@
       "cost": 3,
       "text": "Stillt Hunger. Spult die Münzproduktion um 1 Stunde vor.",
       "sprite": "",
-      "hunger": 30
+      "hunger": 30,
+      "buyable": false
     },
     {
       "id": "tsitrubeere",
@@ -131,7 +132,8 @@
       "cost": 8,
       "text": "Stillt viel Hunger. Doppelte Glücksmünzen-Produktion für 2 Tage.",
       "sprite": "",
-      "hunger": 40
+      "hunger": 40,
+      "buyable": true
     }
   ],
   "gacha": {
@@ -179,61 +181,37 @@
     "legendaer": "Legendär"
   },
   "berryProduction": {
-    "_hinweis": "Pokémon, die Beeren produzieren. berries = Gewichte, welche Beere entsteht. Eigene Beeren-Sprites: assets-input/items/<beeren-id>.png, dann npm run assets:art.",
-    "baseIntervalHours": 24,
+    "_hinweis": "Diese Pokémon produzieren Beeren STATT Glücksmünzen. baseIntervalHours = Zeit pro Beere (Level, Stimmung und Boni beschleunigen). berries = Gewichte, welche Beere entsteht. Eigene Beeren-Sprites: assets-input/items/<beeren-id>.png, dann npm run assets:art.",
+    "baseIntervalHours": 0.5,
     "storageCapPerPokemon": 0,
     "producers": [
       {
         "dex": [
-          1,
-          2,
-          3,
-          43,
-          44,
-          45,
-          182,
-          69,
-          70,
-          71,
-          114,
-          465,
-          152,
-          153,
-          154,
-          187,
-          188,
-          189,
+          225,
+          357,
           191,
           192,
-          273,
-          274,
-          275,
-          315,
+          285,
+          286,
+          352,
+          387,
+          388,
+          389,
           406,
           407,
+          438,
+          492,
+          511,
+          512,
           548,
           549,
-          710,
-          711
+          669,
+          670,
+          671
         ],
         "berries": {
           "sinelbeere": 3,
           "tsitrubeere": 1
-        }
-      },
-      {
-        "dex": [
-          102,
-          103,
-          357,
-          420,
-          421,
-          459,
-          460
-        ],
-        "berries": {
-          "sinelbeere": 1,
-          "tsitrubeere": 2
         }
       }
     ]
@@ -243,5 +221,10 @@
     "fullness": 80,
     "satisfaction": 60,
     "affection": 10
+  },
+  "berryDrop": {
+    "_hinweis": "Seltene Beere beim Münzen-Einsammeln (Chance pro Pokémon mit fertigen Münzen).",
+    "berry": "sinelbeere",
+    "chance": 0.04
   }
 }
