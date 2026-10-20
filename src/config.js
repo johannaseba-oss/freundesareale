@@ -1,5 +1,5 @@
 // Lädt die anpassbaren Spieldaten aus public/config und public/data.
-export const CFG = { balance: null, areas: [], dex: [], dexById: new Map(), bonuses: null, berryProducers: new Map() };
+export const CFG = { balance: null, areas: [], dex: [], dexById: new Map(), bonuses: null, social: null, berryProducers: new Map() };
 
 export async function loadConfig() {
   const base = import.meta.env.BASE_URL;
@@ -7,12 +7,13 @@ export async function loadConfig() {
     if (!r.ok) throw new Error(`${p}: ${r.status}`);
     return r.json();
   });
-  const [balance, areas, dex, bonuses] = await Promise.all([get('config/balance.json'), get('config/areas.json'), get('data/pokedex.json'), get('config/bonuses.json')]);
+  const [balance, areas, dex, bonuses, social] = await Promise.all([get('config/balance.json'), get('config/areas.json'), get('data/pokedex.json'), get('config/bonuses.json'), get('config/social.json')]);
   CFG.balance = balance;
   CFG.areas = areas.areas;
   CFG.dex = dex;
   CFG.dexById = new Map(dex.map((p) => [p.dex, p]));
   CFG.bonuses = bonuses;
+  CFG.social = social;
   CFG.berryProducers = new Map();
   for (const g of balance.berryProduction.producers) for (const d of g.dex) CFG.berryProducers.set(d, g.berries);
 }

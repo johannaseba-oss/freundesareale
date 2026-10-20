@@ -18,7 +18,7 @@ for (const f of fs.readdirSync(path.join(IN, 'areale'))) {
   console.log('Areal-Bild', id);
 }
 // ---- PMD-Dungeon-Hintergründe als Platzhalter-Areale ----
-const PMD = { blaetterhain: 'D24P11A', apfelwald: 'D05P11A', moorsee: 'D09P11A', felsenhoehle: 'D10P41A', kristallhoehle: 'D17P11A', duene: 'D13P11A', klippe: 'D06P11A', felsplateau: 'D12P41A' };
+const PMD = { blaetterhain: 'D24P11A', apfelwald: 'D05P11A', moorsee: 'D09P11A', felsenhoehle: 'D10P41A', kristallhoehle: 'D17P11A', duene: 'D13P11A', felsplateau: 'D12P41A' };
 if (fs.existsSync(BG_SRC)) {
   const files = fs.readdirSync(BG_SRC);
   for (const [id, code] of Object.entries(PMD)) {

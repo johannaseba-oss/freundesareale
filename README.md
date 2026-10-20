@@ -55,6 +55,13 @@ Seltenheit automatisch (PokeAPI-Daten): Grundstufen mit Entwicklung + Babys = ge
 - **Drag & Drop**: Pokémon festhalten und an den linken/rechten Rand (Nachbar-Areal) oder nach unten (Beutel) ziehen.
 - Im Entwicklungsmodus kann man mit `http://localhost:5190/?devcloud` ohne echte Datenbank testen.
 
+## Soziales Leben & Stimmung
+
+- `public/config/social.json`: Sympathie zwischen Pokémon (gleiche Art/Familie, gemeinsame Typen, Typ-Konflikte wie Feuer–Eis, Entwicklungsstufen, besondere Beziehungen wie Sengo & Vipitis), Häufigkeit und Arten der Begegnungen (Fangen, Plaudern, zusammen Schlafen, Spielen, Streit, Gereiztheit), Porträt-Dauer.
+- Begegnungen laufen sichtbar, während man im Areal ist, und verschieben die Zufriedenheit leicht. Zusätzlich wirkt die Sympathie zu den Mitbewohnern langfristig (auch bei geschlossener App).
+- **Stimmung** = Zufriedenheit + Betüdel-Bonus. Streicheln hebt die Stimmung sofort, der Bonus hält 24 Std. Dauerhaft hilft ein besser passendes Areal.
+- Gefüttert wird mit Beeren aus dem Inventar (`berries[].hunger`). Beeren tauchen zufällig im Areal auf (`social.json → groundBerries`) und werden per Antippen eingesammelt.
+
 ## Startwerte & Arealpassung
 
 - Neue Pokémon starten neutral (`balance.json → newPokemon`: Sättigung 80, Zufriedenheit 60, Zuneigung 10); Werte ändern sich langsam über Tage.

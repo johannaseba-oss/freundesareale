@@ -1,0 +1,58 @@
+{
+  "_hinweis": "Soziales Verhalten in den Arealen. Sympathie zweier Pokémon = Summe der Faktoren (-1 bis +1). Daraus + Stimmung + Arealpassung ergibt sich, ob sie freundlich oder gereizt miteinander umgehen.",
+
+  "affinity": {
+    "sameSpecies": 0.4,
+    "sameFamily": 0.5,
+    "sharedType": 0.25,
+    "typeConflict": -0.5,
+    "bigStageGap": -0.1
+  },
+  "_typeConflicts": "Typ-Paare, die sich nicht riechen können",
+  "typeConflicts": [
+    ["Feuer", "Eis"], ["Feuer", "Wasser"], ["Feuer", "Pflanze"], ["Wasser", "Elektro"],
+    ["Psycho", "Unlicht"], ["Geist", "Normal"], ["Fee", "Drache"], ["Kampf", "Psycho"], ["Gestein", "Flug"]
+  ],
+  "_relations": "Besondere Beziehungen zwischen Arten (Pokédex-Nummern, Familien zählen mit): value +1 = beste Freunde, -1 = Erzfeinde",
+  "relations": [
+    { "a": [335], "b": [336], "value": -1, "name": "Sengo & Vipitis" },
+    { "a": [631], "b": [632], "value": -1, "name": "Furnifraß & Fermicula" },
+    { "a": [382], "b": [383], "value": -1, "name": "Kyogre & Groudon" },
+    { "a": [483], "b": [484], "value": -0.6, "name": "Dialga & Palkia" },
+    { "a": [643], "b": [644], "value": -0.6, "name": "Reshiram & Zekrom" },
+    { "a": [538], "b": [539], "value": -0.5, "name": "Jiutesto & Karadonis" },
+    { "a": [311], "b": [312], "value": 1, "name": "Plusle & Minun" },
+    { "a": [313], "b": [314], "value": 1, "name": "Volbeat & Illumise" },
+    { "a": [337], "b": [338], "value": 0.8, "name": "Lunastein & Sonnfel" },
+    { "a": [380], "b": [381], "value": 1, "name": "Latias & Latios" },
+    { "a": [243, 244, 245], "b": [243, 244, 245], "value": 0.7, "name": "Legendäre Hunde" },
+    { "a": [480, 481, 482], "b": [480, 481, 482], "value": 0.7, "name": "Seen-Wächter" },
+    { "a": [29, 30, 31], "b": [32, 33, 34], "value": 0.6, "name": "Nidoran-Familie" },
+    { "a": [25, 26, 172], "b": [25, 26, 172], "value": 0.4, "name": "Pikachu-Familie" }
+  ],
+
+  "behavior": {
+    "_hinweis": "Interaktionen laufen nur sichtbar ab, während man im Areal ist. Alle Zeiten in Sekunden.",
+    "everySeconds": [5, 11],
+    "maxDistance": 0.45,
+    "negativeBase": 0.25,
+    "unsuitableAreaPenalty": 0.15,
+    "moodWeight": 0.4,
+    "affinityWeight": 0.5,
+    "positive": { "chase": 1, "talk": 1.2, "sleep": 0.6, "play": 0.9 },
+    "negative": { "argue": 1, "grumpy": 1 },
+    "youngPlayBonus": 0.8,
+    "portraitSeconds": 2.6,
+    "satisfactionPositive": 0.6,
+    "satisfactionNegative": -0.9
+  },
+
+  "_drift": "Langfristige Wirkung der Mitbewohner auf die Zufriedenheit pro Stunde (auch wenn die App zu ist): mittlere Sympathie × socialPerHour",
+  "socialPerHour": 0.1,
+
+  "_pet": "Streicheln/Betüdeln: Stimmung steigt sofort, Effekt hält einen Tag und verfällt dann.",
+  "pet": { "moodPerPet": 4, "maxBoost": 25, "hours": 24 },
+
+  "_berries": "Zufällig im Areal auftauchende Beeren (Antippen = einsammeln).",
+  "groundBerries": { "everyHours": [2, 5], "maxPerArea": 3, "weights": { "sinelbeere": 3, "tsitrubeere": 1 } }
+}

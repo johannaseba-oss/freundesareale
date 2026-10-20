@@ -7,6 +7,7 @@ import { capacityOf, residents, xpForLevel, genderSymbol } from '../game/state.j
 import { msToNextCoin, msToNextBerry } from '../game/sim.js';
 import { modsFor, bonusTraits } from '../game/bonuses.js';
 import { habitatText, habitatFit } from '../game/habitat.js';
+import { mood, petBoost } from '../game/mood.js';
 import { collectWithFx } from './collect.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconCanvas, iconImg, berryImg } from '../gfx/icons.js';
@@ -19,7 +20,7 @@ export function emotionOf(p) {
   const n = CFG.balance.needs;
   if (p.fullness < n.hungryBelow / 2) return 'Sad';
   if (p.fullness < n.hungryBelow) return 'Worried';
-  if (p.satisfaction >= 80) return 'Happy';
+  if (mood(p, Date.now()) >= 80) return 'Happy';
   return 'Normal';
 }
 
@@ -113,7 +114,11 @@ export function openSheet(p) {
 
   // ---- Kurzinfos (nur das Nötigste) ----
   const line = (label) => { const v = h('span'); return { el: h('div.info-line', h('span.k', label), v), v }; };
-  const lCoin = line('Nächste Münze'), lSat = line('Zufriedenheit'), lFav = line('Lieblingsareal');
+  const lCoin = line('Nächste Münze'), lSat = line('Stimmung'), lHun = line('Sättigung'), lFav = line('Lieblingsareal');
+  const hunBar = bar('hunger', 0);
+  const hunWrap = h('span.satwrap', hunBar);
+  lHun.v.replaceWith(hunWrap);
+  hunWrap.append(lHun.v);
   const satBar = bar('sat', 0);
   const satWrap = h('span.satwrap', satBar);
   lSat.v.replaceWith(satWrap);
@@ -122,15 +127,11 @@ export function openSheet(p) {
   const favs = CFG.areas.filter((a) => habitatFit(p.dex, a.id).fit > 0).map((a) => a.name);
   lFav.v.textContent = favs.length ? favs.slice(0, 2).join(', ') : 'keins besonders';
 
-  const feedBtn = h('button.btn.primary', { onclick: () => {
-    if (!p.area) return toast('Erst in ein Areal einziehen lassen.', true);
-    const r = app.act((s2) => A.feed(s2, p));
-    if (r.ok) { fx.bowl = performance.now() + 2200; play('Eat', 2200); portrait.src = portraitUrl(p.dex, 'Happy'); }
-  } }, iconImg('food', 2), 'Füttern');
+  const feedLabel = h('span.k', 'Füttern');
   const berryBtns = CFG.balance.berries.map((b) => {
     const btn = h('button.btn.small', { title: b.name + ': ' + b.text, onclick: () => {
       const r = app.act((s2, t) => A.giveBerry(s2, p, b.id, t));
-      if (r.ok) { toast(`${b.name}: ${b.text}`); play('Eat', 1600); }
+      if (r.ok) { fx.bowl = performance.now() + 1800; play('Eat', 1800); portrait.src = portraitUrl(p.dex, 'Happy'); toast(`${sp.name} hat eine ${b.name} gegessen.`); }
     } });
     btn.dataset.id = b.id;
     return btn;
@@ -147,10 +148,14 @@ export function openSheet(p) {
     const st = app.state, t = now();
     sub.replaceChildren(`Lv. ${p.level} · `, h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity]));
     lCoin.v.textContent = p.area ? (p.coinsReady ? `${p.coinsReady} bereit` : `in ${fmtDuration(msToNextCoin(st, p, t))}`) : 'ruht im Beutel';
-    satBar.firstChild.style.width = p.satisfaction + '%';
-    lSat.v.textContent = Math.round(p.satisfaction) + ' %';
+    const md = mood(p, t), boost = petBoost(p, t);
+    satBar.firstChild.style.width = md + '%';
+    lSat.v.textContent = Math.round(md) + ' %';
+    hunBar.firstChild.style.width = p.fullness + '%';
+    lHun.v.textContent = Math.round(p.fullness) + ' %';
     const notes = [];
-    if (p.area && p.fullness < CFG.balance.needs.hungryBelow) notes.push(h('div.note.warn', 'Hat Hunger!'));
+    if (p.area && p.fullness < CFG.balance.needs.hungryBelow) notes.push(h('div.note.warn', 'Hat Hunger – gib ihm eine Beere!'));
+    if (boost) notes.push(h('div.note', `♥ Betüdelt: Stimmung +${Math.round(boost)} (noch ${fmtDuration(p.petBoost.until - t)})`));
     if (p.area) { const hf = habitatFit(p.dex, p.area).fit; if (hf < 0) notes.push(h('div.note.warn', `Fühlt sich in ${areaById(p.area).name} nicht wohl.`)); }
     if (p.area && CFG.berryProducers.has(p.dex)) notes.push(h('div.note', `Beeren: nächste in ${fmtDuration(msToNextBerry(st, p))}`));
     const m = p.area ? modsFor(st, p) : null;
@@ -176,8 +181,8 @@ export function openSheet(p) {
 
   root.replaceChildren(h('div.sheet-inner.compact',
     head, stage,
-    h('div.info', lCoin.el, lSat.el, lFav.el), extra,
-    h('div.row.actions', feedBtn, ...berryBtns),
+    h('div.info', lSat.el, lHun.el, lCoin.el, lFav.el), extra,
+    h('div.row.actions', feedLabel, ...berryBtns),
     moveRow));
 
   current = { update, raf: 0 };

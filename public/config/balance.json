@@ -38,12 +38,13 @@
     "feedAffection": 1,
     "satisfactionDecayPerHour": 0.25,
     "satisfactionDecayHungryPerHour": 0.9,
-    "petSatisfaction": 2,
+    "petSatisfaction": 0,
     "petAffection": 1,
     "petAffectionPerDayMax": 12,
     "affectionDecayPerDay": 0,
     "_habitat": "Arealpassung: pro Stunde ändert sich die Zufriedenheit um habitatPerHour x Passung (+1 passt gut, -1 passt schlecht). 0.15 = ca. +-3.6 pro Tag.",
-    "habitatPerHour": 0.15
+    "habitatPerHour": 0.15,
+    "_feeding": "Gefüttert wird mit Beeren (berries[].hunger = wie viel Hunger eine Beere stillt)."
   },
   "level": {
     "max": 100,
@@ -75,8 +76,9 @@
       "effect": "zeitsprung",
       "hours": 4,
       "cost": 3,
-      "text": "Die nächste Glücksmünze kommt 4 Stunden früher.",
-      "sprite": ""
+      "text": "Stillt Hunger. Die nächste Glücksmünze kommt 4 Stunden früher.",
+      "sprite": "",
+      "hunger": 30
     },
     {
       "id": "tsitrubeere",
@@ -85,8 +87,9 @@
       "factor": 2,
       "hours": 48,
       "cost": 8,
-      "text": "Doppelte Glücksmünzen-Produktion für 2 Tage.",
-      "sprite": ""
+      "text": "Stillt viel Hunger. Doppelte Glücksmünzen-Produktion für 2 Tage.",
+      "sprite": "",
+      "hunger": 40
     }
   ],
   "gacha": {

@@ -1,5 +1,5 @@
 import './style.css';
-import { loadConfig, species } from './config.js';
+import { loadConfig, species, CFG } from './config.js';
 import { createBackend } from './backend/index.js';
 import { app } from './app.js';
 import { now, setServerTime } from './time.js';
@@ -204,7 +204,7 @@ function bindChrome() {
 }
 
 // Testhaken für die Entwicklung
-if (import.meta.env.DEV) { window.__fa = app; import('./game/actions.js').then((m) => { app.A = m; }); }
+if (import.meta.env.DEV) { window.__fa = app; app.CFG = CFG; import('./game/actions.js').then((m) => { app.A = m; }); }
 
 main();
 

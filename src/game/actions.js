@@ -19,12 +19,14 @@ export function feed(s, p) {
   return { ok: true };
 }
 
-// Streicheln: Zufriedenheit steigt immer, Zuneigung nur bis zum Tageslimit
+// Streicheln/Betüdeln: verbessert die Stimmung sofort, der Effekt hält einen Tag (dann zählen wieder Areal & Mitbewohner).
+// Zuneigung steigt bis zum Tageslimit.
 export function pet(s, p, t) {
-  const n = CFG.balance.needs;
+  const n = CFG.balance.needs, P = CFG.social.pet;
   const day = dayKey(t);
   if (p.pet.day !== day) p.pet = { day, amount: 0 };
-  p.satisfaction = clamp(p.satisfaction + n.petSatisfaction);
+  const cur = p.petBoost && p.petBoost.until > t ? p.petBoost.value : 0;
+  p.petBoost = { value: Math.min(P.maxBoost, cur + P.moodPerPet), until: t + P.hours * 3600e3 };
   const gain = Math.min(n.petAffection, Math.max(0, n.petAffectionPerDayMax - p.pet.amount));
   p.pet.amount += gain;
   p.affection = clamp(p.affection + gain);
@@ -48,10 +50,12 @@ export function collectCoins(s, list) {
 export function giveBerry(s, p, berryId, t) {
   const b = berryById(berryId);
   if (!p.area) return fail('Beeren wirken nur bei Pokémon in einem Areal.');
+  if (p.fullness >= 99 && b.effect !== 'produktion') return fail('Ist gerade satt.');
   // zuerst aus dem Inventar, sonst mit Glücksmünzen kaufen
   if ((s.berries[b.id] || 0) > 0) s.berries[b.id]--;
   else if (s.coins < b.cost) return fail('Keine im Inventar und nicht genug Glücksmünzen.');
   else s.coins -= b.cost;
+  p.fullness = clamp(p.fullness + (b.hunger || 0));
   if (b.effect === 'zeitsprung') {
     p.coinProgress += coinRatePerHour(p, t, modsFor(s, p)) * b.hours;
     while (p.coinProgress >= 1) { p.coinProgress -= 1; p.coinsReady++; }
@@ -112,3 +116,20 @@ export function draw(s, t) {
 // Gratis-Ziehung: steht alle paar Stunden (balance.json gacha.freeDrawEveryHours) wieder bereit
 export const freeDrawReady = (s, t) => !s.freeDrawAt || t >= s.freeDrawAt;
 export const canDraw = (s, t) => !!s.gacha?.balls.length && (freeDrawReady(s, t) || s.coins >= CFG.balance.gacha.drawCost);
+
+// Beere vom Boden eines Areals aufsammeln
+export function pickGroundBerry(s, areaId, id) {
+  const st = s.areas[areaId], i = (st.ground || []).findIndex((g) => g.id === id);
+  if (i < 0) return fail();
+  const g = st.ground.splice(i, 1)[0];
+  s.berries[g.berry] = (s.berries[g.berry] || 0) + 1;
+  return { ok: true, berry: g.berry };
+}
+
+// Ergebnis einer sichtbaren Begegnung zweier Pokémon (wirkt leicht auf die Zufriedenheit)
+export function socialEncounter(s, a, b, positive) {
+  const d = positive ? CFG.social.behavior.satisfactionPositive : CFG.social.behavior.satisfactionNegative;
+  a.satisfaction = clamp(a.satisfaction + d);
+  b.satisfaction = clamp(b.satisfaction + d);
+  return { ok: true };
+}

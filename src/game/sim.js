@@ -8,6 +8,8 @@ import { hashString } from '../rng.js';
 import { xpForLevel } from './state.js';
 import { allMods, modsFor } from './bonuses.js';
 import { habitatFit } from './habitat.js';
+import { mood, socialClimate } from './mood.js';
+import { mulberry32, weightedPick } from '../rng.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const tierFactor = (table, value) => (table.find((t) => value >= t.min) || table[table.length - 1]).factor;
@@ -15,15 +17,15 @@ const levelFactor = (p) => 1 + CFG.balance.coins.levelSpeedupPerLevel * (p.level
 
 export function coinRatePerHour(p, t, m) {
   const c = CFG.balance.coins;
-  let rate = (1 / c.baseIntervalHours) * levelFactor(p) * tierFactor(c.satisfactionFactor, p.satisfaction);
+  let rate = (1 / c.baseIntervalHours) * levelFactor(p) * tierFactor(c.satisfactionFactor, mood(p, t));
   for (const e of p.effects) if (e.type === 'produktion' && e.until > t) rate *= e.factor;
   return rate * (m?.coin ?? 1);
 }
 
-export function berryRatePerHour(p, m) {
+export function berryRatePerHour(p, m, t = Date.now()) {
   if (!CFG.berryProducers.has(p.dex)) return 0;
   const bp = CFG.balance.berryProduction;
-  return (1 / bp.baseIntervalHours) * levelFactor(p) * tierFactor(CFG.balance.coins.satisfactionFactor, p.satisfaction) * (m?.berry ?? 1);
+  return (1 / bp.baseIntervalHours) * levelFactor(p) * tierFactor(CFG.balance.coins.satisfactionFactor, mood(p, t)) * (m?.berry ?? 1);
 }
 
 function pickBerry(p) {
@@ -34,15 +36,16 @@ function pickBerry(p) {
   return ids[0];
 }
 
-function stepPokemon(p, t, dtH, m, fit) {
+function stepPokemon(p, t, dtH, m, fit, social) {
   const b = CFG.balance, n = b.needs, L = b.level;
   p.fullness = clamp(p.fullness - n.hungerPerHour * m.hunger * dtH);
   const decay = p.fullness < n.hungryBelow ? n.satisfactionDecayHungryPerHour : n.satisfactionDecayPerHour;
-  p.satisfaction = clamp(p.satisfaction - decay * m.sat * dtH + (n.habitatPerHour || 0) * fit * dtH);
+  p.satisfaction = clamp(p.satisfaction - decay * m.sat * dtH + (n.habitatPerHour || 0) * fit * dtH + (CFG.social.socialPerHour || 0) * social * dtH);
+  if (p.petBoost && p.petBoost.until <= t) p.petBoost = null;
   if (n.affectionDecayPerDay) p.affection = clamp(p.affection - (n.affectionDecayPerDay / 24) * dtH);
 
   if (p.level < L.max) {
-    p.xp += L.xpPerHour * dtH * m.xp * tierFactor(L.satisfactionFactor, p.satisfaction) * (1 + L.affectionBonusAt100 * (p.affection / 100));
+    p.xp += L.xpPerHour * dtH * m.xp * tierFactor(L.satisfactionFactor, mood(p, t)) * (1 + L.affectionBonusAt100 * (p.affection / 100));
     while (p.level < L.max && p.xp >= xpForLevel(p.level)) { p.xp -= xpForLevel(p.level); p.level++; p.levelUps = (p.levelUps || 0) + 1; }
   }
 
@@ -53,7 +56,7 @@ function stepPokemon(p, t, dtH, m, fit) {
     p.coinProgress -= 1; p.coinsReady++;
   }
 
-  const br = berryRatePerHour(p, m);
+  const br = berryRatePerHour(p, m, t);
   if (br) {
     p.berryProgress = (p.berryProgress || 0) + br * dtH;
     const bcap = b.berryProduction.storageCapPerPokemon;
@@ -78,10 +81,12 @@ export function simulate(s, nowMs) {
   const living = s.pokemon.filter((p) => p.area);
   const mods = allMods(s);
   const fits = new Map(living.map((p) => [p.uid, habitatFit(p.dex, p.area).fit]));
+  const socials = new Map(living.map((p) => [p.uid, socialClimate(p, living.filter((q) => q.area === p.area))]));
+  spawnGroundBerries(s, nowMs);
   while (t < nowMs) {
     const dt = Math.min(step, nowMs - t);
     t += dt;
-    for (const p of living) stepPokemon(p, t, dt / HOUR, mods.get(p.uid), fits.get(p.uid));
+    for (const p of living) stepPokemon(p, t, dt / HOUR, mods.get(p.uid), fits.get(p.uid), socials.get(p.uid));
   }
   s.lastSim = nowMs;
   return true;
@@ -92,6 +97,28 @@ export function msToNextCoin(s, p, t) {
   return ((1 - p.coinProgress) / coinRatePerHour(p, t, modsFor(s, p))) * HOUR;
 }
 export function msToNextBerry(s, p) {
-  const r = berryRatePerHour(p, modsFor(s, p));
+  const r = berryRatePerHour(p, modsFor(s, p), Date.now());
   return r ? ((1 - (p.berryProgress || 0)) / r) * HOUR : Infinity;
+}
+
+// Zufällig auftauchende Beeren in freigeschalteten Arealen (Position 0-1 relativ zur begehbaren Fläche)
+export function spawnGroundBerries(s, nowMs) {
+  const G = CFG.social.groundBerries;
+  for (const a of CFG.areas) {
+    const st = s.areas[a.id];
+    if (!st?.unlocked) continue;
+    st.ground ||= [];
+    const rnd = mulberry32((st.berrySeed || 1) * 2654435761);
+    const next = () => (G.everyHours[0] + rnd() * (G.everyHours[1] - G.everyHours[0])) * HOUR;
+    if (!st.nextBerryAt) st.nextBerryAt = nowMs + next();
+    let guard = 0;
+    while (st.nextBerryAt <= nowMs && guard++ < 50) {
+      if (st.ground.length < G.maxPerArea) {
+        const ang = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 0.9;
+        st.ground.push({ id: (st.berrySeed * 1000 + guard) | 0, berry: weightedPick(Object.keys(G.weights), (k) => G.weights[k], rnd), u: Math.cos(ang) * r, v: Math.sin(ang) * r });
+      }
+      st.nextBerryAt += next();
+    }
+    if (guard > 1) st.berrySeed = (st.berrySeed || 1) + guard;
+  }
 }

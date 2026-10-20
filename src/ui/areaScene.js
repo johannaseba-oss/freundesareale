@@ -3,6 +3,7 @@
 import { CFG } from '../config.js';
 import { loadSprites, frameOf, dirFromVector } from '../gfx/sprites.js';
 import { iconCanvas, berryCanvas } from '../gfx/icons.js';
+import { SocialDirector } from './social.js';
 
 const imgCache = new Map();
 function bgImage(file) {
@@ -26,15 +27,18 @@ export class AreaScene {
     this.particles = [];
     this.area = null;
     this.time = 0;
+    this.ground = [];
+    this.social = new SocialDirector(this, (a, b, positive, kind) => this.h.onSocial?.(a, b, positive, kind));
     this.bindInput();
     new ResizeObserver(() => this.resize()).observe(wrap);
   }
 
-  setArea(area, residents) {
+  setArea(area, residents, ground = []) {
     const changed = this.area?.id !== area.id;
     this.area = area;
+    this.ground = ground;
     this.bg = bgImage(area.image);
-    if (changed) { this.actors.clear(); this.particles = []; }
+    if (changed) { this.actors.clear(); this.particles = []; this.social.reset(); }
     const ready = () => { this.resize(); this.sync(residents); };
     if (this.bg.complete && this.bg.naturalWidth) ready(); else this.bg.onload = ready;
   }
@@ -47,15 +51,15 @@ export class AreaScene {
     this.canvas.width = W; this.canvas.height = H;
     this.dpr = dpr;
     const iw = this.bg.naturalWidth, ih = this.bg.naturalHeight;
-    this.k = Math.max(W / iw, H / ih); // "cover": Bild füllt den ganzen Bildschirm
+    this.k = H / ih; // Bild immer in voller Höhe; seitlich ggf. beschnitten oder mit Rand
     this.vw = W / this.k; this.vh = H / this.k;
     const w = this.area.walk;
     const fx = this.area.focusX ?? w.cx, fy = this.area.focusY ?? w.cy;
-    this.camX = Math.max(0, Math.min(iw - this.vw, fx * iw - this.vw / 2));
+    this.camX = this.vw >= iw ? (iw - this.vw) / 2 : Math.max(0, Math.min(iw - this.vw, fx * iw - this.vw / 2));
     this.camY = Math.max(0, Math.min(ih - this.vh, fy * ih - this.vh / 2));
     // sichtbarer, nicht von UI verdeckter Bereich in Bildkoordinaten
     const px = (css) => (css * dpr) / this.k;
-    this.safe = { x0: this.camX + px(SAFE.side), x1: this.camX + this.vw - px(SAFE.side), y0: this.camY + px(SAFE.top), y1: this.camY + this.vh - px(SAFE.bottom) };
+    this.safe = { x0: Math.max(0, this.camX) + px(SAFE.side), x1: Math.min(iw, this.camX + this.vw) - px(SAFE.side), y0: this.camY + px(SAFE.top), y1: this.camY + this.vh - px(SAFE.bottom) };
     for (const a of this.actors.values()) { const c = this.clampSafe(a); a.x = c.x; a.y = c.y; }
   }
 
@@ -101,7 +105,7 @@ export class AreaScene {
     const speed = 16 * this.area.spriteScale;
     for (const a of this.actors.values()) {
       a.t += dt * 1000;
-      if (a.dragging) continue;
+      if (a.dragging || a.busy) continue;
       a.timer -= dt;
       if (a.state === 'walk') {
         const dx = a.tx - a.x, dy = a.ty - a.y, d = Math.hypot(dx, dy);
@@ -113,6 +117,7 @@ export class AreaScene {
         else { const pt = this.randomPoint(); a.tx = pt.x; a.ty = pt.y; a.state = 'walk'; a.t = 0; }
       }
     }
+    this.social.update(dt);
     for (const q of this.particles) { q.y += q.vy * dt; q.life -= dt; }
     this.particles = this.particles.filter((q) => q.life > 0);
   }
@@ -122,10 +127,21 @@ export class AreaScene {
     if (!this.bg?.naturalWidth || !k) return;
     ctx.imageSmoothingEnabled = false;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillStyle = '#1f2a1d';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.setTransform(k, 0, 0, k, -this.camX * k, -this.camY * k);
     ctx.drawImage(this.bg, 0, 0);
     const s = this.area.spriteScale;
+    // Beeren am Boden
+    for (const g of this.ground) {
+      const pt = this.groundPos(g), c = berryCanvas(g.berry), bw = 10 * s;
+      const bob = Math.sin(this.time * 2.5 + g.id) * s;
+      ctx.fillStyle = 'rgba(30,40,20,.25)';
+      ctx.beginPath(); ctx.ellipse(pt.x, pt.y + 2 * s, 5 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(c, Math.round(pt.x - bw / 2), Math.round(pt.y - bw + bob), bw, bw);
+      if (Math.sin(this.time * 3 + g.id * 7) > 0.92) { ctx.fillStyle = '#fff8c8'; ctx.fillRect(pt.x + 3 * s, pt.y - bw - 2 * s, 2 * s, 2 * s); }
+      g.box = { x: pt.x - 9 * s, y: pt.y - 14 * s, w: 18 * s, h: 18 * s };
+    }
     const list = [...this.actors.values()].sort((a, b) => (a.dragging - b.dragging) || a.y - b.y);
     for (const a of list) {
       if (!a.sprites.ready) continue;
@@ -166,12 +182,18 @@ export class AreaScene {
         ctx.globalAlpha = 1;
       }
     }
+    this.social.draw(ctx, s);
     for (const q of this.particles) {
       const c = ICON[q.icon] || ICON.heart;
       ctx.globalAlpha = Math.min(1, q.life * 1.5);
       ctx.drawImage(c, Math.round(q.x - (c.width * s) / 2), Math.round(q.y), c.width * s, c.height * s);
     }
     ctx.globalAlpha = 1;
+  }
+
+  groundPos(g) {
+    const w = this.area.walk, W = this.bg.naturalWidth, H = this.bg.naturalHeight;
+    return this.clampSafe({ x: (w.cx + g.u * w.rx) * W, y: (w.cy + g.v * w.ry) * H });
   }
 
   // Bildkoordinaten -> Bildschirmkoordinaten (für fliegende Münzen)
@@ -200,14 +222,14 @@ export class AreaScene {
     let down = null;
     const el = this.canvas;
     el.addEventListener('pointerdown', (e) => {
-      down = { x: e.clientX, y: e.clientY, t: performance.now(), mode: null, actor: this.hitAt(e.clientX, e.clientY) };
+      down = { x: e.clientX, y: e.clientY, t: performance.now(), mode: null, actor: this.berryAt(e.clientX, e.clientY) ? null : this.hitAt(e.clientX, e.clientY) };
       try { el.setPointerCapture(e.pointerId); } catch { /* ok */ }
     });
     el.addEventListener('pointermove', (e) => {
       if (!down) return;
       const dx = e.clientX - down.x, dy = e.clientY - down.y;
       if (!down.mode && Math.hypot(dx, dy) > 10) {
-        if (down.actor) { down.mode = 'drag'; down.actor.dragging = true; down.actor.state = 'idle'; this.h.onDragStart?.(down.actor.p); }
+        if (down.actor) { if (down.actor.busy) this.social.finish(down.actor.busy, false); down.mode = 'drag'; down.actor.dragging = true; down.actor.state = 'idle'; this.h.onDragStart?.(down.actor.p); }
         else down.mode = Math.abs(dx) > Math.abs(dy) ? 'swipe' : 'none';
       }
       if (down.mode === 'swipe') this.h.onDrag?.(dx);
@@ -241,7 +263,14 @@ export class AreaScene {
     el.addEventListener('pointercancel', end);
   }
 
+  berryAt(cx, cy) {
+    const pt = this.toImage(cx, cy);
+    return this.ground.find((g) => g.box && pt.x >= g.box.x && pt.x <= g.box.x + g.box.w && pt.y >= g.box.y && pt.y <= g.box.y + g.box.h) || null;
+  }
+
   tap(cx, cy) {
+    const berry = this.berryAt(cx, cy);
+    if (berry) { const p = this.groundPos(berry); return this.h.onBerry?.(berry, this.toScreen(p.x, p.y - 8)); }
     const hit = this.hitAt(cx, cy);
     if (hit) this.h.onTap(hit.p, this.toScreen(hit.x, hit.box.y));
   }

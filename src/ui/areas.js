@@ -8,7 +8,8 @@ import { areaBonuses } from '../game/bonuses.js';
 import { habitatFit } from '../game/habitat.js';
 import { collectWithFx } from './collect.js';
 import { portraitUrl } from '../gfx/sprites.js';
-import { iconImg } from '../gfx/icons.js';
+import { iconImg, berryUrl } from '../gfx/icons.js';
+import { fly } from './fly.js';
 import { AreaScene } from './areaScene.js';
 import { openSheet, emotionOf, closeSheet } from './sheet.js';
 import { $, h, bar, toast, modal, confirmDialog } from './dom.js';
@@ -30,6 +31,12 @@ export function initAreas() {
     },
     onDrag: (dx) => { if (!switching) wrap.style.transform = `translateX(${dx * 0.6}px)`; },
     onSwipeEnd: (dir) => switchArea(dir),
+    onBerry: (g, pos) => {
+      const area = CFG.areas[idx];
+      const r = app.act((s) => A.pickGroundBerry(s, area.id, g.id));
+      if (r.ok) { haptic('tick'); fly('berry', pos, 1, '#hud-bag', berryUrl(r.berry)); }
+    },
+    onSocial: (a, b, positive) => app.act((s) => A.socialEncounter(s, a, b, positive)),
     onDragStart: (p) => { haptic('tick'); showZones(p); },
     onDragMove: (p, x, y) => highlightZone(x, y),
     onDragEnd: (p, x, y) => dropOn(p, x, y),
@@ -138,7 +145,7 @@ function render(force = false) {
   if (!s) return;
   const area = CFG.areas[idx], st = s.areas[area.id];
   const res = residents(s, area.id), cap = capacityOf(s, area.id);
-  scene.setArea(area, st.unlocked ? res : []);
+  scene.setArea(area, st.unlocked ? res : [], st.unlocked ? st.ground || [] : []);
 
   const key = [area.id, s.coins, st.unlocked, st.level, res.length].join('|');
   if (force || key !== lastKey) {

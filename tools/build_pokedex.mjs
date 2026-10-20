@@ -13,7 +13,7 @@ const OUT_DATA = path.join(ROOT, 'public/data');
 
 // Animationen, die das Spiel benutzt (Ersatz, falls eine fehlt)
 const ANIMS = { Idle: ['Idle', 'Walk'], Walk: ['Walk'], Sleep: ['Sleep', 'EventSleep', 'Idle'], Eat: ['Eat', 'Nod', 'Hop', 'Idle'], Hop: ['Hop', 'Idle'] };
-const PORTRAITS = ['Normal', 'Happy', 'Joyous', 'Sad', 'Worried', 'Inspired', 'Teary-Eyed'];
+const PORTRAITS = ['Normal', 'Happy', 'Joyous', 'Sad', 'Worried', 'Inspired', 'Teary-Eyed', 'Angry', 'Sigh', 'Determined'];
 
 const species = new Map();
 {
