@@ -5,7 +5,7 @@ import { dayKey } from '../time.js';
 import { capacityOf, residents, rollGender } from './state.js';
 import { modsFor } from './bonuses.js';
 import { coinRatePerHour } from './sim.js';
-import { takeRandomBall } from './gacha.js';
+import { dispenseBall, canForesee, revealActive } from './gacha.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const fail = (msg) => ({ ok: false, msg });
@@ -95,12 +95,13 @@ export function upgradeArea(s, areaId) {
   return { ok: true };
 }
 
-export function draw(s, t) {
+// key = der Ball, den die Physik im Automaten in den Ausgabeschacht befördert hat
+export function draw(s, t, key) {
   const cost = CFG.balance.gacha.drawCost;
-  if (!s.gacha?.balls.length) return fail('Der Automat ist für heute leer.');
+  if (!s.gacha?.machine?.length) return fail('Der Automat ist für diese Woche leer.');
   const free = freeDrawReady(s, t);
   if (!free && s.coins < cost) return fail('Nicht genug Glücksmünzen.');
-  const ball = takeRandomBall(s);
+  const ball = dispenseBall(s, key);
   if (free) s.freeDrawAt = t + CFG.balance.gacha.freeDrawEveryHours * 3600e3;
   else s.coins -= cost;
   s.stats.draws++;
@@ -115,7 +116,26 @@ export function draw(s, t) {
 
 // Gratis-Ziehung: steht alle paar Stunden (balance.json gacha.freeDrawEveryHours) wieder bereit
 export const freeDrawReady = (s, t) => !s.freeDrawAt || t >= s.freeDrawAt;
-export const canDraw = (s, t) => !!s.gacha?.balls.length && (freeDrawReady(s, t) || s.coins >= CFG.balance.gacha.drawCost);
+export const canDraw = (s, t) => !!s.gacha?.machine?.length && (freeDrawReady(s, t) || s.coins >= CFG.balance.gacha.drawCost);
+
+// Psycho-Blick: ein sehr glückliches Psycho-Pokémon deckt für einen Tag den Inhalt zufälliger Bälle im Automaten auf.
+// Ändert nichts am Inhalt oder an der Reihenfolge – nur die Sichtbarkeit.
+export function foresee(s, p, t) {
+  const P = CFG.balance.gacha.psychic;
+  if (!canForesee(p, t)) return fail('Nur sehr glückliche Psycho-Pokémon in einem Areal können das.');
+  if (revealActive(s, t)) return fail('Der Psycho-Blick wirkt noch.');
+  const keys = s.gacha.machine.map((x) => x.key);
+  for (let i = keys.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [keys[i], keys[j]] = [keys[j], keys[i]]; }
+  s.gacha.reveal = { keys: keys.slice(0, P.revealCount), until: t + P.hours * 3600e3, by: p.uid };
+  return { ok: true };
+}
+
+// Ballpositionen im Automaten speichern (nach dem Zur-Ruhe-Kommen)
+export function storeBallPositions(s, list) {
+  const pos = new Map(list.map((b) => [b.key, b]));
+  for (const m of s.gacha.machine) { const q = pos.get(m.key); if (q) { m.x = Math.round(q.x); m.y = Math.round(q.y); } }
+  return { ok: true };
+}
 
 // Beere vom Boden eines Areals aufsammeln
 export function pickGroundBerry(s, areaId, id) {

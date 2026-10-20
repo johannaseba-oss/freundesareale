@@ -284,3 +284,17 @@ main { position: absolute; inset: 0; }
 .shop-text .btn { align-self: flex-start; margin-top: auto; }
 #tabs { left: 50%; gap: 4px; }
 #tabs button { padding: 7px 10px; font-size: 13px; }
+
+/* Automat: zweite Infozeile, Psycho-Blick */
+.gacha-info { flex-direction: column; gap: 0; text-align: center; }
+.gacha-info > div { display: flex; align-items: center; gap: 4px; }
+.gacha-info small { font-size: 11px; color: var(--ink-soft); font-weight: 400; }
+.psy-btn { position: absolute; left: 50%; transform: translateX(-50%); top: calc(116px + var(--safe-t)); z-index: 3; cursor: pointer;
+  background: #efe0ff; color: #5b2486; border: 2px solid #7a46b0; border-radius: 999px; padding: 4px 12px; font: inherit; font-size: 14px; font-weight: 600;
+  box-shadow: 0 0 12px rgba(180, 110, 255, .6); animation: psy 2s ease-in-out infinite; }
+@keyframes psy { 50% { box-shadow: 0 0 20px rgba(180, 110, 255, .95); } }
+.psy-flash { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: radial-gradient(circle, rgba(200,130,255,.75), rgba(120,60,200,0)); animation: psyflash .9s ease-out forwards; }
+@keyframes psyflash { from { opacity: 1; } to { opacity: 0; } }
+.btn.psy { background: #efe0ff; color: #5b2486; border-color: #7a46b0; }
+.gacha-info { white-space: normal; width: max-content; max-width: calc(100% - 24px); border-radius: 14px; }
+.gacha-info .psy-line { color: #6a2fa0; font-weight: 600; }

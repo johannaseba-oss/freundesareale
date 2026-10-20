@@ -8,6 +8,7 @@ import { msToNextCoin, msToNextBerry } from '../game/sim.js';
 import { modsFor, bonusTraits } from '../game/bonuses.js';
 import { habitatText, habitatFit } from '../game/habitat.js';
 import { mood, petBoost, affinity } from '../game/mood.js';
+import { isPsychic, canForesee, revealActive } from '../game/gacha.js';
 import { collectWithFx } from './collect.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconCanvas, iconImg, berryImg } from '../gfx/icons.js';
@@ -161,6 +162,15 @@ export function openSheet(p) {
       const bad = mates.filter((m) => m.v <= -0.3).map((m) => species(m.q.dex).name);
       if (good.length) notes.push(h('div.note', 'Versteht sich gut mit ' + [...new Set(good)].slice(0, 3).join(', ')));
       if (bad.length) notes.push(h('div.note.warn', 'Kommt nicht klar mit ' + [...new Set(bad)].slice(0, 3).join(', ')));
+    }
+    if (isPsychic(p)) {
+      const rv = revealActive(st, t);
+      if (rv) notes.push(h('div.note', `🔮 Psycho-Blick aktiv (noch ${fmtDuration(rv.until - t)})`));
+      else if (canForesee(p, t)) notes.push(h('button.btn.small.psy', { onclick: () => {
+        const r = app.act((s2, t2) => A.foresee(s2, p, t2), true);
+        if (r.ok) toast(`${sp.name} blickt in die Pokébälle – schau im Automaten nach!`);
+      } }, '🔮 Psycho-Blick: 5 Bälle im Automaten aufdecken'));
+      else notes.push(h('div.note', `🔮 Ab ${CFG.balance.gacha.psychic.minMood} % Stimmung (und in einem Areal) kann es in den Automaten blicken.`));
     }
     if (boost) notes.push(h('div.note', `♥ Betüdelt: Stimmung +${Math.round(boost)} (noch ${fmtDuration(p.petBoost.until - t)})`));
     if (p.area) { const hf = habitatFit(p.dex, p.area).fit; if (hf < 0) notes.push(h('div.note.warn', `Fühlt sich in ${areaById(p.area).name} nicht wohl.`)); }

@@ -1,8 +1,10 @@
-// Bildschirm "Automat" (Vollbild): tägliche Bälle in der Glaskugel. Den Drehknopf dreht man mit dem Finger
+// Bildschirm "Automat" (Vollbild): Bälle des Wochen-Pools in der Glaskugel; welcher herauskommt, entscheidet die Physik. Den Drehknopf dreht man mit dem Finger
 // (oder kurz antippen = automatisch drehen). Haptisches Feedback beim Drehen, beim Herausfallen und beim Öffnen.
 import { CFG, species, ballById, areaById } from '../config.js';
 import { app } from '../app.js';
-import { now, nextDayStart, fmtDuration } from '../time.js';
+import { now, fmtDuration } from '../time.js';
+import { nextWeekStart, revealActive, foreseers } from '../game/gacha.js';
+import { portraitUrl } from '../gfx/sprites.js';
 import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
 import { habitatFit } from '../game/habitat.js';
@@ -20,7 +22,10 @@ let meta, machine, knob, ctx, canvas, plateColor = '#9ea3b5';
 let balls = [];
 let anim = null; // Ziehung läuft: {phase: 'drop', t, ball, result}
 let crank = { active: false, auto: false, angle: 0, accum: 0, t: 0, ticks: 0, coin: 0 };
-let poolDay = '';
+let poolWeek = '';
+let settle = 0; // Zeit, seit die Bälle ruhig liegen
+const portraits = new Map();
+const portraitImg = (dex) => { if (!portraits.has(dex)) { const i = new Image(); i.src = portraitUrl(dex); portraits.set(dex, i); } return portraits.get(dex); };
 let lastInfo = '';
 
 const load = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.src = src; });
@@ -39,6 +44,8 @@ export async function initGacha() {
   $('#scr-gacha').style.background = `linear-gradient(rgb(${top[0]},${top[1]},${top[2]}) 50%, rgb(${bot[0]},${bot[1]},${bot[2]}) 50%)`;
   bindKnob();
   app.views.add(renderInfo);
+  $('#gacha-psychic').onclick = useForesight;
+  if (import.meta.env.DEV) app.gacha = { step: (dt) => { stepCrank(dt); step(dt); }, draw, finishCrank, get balls() { return balls; }, get anim() { return anim; }, exitPoint };
   let last = performance.now();
   const loop = (t) => {
     const dt = Math.min(0.05, (t - last) / 1000); last = t;
@@ -66,7 +73,7 @@ function bindKnob() {
     const s = app.state, t = now();
     if (!A.canDraw(s, t)) {
       haptic('medium');
-      toast(!s.gacha?.balls.length ? 'Der Automat ist für heute leer.' : 'Nicht genug Glücksmünzen.', true);
+      toast(!s.gacha?.machine?.length ? 'Der Automat ist für diese Woche leer.' : 'Nicht genug Glücksmünzen.', true);
       return;
     }
     try { canvas.setPointerCapture(e.pointerId); } catch { /* ok */ }
@@ -111,27 +118,37 @@ function stepCrank(dt) {
   if (crank.auto) turn((dt * TAU) / 1.1);
 }
 
+// Ausgabeöffnung unten in der Kugel: der Ball, der ihr beim Ende der Drehung am nächsten liegt, fällt hinein
+function exitPoint() { const G = meta.globe; return { x: G.cx, y: G.bottom - R }; }
 function finishCrank() {
   crank.active = false; crank.auto = false; crank.accum = 0; crank.coin = 0;
-  const r = app.act((s, t) => A.draw(s, t), true);
+  const ex = exitPoint();
+  const chosen = balls.reduce((best, b) => (!best || Math.hypot(b.x - ex.x, b.y - ex.y) < Math.hypot(best.x - ex.x, best.y - ex.y) ? b : best), null);
+  if (!chosen) return;
+  const r = app.act((st, t) => A.draw(st, t, chosen.key), true);
   if (!r.ok) return;
-  anim = { phase: 'drop', t: 0, ball: r.ball, result: r, landed: false };
+  anim = { phase: 'drop', t: 0, key: r.ball.key, ballId: r.ball.ball, result: r, landed: false, from: { x: chosen.x, y: chosen.y } };
   renderInfo();
 }
 
-// Kugel-Inhalt an den Spielstand anpassen (der gerade gezogene Ball bleibt bis zum Ende der Animation sichtbar)
+// Kugel-Inhalt an den Spielstand anpassen: gespeicherte Positionen übernehmen, neue Bälle fallen von oben hinein.
+// Der gerade gezogene Ball bleibt bis zum Ende der Animation sichtbar.
 function syncBalls() {
   const g = app.state.gacha;
-  if (!g) return;
-  if (g.day !== poolDay) { balls = []; poolDay = g.day; }
-  const keys = new Set(g.balls.map((b) => b.seed));
-  const drawing = anim?.ball?.seed;
-  balls = balls.filter((b) => keys.has(b.key) || b.key === drawing);
+  if (!g?.machine) return;
+  if (g.week !== poolWeek) { balls = []; poolWeek = g.week; }
+  const keys = new Set(g.machine.map((b) => b.key));
+  balls = balls.filter((b) => keys.has(b.key) || b.key === anim?.key);
   const have = new Set(balls.map((b) => b.key));
   const G = meta.globe;
-  for (const b of g.balls) {
-    if (have.has(b.seed)) continue;
-    balls.push({ key: b.seed, id: b.ball, x: G.cx + (Math.random() - 0.5) * G.r, y: G.top + R + Math.random() * 120, vx: 0, vy: 0 });
+  let drop = 0;
+  for (const b of g.machine) {
+    if (have.has(b.key)) continue;
+    const saved = b.x != null && b.y != null;
+    balls.push({ key: b.key, id: b.ball, dex: b.dex,
+      x: saved ? b.x : G.cx + (Math.random() - 0.5) * G.r * 0.8,
+      y: saved ? b.y : G.top + R - drop++ * 2 * R, vx: 0, vy: 0 });
+    settle = 0;
   }
 }
 
@@ -142,7 +159,7 @@ function step(dt) {
   if (anim) anim.t += dt;
   const G = meta.globe;
   const cranking = crank.active || crank.auto;
-  const chosen = anim?.phase === 'drop' ? balls.find((x) => x.key === anim.ball.seed) : null;
+  const chosen = anim?.phase === 'drop' ? balls.find((x) => x.key === anim.key) : null;
   const h = dt / SUB;
   for (let sub = 0; sub < SUB; sub++) {
     for (const b of balls) {
@@ -165,6 +182,7 @@ function step(dt) {
     }
     for (let it = 0; it < 2; it++) for (let i = 0; i < balls.length; i++) for (let j = i + 1; j < balls.length; j++) {
       const a = balls[i], c = balls[j];
+      if (a === chosen || c === chosen) continue;
       const dx = c.x - a.x, dy = c.y - a.y, d = Math.hypot(dx, dy) || 0.01, min = 2 * R - 2;
       if (d >= min) continue;
       const push = (min - d) / 2, nx = dx / d, ny = dy / d;
@@ -173,22 +191,63 @@ function step(dt) {
       if (rv < 0) { const imp = -rv * 0.55; a.vx -= imp * nx; a.vy -= imp * ny; c.vx += imp * nx; c.vy += imp * ny; }
     }
   }
+  // Positionen speichern, sobald alles ruhig liegt (damit beim nächsten Öffnen alles genauso daliegt)
+  // ruhig = kaum tatsächliche Bewegung seit dem letzten Bild (die Rechen-Geschwindigkeit zittert in Stapeln leicht)
+  const moving = balls.some((b) => { const mv = b.px != null && Math.hypot(b.x - b.px, b.y - b.py) / Math.max(dt, 1e-3) > 15; b.px = b.x; b.py = b.y; return b !== chosen && mv; });
+  settle = moving || cranking || anim ? 0 : settle + dt;
+  if (settle > 0.8 && settle - dt <= 0.8) {
+    const g = app.state.gacha;
+    const changed = balls.some((b) => { const m = g.machine.find((x) => x.key === b.key); return m && (m.x == null || Math.abs(m.x - b.x) > 3 || Math.abs(m.y - b.y) > 3); });
+    if (changed) { A.storeBallPositions(app.state, balls); app.saver?.markDirty(); }
+  }
 }
 
 function draw() {
   ctx.imageSmoothingEnabled = false;
+  const rv = revealActive(app.state, now());
+  const rev = rv ? new Set(rv.keys) : null;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(machine, 0, 0);
   for (const b of balls) {
-    if (anim?.ball?.seed === b.key && anim.phase === 'drop') {
-      // in die Öffnung unten sinken
-      const p = Math.min(1, anim.t / 0.3);
-      if (p >= 1) continue;
-      const c = ballCanvas(b.id, PX), sz = c.width * (1 - p);
-      ctx.drawImage(c, Math.round(b.x - sz / 2), Math.round(b.y - sz / 2 + p * 30), sz, sz);
+    if (anim?.key === b.key && anim.phase === 'drop') {
+      // rollt zur Öffnung und versinkt darin
+      const ex = exitPoint(), p = Math.min(1, anim.t / 0.35), q = Math.max(0, (anim.t - 0.35) / 0.25);
+      if (q >= 1) continue;
+      const x = anim.from.x + (ex.x - anim.from.x) * p, y = anim.from.y + (ex.y - anim.from.y) * p;
+      const c = ballCanvas(b.id, PX), sz = c.width * (1 - q);
+      ctx.drawImage(c, Math.round(x - sz / 2), Math.round(y - sz / 2 + q * 30), sz, sz);
       continue;
     }
+    if (rev?.has(b.key)) continue; // aufgedeckte Bälle werden darüber gezeichnet
     ctx.drawImage(ballCanvas(b.id, PX), Math.round(b.x - R), Math.round(b.y - R));
+  }
+  // Psycho-Blick: wabernde Bälle mit sichtbarem Inhalt
+  if (rev) {
+    const t = performance.now() / 1000;
+    for (const b of balls) {
+      if (!rev.has(b.key) || anim?.key === b.key) continue;
+      const wob = Math.sin(t * 3 + b.key % 7) * 4;
+      const glow = ctx.createRadialGradient(b.x, b.y, R * 0.4, b.x, b.y, R * 1.7);
+      glow.addColorStop(0, 'rgba(200,120,255,0.55)'); glow.addColorStop(1, 'rgba(200,120,255,0)');
+      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(b.x, b.y, R * 1.7, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.translate(b.x, b.y); ctx.scale(1 + Math.sin(t * 5 + b.key % 5) * 0.06, 1 - Math.sin(t * 5 + b.key % 5) * 0.06);
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(ballCanvas(b.id, PX), -R + wob * 0.3, -R);
+      ctx.restore();
+      // Porträt des Inhalts im Ball
+      const img = portraitImg(b.dex);
+      if (img.complete && img.naturalWidth) {
+        const ps = R * 1.75;
+        ctx.save();
+        ctx.beginPath(); ctx.arc(b.x, b.y, ps / 2 + 2, 0, TAU); ctx.clip();
+        ctx.globalAlpha = 0.75 + Math.sin(t * 4 + b.key % 3) * 0.2;
+        ctx.drawImage(img, b.x - ps / 2, b.y - ps / 2, ps, ps);
+        ctx.restore();
+        ctx.strokeStyle = 'rgba(190,110,255,0.9)'; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.arc(b.x, b.y, ps / 2 + 2 + Math.sin(t * 6) * 1.5, 0, TAU); ctx.stroke();
+      }
+    }
   }
   // Glanzlicht auf dem Glas
   ctx.fillStyle = 'rgba(255,255,255,.28)';
@@ -210,29 +269,50 @@ function draw() {
   }
   if (anim?.phase === 'drop') {
     const t = anim.t;
-    if (t >= 0.3) {
-      const c = ballCanvas(anim.ball.ball, PX), p = Math.min(1, (t - 0.3) / 0.5);
+    if (t >= 0.6) {
+      const c = ballCanvas(anim.ballId, PX), p = Math.min(1, (t - 0.6) / 0.5);
       const y = meta.chute.y - 70 + p * 70 + Math.abs(Math.sin(p * Math.PI * 2)) * -14 * (1 - p);
       ctx.drawImage(c, meta.chute.x - R, y - R);
       if (p >= 1 && !anim.landed) { anim.landed = true; haptic('strong'); }
     }
-    if (t > 1.2) { anim.phase = 'done'; reveal(anim.result); }
+    if (t > 1.5) { anim.phase = 'done'; reveal(anim.result); }
   }
 }
 
 function renderInfo() {
   const s = app.state;
-  if (!s?.gacha || !meta) return;
+  if (!s?.gacha?.machine || !meta) return;
   const cfg = CFG.balance.gacha, t = now();
-  const empty = !s.gacha.balls.length, free = !empty && A.freeDrawReady(s, t);
-  const text = empty ? `Für heute leer · neue Füllung in ${fmtDuration(nextDayStart(t, cfg.dayStartsAtHour) - t)}`
+  const left = s.gacha.machine.length + s.gacha.queue.length;
+  const empty = !s.gacha.machine.length, free = !empty && A.freeDrawReady(s, t);
+  const rv = revealActive(s, t), seers = rv ? [] : foreseers(s, t);
+  const line1 = empty ? `Diese Woche leer · neue Füllung in ${fmtDuration(nextWeekStart(t) - t)}`
     : free ? '✦ Gratis-Ziehung bereit ✦' : `· gratis in ${fmtDuration(s.freeDrawAt - t)}`;
-  const key = text + '|' + !!anim;
+  const line2 = `${left} Bälle diese Woche · neu in ${fmtDuration(nextWeekStart(t) - t)}`;
+  const line3 = rv ? `🔮 Psycho-Blick noch ${fmtDuration(rv.until - t)}` : '';
+  const key = [line1, line2, line3, !!anim, seers.map((p) => p.uid).join()].join('|');
   if (key === lastInfo) return;
   lastInfo = key;
-  $('#gacha-info').replaceChildren(...(empty || free ? [text] : ['Ziehung ', iconImg('coin', 2), ` ${cfg.drawCost} ${text}`]));
+  $('#gacha-info').replaceChildren(
+    h('div', ...(empty || free ? [line1] : ['Ziehung ', iconImg('coin', 2), ` ${cfg.drawCost} ${line1}`])),
+    h('small', line2), line3 ? h('small.psy-line', line3) : null);
   $('#gacha-info').classList.toggle('free', !!free);
   $('#gacha-hint').classList.toggle('hidden', !!anim || empty);
+  const btn = $('#gacha-psychic');
+  btn.classList.toggle('hidden', !seers.length || empty);
+  if (seers.length) btn.textContent = `🔮 Psycho-Blick (${species(seers[0].dex).name})`;
+}
+
+function useForesight() {
+  const p = foreseers(app.state, now())[0];
+  if (!p) return;
+  const r = app.act((st, t) => A.foresee(st, p, t), true);
+  if (!r.ok) return;
+  haptic('strong');
+  const flash = h('div.psy-flash');
+  $('#scr-gacha').append(flash);
+  setTimeout(() => flash.remove(), 900);
+  toast(`${species(p.dex).name} blickt in die Pokébälle …`);
 }
 
 // ---- Enthüllung ----

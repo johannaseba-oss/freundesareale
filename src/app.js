@@ -1,7 +1,7 @@
 // Gemeinsamer Zustand + Aktions-Wrapper: simulieren -> Aktion -> automatisch speichern -> neu zeichnen.
 import { now } from './time.js';
 import { simulate } from './game/sim.js';
-import { ensureDailyPool } from './game/gacha.js';
+import { ensureWeeklyPool } from './game/gacha.js';
 import { toast } from './ui/dom.js';
 
 export const app = {
@@ -14,7 +14,7 @@ export const app = {
   sync() {
     if (!this.state) return;
     simulate(this.state, now());
-    if (ensureDailyPool(this.state, now(), this.user.id)) this.saver?.markDirty();
+    if (ensureWeeklyPool(this.state, now(), this.user.id)) this.saver?.markDirty();
   },
 
   // fn(state, t) -> {ok, msg?}; immediate = sofort speichern (wichtige Aktionen)
