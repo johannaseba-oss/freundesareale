@@ -90,3 +90,30 @@ console.log('Icons fertig');
     console.log('Putz-Sprites fertig, Blasen:', meta.bubbles);
   }
 }
+
+// ---- Glücksmünze: Dreh-Animation (7 Bilder nebeneinander) -> gleich breite Frames + stehendes Einzelbild ----
+{
+  const src = path.join(IN, 'muenze/muenze_dreh.png');
+  if (fs.existsSync(src)) {
+    const out = path.join(OUT, 'muenze');
+    fs.mkdirSync(out, { recursive: true });
+    const { data, info } = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const W = info.width, H = info.height;
+    const colOn = (x) => { for (let y = 0; y < H; y++) { const i = (y * W + x) * 4; if (data[i + 3] > 20 && !(data[i] > 235 && data[i + 1] > 235 && data[i + 2] > 235)) return true; } return false; };
+    const runs = []; let s = -1;
+    for (let x = 0; x <= W; x++) { const on = x < W && colOn(x); if (on && s < 0) s = x; if (!on && s >= 0) { runs.push([s, x - 1]); s = -1; } }
+    const FW = Math.max(...runs.map(([a, b]) => b - a + 1)) + 2;
+    const frames = [];
+    for (const [a, b] of runs) {
+      const w = b - a + 1;
+      const f = await sharp(src).extract({ left: a, top: 0, width: w, height: H }).png().toBuffer();
+      frames.push({ input: f, left: frames.length * FW + Math.floor((FW - w) / 2), top: 0 });
+    }
+    await sharp({ create: { width: FW * frames.length, height: H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite(frames).png().toFile(path.join(out, 'dreh.png'));
+    const full = runs.reduce((best, r, i) => (r[1] - r[0] > runs[best][1] - runs[best][0] ? i : best), 0);
+    const still = await sharp(src).extract({ left: runs[full][0], top: 0, width: runs[full][1] - runs[full][0] + 1, height: H }).png().toBuffer();
+    await sharp(still).trim({ threshold: 1 }).png().toFile(path.join(out, 'muenze.png'));
+    fs.writeFileSync(path.join(out, 'muenze.json'), JSON.stringify({ frames: frames.length, frameWidth: FW, height: H, still: full }));
+    console.log('Münze:', frames.length, 'Frames à', FW, 'px');
+  }
+}

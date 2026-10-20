@@ -5,7 +5,7 @@ import { app } from '../app.js';
 import { now, fmtDuration } from '../time.js';
 import * as A from '../game/actions.js';
 import { capacityOf, residents, xpForLevel, genderSymbol } from '../game/state.js';
-import { msToNextCoin, msToNextBerry } from '../game/sim.js';
+import { msToNextCoin, msToNextBerry, coinRange } from '../game/sim.js';
 import { modsFor, bonusTraits } from '../game/bonuses.js';
 import { habitatText, habitatFit } from '../game/habitat.js';
 import { mood, petBoost, affinity } from '../game/mood.js';
@@ -154,7 +154,8 @@ export function openSheet(p) {
   const update = () => {
     const st = app.state, t = now();
     sub.replaceChildren(`Lv. ${p.level} · `, h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity]));
-    lCoin.v.textContent = p.area ? (p.coinsReady ? `${p.coinsReady} bereit` : `in ${fmtDuration(msToNextCoin(st, p, t))}`) : 'ruht im Beutel';
+    const cr = coinRange(p);
+    lCoin.v.textContent = p.area ? (p.coinsReady ? `${p.coinsReady} bereit` : `in ${fmtDuration(msToNextCoin(st, p, t))} · ${cr[0]}–${cr[1]} Stück`) : 'ruht im Beutel';
     const md = mood(p, t), boost = petBoost(p, t);
     satBar.firstChild.style.width = md + '%';
     lSat.v.textContent = Math.round(md) + ' %';

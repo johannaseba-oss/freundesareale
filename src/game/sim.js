@@ -2,7 +2,7 @@
 // Läuft in festen Schritten, damit Hunger, Zufriedenheit, Beeren-Effekte, Gruppen-/Legendären-Boni und Level
 // sich korrekt gegenseitig beeinflussen, auch wenn die App tagelang geschlossen war.
 // (Wer in welchem Areal wohnt, ändert sich nur durch Aktionen – die Boni sind also während eines Laufs konstant.)
-import { CFG, isHairy } from '../config.js';
+import { CFG, isHairy, species } from '../config.js';
 import { HOUR } from '../time.js';
 import { hashString } from '../rng.js';
 import { xpForLevel } from './state.js';
@@ -15,9 +15,16 @@ const clamp = (v) => Math.max(0, Math.min(100, v));
 const tierFactor = (table, value) => (table.find((t) => value >= t.min) || table[table.length - 1]).factor;
 const levelFactor = (p) => 1 + CFG.balance.coins.levelSpeedupPerLevel * (p.level - 1);
 
+const coinTable = (p) => CFG.balance.coins.byRarity[species(p.dex)?.rarity] || CFG.balance.coins.byRarity.gewoehnlich;
+const seeded = (p, tag) => hashString(`${p.uid}|${tag}|${p.coinCycles || 0}`) / 4294967296;
+// Dauer des aktuellen Takts (Minuten) und Münzen, die er bringt – festgelegt durch Pokémon + Taktnummer
+export function cycleMinutes(p) { const r = coinTable(p).minutes; return r[0] + seeded(p, 'd') * (r[1] - r[0]); }
+export function cycleCoins(p) { const r = coinTable(p).coins; return r[0] + Math.floor(seeded(p, 'y') * (r[1] - r[0] + 1)); }
+export const coinRange = (p) => coinTable(p).coins;
+
 export function coinRatePerHour(p, t, m) {
   const c = CFG.balance.coins;
-  let rate = (1 / c.baseIntervalHours) * levelFactor(p) * tierFactor(c.satisfactionFactor, mood(p, t));
+  let rate = (60 / cycleMinutes(p)) * levelFactor(p) * tierFactor(c.satisfactionFactor, mood(p, t));
   for (const e of p.effects) if (e.type === 'produktion' && e.until > t) rate *= e.factor;
   return rate * (m?.coin ?? 1);
 }
@@ -59,7 +66,9 @@ function stepPokemon(p, t, dtH, m, fit, social) {
   const cap = b.coins.storageCapPerPokemon;
   while (p.coinProgress >= 1) {
     if (cap && p.coinsReady >= cap) { p.coinProgress = 1; break; }
-    p.coinProgress -= 1; p.coinsReady++;
+    p.coinProgress -= 1;
+    p.coinsReady += cycleCoins(p);
+    p.coinCycles = (p.coinCycles || 0) + 1;
   }
 
   const br = berryRatePerHour(p, m, t);

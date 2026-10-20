@@ -2,7 +2,7 @@
 // Koordinaten = Pixel des Hintergrundbilds. Wischen links/rechts wechselt das Areal, Antippen wählt ein Pokémon.
 import { CFG } from '../config.js';
 import { loadSprites, frameOf, dirFromVector } from '../gfx/sprites.js';
-import { iconCanvas, berryCanvas } from '../gfx/icons.js';
+import { iconCanvas, berryCanvas, drawCoin } from '../gfx/icons.js';
 import { SocialDirector } from './social.js';
 
 const imgCache = new Map();
@@ -170,7 +170,7 @@ export class AreaScene {
       if (a.p.coinsReady > 0) {
         const c = ICON.coin, cw = c.width * s;
         a.coinBox = { x: a.x - cw / 2 - 6 * s, y: top - cw - 6 * s, w: cw + 12 * s, h: cw + 12 * s };
-        ctx.drawImage(c, Math.round(a.x - cw / 2), Math.round(top - cw), cw, cw);
+        if (!drawCoin(ctx, a.x, top - cw / 2, cw * 1.15, this.time * 1000 + a.p.uid * 137)) ctx.drawImage(c, Math.round(a.x - cw / 2), Math.round(top - cw), cw, cw);
         if (a.p.coinsReady > 1) {
           ctx.font = `bold ${Math.round(7 * s)}px "Pixelify Sans", sans-serif`;
           ctx.fillStyle = '#fff'; ctx.strokeStyle = '#4a3b33'; ctx.lineWidth = s;

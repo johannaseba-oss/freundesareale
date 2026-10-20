@@ -8,7 +8,49 @@
     "maxOfflineDays": 60
   },
   "coins": {
-    "baseIntervalHours": 8,
+    "_hinweis": "Münzproduktion je Seltenheit: minutes = Dauer eines Takts (zufällig im Bereich), coins = Münzen pro Takt (zufällig). Level, Stimmung, Boni und Beeren verkürzen den Takt.",
+    "byRarity": {
+      "gewoehnlich": {
+        "minutes": [
+          2,
+          5
+        ],
+        "coins": [
+          1,
+          3
+        ]
+      },
+      "selten": {
+        "minutes": [
+          5,
+          13
+        ],
+        "coins": [
+          3,
+          10
+        ]
+      },
+      "sehr_selten": {
+        "minutes": [
+          13,
+          25
+        ],
+        "coins": [
+          10,
+          22
+        ]
+      },
+      "legendaer": {
+        "minutes": [
+          25,
+          45
+        ],
+        "coins": [
+          22,
+          50
+        ]
+      }
+    },
     "levelSpeedupPerLevel": 0.03,
     "satisfactionFactor": [
       {
@@ -74,9 +116,9 @@
       "id": "sinelbeere",
       "name": "Sinelbeere",
       "effect": "zeitsprung",
-      "hours": 4,
+      "hours": 1,
       "cost": 3,
-      "text": "Stillt Hunger. Die nächste Glücksmünze kommt 4 Stunden früher.",
+      "text": "Stillt Hunger. Spult die Münzproduktion um 1 Stunde vor.",
       "sprite": "",
       "hunger": 30
     },

@@ -4,7 +4,7 @@ import { CFG, areaById, berryById, isHairy } from '../config.js';
 import { dayKey } from '../time.js';
 import { capacityOf, residents, rollGender } from './state.js';
 import { modsFor } from './bonuses.js';
-import { coinRatePerHour } from './sim.js';
+import { coinRatePerHour, cycleCoins } from './sim.js';
 import { dispenseBall, canForesee, revealActive } from './gacha.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -58,7 +58,7 @@ export function giveBerry(s, p, berryId, t) {
   p.fullness = clamp(p.fullness + (b.hunger || 0));
   if (b.effect === 'zeitsprung') {
     p.coinProgress += coinRatePerHour(p, t, modsFor(s, p)) * b.hours;
-    while (p.coinProgress >= 1) { p.coinProgress -= 1; p.coinsReady++; }
+    while (p.coinProgress >= 1) { p.coinProgress -= 1; p.coinsReady += cycleCoins(p); p.coinCycles = (p.coinCycles || 0) + 1; }
   } else if (b.effect === 'produktion') {
     const existing = p.effects.find((e) => e.berry === b.id && e.until > t);
     if (existing) existing.until += b.hours * 3600e3; // gleiche Beere verlängert die Dauer

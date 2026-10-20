@@ -9,7 +9,7 @@ import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
 import { habitatFit } from '../game/habitat.js';
 import { ballCanvas, BALL_PIXELS } from '../gfx/balls.js';
-import { iconCanvas, iconImg } from '../gfx/icons.js';
+import { iconCanvas, iconImg, drawCoin } from '../gfx/icons.js';
 import { loadSprites, frameOf } from '../gfx/sprites.js';
 import { haptic } from '../haptics.js';
 import { $, h, toast } from './dom.js';
@@ -264,7 +264,7 @@ function draw() {
   if (crank.coin > 0 && crank.coin < 0.5) {
     const c = iconCanvas('coin', 6), p = Math.min(1, crank.coin / 0.45);
     ctx.globalAlpha = 1 - Math.max(0, p - 0.8) * 5;
-    ctx.drawImage(c, K.x - c.width / 2, 700 + p * 145 - c.height / 2);
+    if (!drawCoin(ctx, K.x, 700 + p * 145, 80, crank.coin * 1000)) ctx.drawImage(c, K.x - c.width / 2, 700 + p * 145 - c.height / 2);
     ctx.globalAlpha = 1;
   }
   if (anim?.phase === 'drop') {

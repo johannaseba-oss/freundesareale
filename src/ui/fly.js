@@ -1,5 +1,5 @@
 // Fliegende Münzen/Beeren vom Pokémon zur Anzeige oben. Der angezeigte Münzstand zählt beim Ankommen hoch.
-import { iconUrl } from '../gfx/icons.js';
+import { COIN_SHEET } from '../gfx/icons.js';
 import { $ } from './dom.js';
 
 export const pending = { coins: 0, berries: 0 };
@@ -14,9 +14,9 @@ export function fly(kind, from, amount, targetSel, imgSrc) {
   pending[kind === 'coin' ? 'coins' : 'berries'] += amount;
   for (let i = 0; i < n; i++) {
     const share = Math.floor(amount / n) + (i < amount % n ? 1 : 0);
-    const el = document.createElement('img');
-    el.src = imgSrc || iconUrl('coin', 3);
-    el.className = 'flyer';
+    let el;
+    if (kind === 'coin') { el = document.createElement('div'); el.className = 'flyer coin-spin'; el.style.backgroundImage = `url(${COIN_SHEET})`; el.style.animationDelay = `${-Math.random() * 0.6}s`; }
+    else { el = document.createElement('img'); el.src = imgSrc; el.className = 'flyer'; }
     document.body.append(el);
     const sx = from.x + (Math.random() - 0.5) * 30, sy = from.y + (Math.random() - 0.5) * 16;
     const mx = (sx + tx) / 2 + (Math.random() - 0.5) * 80, my = Math.min(sy, ty) - 60 - Math.random() * 40;

@@ -89,6 +89,7 @@ export function iconUrl(name, scale = 3) {
 }
 export function iconImg(name, scale = 3, cls = 'ico') {
   const i = new Image();
+  if (name === 'coin') { i.src = COIN_STILL; i.className = cls; i.alt = ''; i.style.height = 11 * scale + 'px'; return i; }
   i.src = iconUrl(name, scale);
   i.className = cls;
   i.alt = '';
@@ -119,4 +120,21 @@ export function berryCanvas(id) {
 export function berryUrl(id) {
   const b = berryById(id);
   return b?.sprite ? `${import.meta.env.BASE_URL}art/items/${b.sprite}` : iconUrl(MAPS[id] ? id : 'sinelbeere', 3);
+}
+
+// ---- Glücksmünze (Sprites der Nutzerin: public/art/muenze) ----
+const MUENZE = `${import.meta.env.BASE_URL}art/muenze/`;
+export const COIN_STILL = MUENZE + 'muenze.png';
+export const COIN_SHEET = MUENZE + 'dreh.png';
+const coinSheet = new Image();
+coinSheet.src = COIN_SHEET;
+let coinMeta = { frames: 7, frameWidth: 89, height: 101 };
+fetch(MUENZE + 'muenze.json').then((r) => r.json()).then((m) => { coinMeta = m; }).catch(() => {});
+// Drehende Münze zeichnen (size = Höhe); gibt false zurück, solange das Bild lädt
+export function drawCoin(ctx, x, y, size, tMs) {
+  if (!coinSheet.complete || !coinSheet.naturalWidth) return false;
+  const { frames, frameWidth: fw, height: fh } = coinMeta;
+  const f = Math.floor(tMs / 85) % frames, w = (size * fw) / fh;
+  ctx.drawImage(coinSheet, f * fw, 0, fw, fh, Math.round(x - w / 2), Math.round(y - size / 2), w, size);
+  return true;
 }

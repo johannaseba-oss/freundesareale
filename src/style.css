@@ -327,3 +327,9 @@ main { position: absolute; inset: 0; }
 .tool.glow { animation: toolglow 1.2s ease-in-out infinite; }
 @keyframes toolglow { 50% { box-shadow: 0 0 0 4px rgba(127, 199, 217, .9), 0 0 18px rgba(127, 199, 217, .9); transform: translateY(-3px); } }
 .groom-hint { bottom: calc(112px + var(--safe-b)); }
+
+/* Drehende Glücksmünze (7 Frames nebeneinander) */
+.coin-spin { width: 26px; height: 30px; background-repeat: no-repeat; background-size: 700% 100%; image-rendering: pixelated; animation: coinspin .6s steps(7) infinite; }
+@keyframes coinspin { from { background-position-x: 0%; } to { background-position-x: 116.667%; } }
+.flyer.coin-spin { width: 26px; height: 30px; margin: -15px 0 0 -13px; }
+img.ico[src*="muenze"] { image-rendering: pixelated; vertical-align: middle; }
