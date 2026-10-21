@@ -636,3 +636,5 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .modal-inner { max-height: 88vh; max-height: calc(100dvh - 32px - var(--safe-t) - var(--safe-b)); }
 .sheet-inner { max-height: 92vh; max-height: calc(100dvh - 24px - var(--safe-t)); }
 .card .type-chips.mini { justify-content: center; margin: 1px 0 2px; }
+/* Areal-Menü (☰) und Shop über der Navi, damit sie auf schmalen Handys nicht verdeckt werden */
+.fab { bottom: calc(60px + var(--safe-b)); }
