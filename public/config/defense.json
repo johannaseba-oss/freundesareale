@@ -533,7 +533,7 @@
       "_hinweis": "Chaos ist endlos: Gegner aller Typen, alle familyRefresh Wellen neue Familien, Gegneranzahl = (base + Welle × perWave) × countMult, Level = baseLevel + Welle × levelPerWave"
     },
     "boss": {
-      "_hinweis": "Pro Welle ein Boss: hpMult = KP-Faktor, defMult = Vert/SpVert-Faktor, guards = Anzahl Leibwächter [min, max], pace = Tempo-Faktor, scale = Darstellungsgröße",
+      "_hinweis": "Pro Welle ein Boss: hpMult = KP-Faktor, defMult = Vert/SpVert-Faktor, guards = Anzahl Leibwächter [min, max], pace = Tempo-Faktor, scale = Darstellungsgröße, fromWave = ab welcher Welle Bosse kommen",
       "hpMult": 6,
       "defMult": 1.5,
       "guards": [
@@ -541,7 +541,8 @@
         3
       ],
       "pace": 0.8,
-      "scale": 1.45
+      "scale": 1.45,
+      "fromWave": 2
     },
     "fast": {
       "_hinweis": "Flinke Gegner: chance je Gegner, pace = Tempo-Faktor",

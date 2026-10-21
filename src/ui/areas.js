@@ -301,6 +301,7 @@ function pickResident(area) {
         const r = app.act((s2) => A.assign(s2, p, area.id), true);
         if (r.ok) { close(); toast(`${nameOf(p)} zieht in ${area.name} ein!`); }
       } }, h('img.portrait', { src: portraitUrl(p.dex), alt: '' }), h('div.nm', h('span.n', nameOf(p)), h('span.gender.' + p.gender, genderSymbol(p))),
+      h('span.type-chips.mini', sp.types.map((t) => typeChip(t))),
       h('div.sub', p.area ? `aus ${CFG.areas.find((a) => a.id === p.area)?.name}` : `Lv. ${p.level} · Beutel`), fitMark(p.dex, area.id));
     };
     if (free.length) el.append(h('b', 'Im Beutel'), h('div.grid', free.map(card)));

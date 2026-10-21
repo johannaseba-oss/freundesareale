@@ -630,3 +630,9 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .d-cards.chaos .d-card { background: #f3ecff; }
 .d-card-ab { white-space: normal; text-overflow: clip; font-size: 8.5px; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; hyphens: auto; }
 .d-card-ab { font-size: 7.5px; letter-spacing: -.3px; word-break: keep-all; overflow-wrap: normal; padding: 1px 2px; }
+
+/* Menüs: sichtbare Höhe statt 100vh (Safari-Leiste unten verdeckt sonst den unteren Teil) */
+.modal { padding: max(12px, var(--safe-t)) 12px max(12px, calc(var(--safe-b) + 8px)); }
+.modal-inner { max-height: 88vh; max-height: calc(100dvh - 32px - var(--safe-t) - var(--safe-b)); }
+.sheet-inner { max-height: 92vh; max-height: calc(100dvh - 24px - var(--safe-t)); }
+.card .type-chips.mini { justify-content: center; margin: 1px 0 2px; }

@@ -179,7 +179,7 @@ export class Defense {
       const fast = this.endless && this.rnd() < D().chaos.fast.chance;
       this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * W.spread + this.rnd() * 3), dex, level, col: Math.floor(this.rnd() * D().grid.cols), fast });
     }
-    if (this.endless) { // Chaos: ein Boss pro Welle, begleitet von Leibwächtern in den Nachbarspalten
+    if (this.endless && this.wave + 1 >= (D().chaos.boss.fromWave || 2)) { // Chaos: ein Boss pro Welle, begleitet von Leibwächtern in den Nachbarspalten
       const Bo = D().chaos.boss, at = this.t + W.spread * (0.35 + this.rnd() * 0.3), col = Math.floor(this.rnd() * D().grid.cols);
       const strong = this.families.map((fm) => fm[fm.length - 1]);
       this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true });

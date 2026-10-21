@@ -109,7 +109,9 @@ export class AreaScene {
       const a = this.actors.get(p.uid);
       if (a) { a.p = p; continue; }
       const pt = this.randomPoint();
-      this.actors.set(p.uid, { p, ...pt, sprites: loadSprites(p.dex, p.gender), state: 'idle', dir: 0, t: 0, timer: rand(0.5, 3) });
+      // zufällige Blickrichtung, manche laufen gleich los – sonst schauen beim Wechseln alle in die Kamera
+      const walk = Math.random() < 0.5, tgt = walk ? this.randomPoint() : null;
+      this.actors.set(p.uid, { p, ...pt, sprites: loadSprites(p.dex, p.gender), state: walk ? 'walk' : 'idle', tx: tgt?.x, ty: tgt?.y, dir: Math.floor(Math.random() * 8), t: 0, timer: rand(0.3, 2.5) });
     }
   }
 
