@@ -7,7 +7,7 @@ import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconImg } from '../gfx/icons.js';
 import { $, h, toast, modal, confirmDialog } from './dom.js';
-import { trainContest, gainLines } from '../game/contest.js';
+import { renderDefenseSetup } from './defense.js';
 import { haptic } from '../haptics.js';
 
 const B = () => CFG.battle;
@@ -15,6 +15,7 @@ const base = import.meta.env.BASE_URL;
 const SIDE_COL = { p: '#4f9ff0', c: '#ef5d5d' };
 
 let step = 'team';
+let mode = 'menu'; // 'menu' | 'arena' | 'defense'
 let sel = [];
 let towers = [];
 let battle = null;
@@ -28,6 +29,7 @@ function pickName() {
 
 // ================= Vorbereitung =================
 export function initBattle() {
+  document.addEventListener('defense-closed', () => renderBattleSetup());
   if (import.meta.env.DEV) app.battle = { get b() { return battle; }, step: (dt) => frame(dt), start: (o) => startBattle(o) };
 }
 
@@ -43,6 +45,14 @@ const lv5 = (p) => calcStats(p.dex, B().startLevel, p.ivs, p.evs);
 export function renderBattleSetup() {
   const el = $('#scr-battle');
   if (!el || !app.state) return;
+  // Modus-Auswahl: Arena (bisheriger Kampf) oder Sternenverteidigung
+  if (mode === 'menu') {
+    el.replaceChildren(h('div.bs', h('div.bs-head', h('h2', 'Kampf')),
+      h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ Sternenverteidigung'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
+      h('button.mode-card', { onclick: () => { mode = 'arena'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.'))));
+    return;
+  }
+  if (mode === 'defense') { renderDefenseSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   const mons = owned();
   const N = B().teamSize, T = B().towerCount;
   // gespeicherte Auswahl übernehmen (nur noch vorhandene Pokémon)
@@ -61,6 +71,7 @@ export function renderBattleSetup() {
       renderBattleSetup();
     };
     el.replaceChildren(h('div.bs',
+      h('button.btn.small.mode-back', { onclick: () => { mode = 'menu'; renderBattleSetup(); } }, '‹ Modi'),
       h('div.bs-head', h('h2', 'Kampfteam'), h('span.bs-count' + (sel.length === N ? '.full' : ''), `${sel.length}/${N}`)),
       mons.length < N
         ? h('p.note.warn', `Du brauchst ${N} Pokémon für ein Kampfteam – du hast ${mons.length}. Ziehe am Automaten weitere!`)
@@ -698,18 +709,10 @@ function endBattle() {
       return { ok: true };
     }, true);
   }
-  // Siege zählen (Erfolge) und Kampf als Training: eingesetzte Pokémon und Verteidiger steigern Wettbewerbswerte
-  const trained = [];
-  app.act((s, t) => {
-    s.stats.battlesPlayed = (s.stats.battlesPlayed || 0) + 1;
-    if (won) { s.stats.battlesWon = (s.stats.battlesWon || 0) + 1; s.stats.beaten ||= {}; s.stats.beaten[battle.opponent.id] = true; }
-    const used = new Set();
-    for (const f of [...battle.sides.p.towers, ...battle.sides.p.bench]) if (f.uid != null && (f.tower || f.deployed) && !used.has(f.uid)) {
-      used.add(f.uid);
-      const p = s.pokemon.find((q) => q.uid === f.uid);
-      const g = p && trainContest(p, 'kampf', t);
-      if (g && Object.keys(g).length) trained.push(`${p.nick || species(p.dex).name}: ${gainLines(g).join(', ')}`);
-    }
+  // Siege zählen (für die Erfolge)
+  app.act((s2) => {
+    s2.stats.battlesPlayed = (s2.stats.battlesPlayed || 0) + 1;
+    if (won) { s2.stats.battlesWon = (s2.stats.battlesWon || 0) + 1; s2.stats.beaten ||= {}; s2.stats.beaten[battle.opponent.id] = true; }
     return { ok: true };
   }, true);
   const best = all.filter((f, i, a) => a.indexOf(f) === i && f.uid != null).sort((a, b) => b.level - a.level || b.kos - a.kos).slice(0, 3);
@@ -718,7 +721,6 @@ function endBattle() {
     h('p', won ? `Du hast alle Verteidiger von ${oppName(battle.opponent)} besiegt.` : battle.over.gaveUp ? 'Du hast aufgegeben.' : 'Alle deine Verteidiger wurden besiegt.'),
     best.length ? h('div.b-best', best.map((f) => h('div', h('img', { src: portraitUrl(f.dex), alt: '' }), h('small', `${species(f.dex).name} · Lv ${f.level}`)))) : null,
     B().stats.evsPersist && gains.length ? h('p.note', `${gains.length} Pokémon haben EVs gesammelt (bleiben erhalten).`) : null,
-    trained.length ? h('div.b-trained', trained.slice(0, 6).map((l) => h('div', '✦ ' + l)), trained.length > 6 ? h('div', `… und ${trained.length - 6} weitere`) : null) : null,
     h('p.note', 'Level und Entwicklungen aus dem Kampf verfallen jetzt wieder.'),
     h('button.btn.primary.big', { onclick: () => { closeArena(); battle = null; oppNames = {}; step = 'opponent'; renderBattleSetup(); } }, 'Weiter'));
   arena.root.append(box);

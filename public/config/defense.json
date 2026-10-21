@@ -1,0 +1,256 @@
+{
+  "_hinweis": "Sternenverteidigung (Tower Defense wie Plants vs. Zombies, vertikal). Gegner kommen von oben, der Trainer steht unten. Alle Werte frei anpassbar.",
+  "teamSize": 6,
+  "grid": {
+    "cols": 5,
+    "rows": 9,
+    "placeRows": [
+      3,
+      8
+    ],
+    "_placeRows": "Reihen, in denen eigene Pokémon stehen dürfen (0 = oben)"
+  },
+  "level": 25,
+  "_level": "Kampfwerte aller Pokémon werden auf diesem Level berechnet (eigene mit ihren IVs/EVs)",
+  "stars": {
+    "start": 75,
+    "skyEvery": [
+      10,
+      15
+    ],
+    "skyValue": 25,
+    "lifetime": 10,
+    "_hinweis": "Sternenregen: alle skyEvery Sekunden fällt ein Stern (skyValue). Liegengelassene Sterne verschwinden nach lifetime Sekunden."
+  },
+  "roles": {
+    "_hinweis": "Rollen: produzent (erzeugt Sterne), explosiv (einmalige Explosion), mauer (hält Gegner auf), nahkampf, fernkampf. Produzenten/Explosive/Mauern über Listen, sonst entscheidet die Attacke (Körperkontakt = Nahkampf).",
+    "produzent": {
+      "name": "Sternensammler",
+      "icon": "★",
+      "dex": [
+        35,
+        36,
+        173,
+        120,
+        121,
+        385,
+        113,
+        242,
+        440,
+        191,
+        192,
+        313,
+        314,
+        170,
+        171,
+        175,
+        176,
+        468,
+        52,
+        53,
+        337,
+        338,
+        358,
+        433,
+        281,
+        282,
+        280,
+        417
+      ],
+      "every": [
+        18,
+        22
+      ],
+      "value": 25,
+      "valueEvolved": 50,
+      "cost": 50,
+      "costEvolved": 100,
+      "recharge": 7.5
+    },
+    "explosiv": {
+      "name": "Explosiv",
+      "icon": "✸",
+      "dex": [
+        100,
+        101,
+        74,
+        75,
+        76,
+        109,
+        110,
+        204,
+        205,
+        102,
+        103,
+        299,
+        476,
+        81,
+        82,
+        462,
+        425,
+        426
+      ],
+      "_hinweis": "Grundform: Mine – explodiert, sobald ein Gegner sie erreicht (armSeconds Vorbereitung). Entwickelt: explodiert sofort mit großem Radius.",
+      "armSeconds": 8,
+      "damage": 900,
+      "radiusSmall": 0.7,
+      "radiusBig": 1.6,
+      "cost": 25,
+      "costBig": 150,
+      "recharge": 25,
+      "rechargeBig": 35
+    },
+    "mauer": {
+      "name": "Mauer",
+      "icon": "▣",
+      "dex": [
+        95,
+        208,
+        213,
+        143,
+        446,
+        202,
+        360,
+        185,
+        438,
+        299,
+        476,
+        377,
+        378,
+        379,
+        304,
+        305,
+        306,
+        343,
+        344,
+        410,
+        411,
+        524,
+        525,
+        526,
+        597,
+        598
+      ],
+      "hpMult": 6,
+      "cost": 50,
+      "costPerStage": 25,
+      "recharge": 25
+    },
+    "nahkampf": {
+      "name": "Nahkampf",
+      "icon": "✊",
+      "range": 1.1,
+      "cooldown": 1.1,
+      "damageMult": 1.6
+    },
+    "fernkampf": {
+      "name": "Fernkampf",
+      "icon": "➶",
+      "range": 9,
+      "cooldown": 1.5,
+      "damageMult": 1
+    }
+  },
+  "cost": {
+    "_hinweis": "Kosten von Kämpfern: 25 × gerundet((Basiswertsumme − 180) / 70), mind. 25. Legendäre + legendaryExtra. Aufladezeit nach Kosten.",
+    "legendaryExtra": 75,
+    "recharge": [
+      [
+        50,
+        5
+      ],
+      [
+        100,
+        7.5
+      ],
+      [
+        175,
+        12
+      ],
+      [
+        999,
+        20
+      ]
+    ]
+  },
+  "defenderHpMult": 2,
+  "enemy": {
+    "hpMult": 1.5,
+    "tilesPerSecond": 0.2,
+    "speedExp": 0.35,
+    "biteCooldown": 1.6,
+    "levelPerWave": 2
+  },
+  "iceSlow": {
+    "factor": 0.5,
+    "seconds": 3,
+    "_hinweis": "Eis-Attacken verlangsamen Gegner"
+  },
+  "firstWaveDelay": 22,
+  "waveGap": 10,
+  "waves": [
+    {
+      "count": 4,
+      "stages": [
+        1
+      ],
+      "spread": 30
+    },
+    {
+      "count": 7,
+      "stages": [
+        1
+      ],
+      "spread": 32
+    },
+    {
+      "count": 9,
+      "stages": [
+        1,
+        2
+      ],
+      "spread": 34
+    },
+    {
+      "count": 11,
+      "stages": [
+        2
+      ],
+      "spread": 34
+    },
+    {
+      "count": 16,
+      "stages": [
+        2,
+        3
+      ],
+      "spread": 28,
+      "final": true
+    }
+  ],
+  "themes": {
+    "_hinweis": "Pro Runde werden so viele Gegner-Typen angekündigt; Wellen bestehen überwiegend (share) aus diesen Typen.",
+    "count": 2,
+    "share": 0.8,
+    "types": [
+      "Feuer",
+      "Wasser",
+      "Pflanze",
+      "Elektro",
+      "Eis",
+      "Kampf",
+      "Gift",
+      "Boden",
+      "Flug",
+      "Psycho",
+      "Käfer",
+      "Gestein",
+      "Geist",
+      "Drache",
+      "Unlicht",
+      "Stahl",
+      "Fee",
+      "Normal"
+    ]
+  }
+}

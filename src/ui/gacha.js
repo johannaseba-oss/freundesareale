@@ -8,7 +8,7 @@ import { portraitUrl } from '../gfx/sprites.js';
 import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
 import { habitatFit } from '../game/habitat.js';
-import { ballCanvas, ballSprite, BALL_PIXELS } from '../gfx/balls.js';
+import { ballCanvas, ballSprite, ballName, BALL_PIXELS } from '../gfx/balls.js';
 import { iconCanvas, iconImg, drawCoin } from '../gfx/icons.js';
 import { loadSprites, frameOf } from '../gfx/sprites.js';
 import { haptic } from '../haptics.js';
@@ -127,7 +127,7 @@ function finishCrank() {
   if (!chosen) return;
   const r = app.act((st, t) => A.draw(st, t, chosen.key), true);
   if (!r.ok) return;
-  anim = { phase: 'drop', t: 0, key: r.ball.key, ballId: ballSprite(r.ball.ball, r.ball.key), result: r, landed: false, from: { x: chosen.x, y: chosen.y } };
+  anim = { phase: 'drop', t: 0, key: r.ball.key, ballId: ballSprite(r.ball.ball, r.ball.key, r.ball.dex), result: r, landed: false, from: { x: chosen.x, y: chosen.y } };
   renderInfo();
 }
 
@@ -145,7 +145,7 @@ function syncBalls() {
   for (const b of g.machine) {
     if (have.has(b.key)) continue;
     const saved = b.x != null && b.y != null;
-    balls.push({ key: b.key, id: ballSprite(b.ball, b.key), dex: b.dex,
+    balls.push({ key: b.key, id: ballSprite(b.ball, b.key, b.dex), dex: b.dex,
       x: saved ? b.x : G.cx + (Math.random() - 0.5) * G.r * 0.8,
       y: saved ? b.y : G.top + R - drop++ * 2 * R, vx: 0, vy: 0,
       a: b.a ?? ((b.key % 360) * Math.PI) / 180 }); // eigene Drehung je Ball (gespeichert oder aus dem Schlüssel)
@@ -352,7 +352,7 @@ function reveal(r) {
       c.restore();
     }
     if (t < openAt) {
-      const big = ballCanvas(ballSprite(ball.id, r.ball.key), 7);
+      const big = ballCanvas(ballSprite(ball.id, r.ball.key, p.dex), 7);
       const wob = t < wobbleEnd ? Math.sin(t * 9) * Math.max(0, Math.sin((t / wobbleEnd) * Math.PI * 3)) * 0.35 : 0;
       c.save(); c.translate(cx, cy + 40); c.rotate(wob); c.drawImage(big, -big.width / 2, -big.height); c.restore();
       if (t > wobbleEnd) { c.fillStyle = `rgba(255,255,255,${(t - wobbleEnd) / (openAt - wobbleEnd)})`; c.fillRect(0, 0, 380, 380); }
@@ -360,8 +360,13 @@ function reveal(r) {
       if (!opened) { opened = true; haptic('strong'); }
       const k = t - openAt;
       if (k < 0.4) { c.fillStyle = `rgba(255,255,255,${1 - k / 0.4})`; c.fillRect(0, 0, 380, 380); }
-      const open = ballCanvas(ballSprite(ball.id, r.ball.key), 4, true);
-      c.drawImage(open, cx - open.width / 2, 290 - open.height / 2);
+      // geöffneter Ball verschwindet schnell, damit er nicht halb hinter dem Pokémon stehen bleibt
+      if (k < 0.5) {
+        const open = ballCanvas(ballSprite(ball.id, r.ball.key, p.dex), 4, true);
+        c.globalAlpha = 1 - k / 0.5;
+        c.drawImage(open, cx - open.width / 2, 300 + k * 60 - open.height / 2);
+        c.globalAlpha = 1;
+      }
       if (sprites.ready) {
         const f = frameOf(sprites, k < 0.8 ? 'Hop' : 'Idle', 0, k * 1000);
         const sc = Math.min(5, Math.floor(200 / Math.max(f.fw, f.fh))) * Math.min(1, 0.3 + k * 2);
@@ -385,7 +390,7 @@ function reveal(r) {
     const best = free.find((a) => habitatFit(p.dex, a.id).fit > 0);
     if (best) sel.value = best.id;
     txt.append(
-      h('div', h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity]), ' ', ball.name),
+      h('div', h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity]), ' ', ballName(ballSprite(ball.id, r.ball.key, p.dex))),
       h('h2', `${sp.name}!`, h('span.gender.' + p.gender, genderSymbol(p))),
       h('div.effects', sp.types.join(' / ')),
       free.length ? h('div.row', { style: { justifyContent: 'center', marginTop: '10px' } }, sel) : h('p.effects', 'Alle Areale sind voll – es wartet erst einmal in der Sammlung.'),

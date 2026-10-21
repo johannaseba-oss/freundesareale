@@ -3,7 +3,7 @@ import { CFG, species, areaById } from '../config.js';
 import { app } from '../app.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import { genderSymbol, nameOf } from '../game/state.js';
-import { ballCanvas } from '../gfx/balls.js';
+import { ballCanvas, ballSprite } from '../gfx/balls.js';
 import { openSheet, emotionOf } from './sheet.js';
 import { $, h } from './dom.js';
 import { openAchievements } from './profile.js';
@@ -30,7 +30,7 @@ export function render(force = false) {
     h('div.coll-head', chip('alle', 'Alle'), chip('frei', 'Ohne Areal'), chip('wohnt', 'In Arealen'), h('button.chip', { onclick: openAchievements }, '🏆 Erfolge')),
     list.length ? h('div.grid', list.map((p) => {
       const sp = species(p.dex);
-      const mark = ballCanvas(p.ball, 1); mark.className = 'ballmark';
+      const mark = ballCanvas(ballSprite(p.ball, null, p.dex), 1); mark.className = 'ballmark';
       return h('div.card.r-' + sp.rarity, { onclick: () => openSheet(p) },
         mark, h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p)), alt: '', loading: 'lazy' }),
         h('div.nm', h('span.n', nameOf(p)), h('span.gender.' + p.gender, genderSymbol(p))), h('div.sub', `Lv. ${p.level} · ${p.area ? areaById(p.area).name : 'Sammlung'}`));

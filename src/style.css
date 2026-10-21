@@ -498,3 +498,30 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .b-trained { display: grid; gap: 2px; font-size: 13px; background: rgba(255, 246, 200, .14); border: 1px solid rgba(255, 230, 150, .5); border-radius: 10px; padding: 6px 10px; color: #fff3c4; }
 .b-top .b-btn { padding: 4px 9px; font-size: 16px; }
 .b-top { gap: 6px; }
+
+/* Kampf: Modus-Auswahl */
+.mode-card { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 16px; background: var(--paper); border: 3px solid var(--line); border-radius: 14px; cursor: pointer; font: inherit; box-shadow: 0 3px 0 rgba(74, 59, 51, .35); }
+.mode-card b { font-size: 20px; }
+.mode-card small { color: var(--ink-soft); font-size: 14px; }
+.mode-back { align-self: flex-start; }
+/* Sternenverteidigung */
+.star-ico { width: 18px; height: 18px; image-rendering: pixelated; vertical-align: -3px; }
+.d-theme { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; background: #fff1d0; border: 2px solid #c79a2c; border-radius: 10px; padding: 6px 10px; }
+.d-theme small { color: var(--ink-soft); }
+.d-cost { display: flex; align-items: center; gap: 2px; font-weight: 600; font-size: 16px; white-space: nowrap; }
+.d-stars { display: flex; align-items: center; gap: 4px; font-weight: 600; font-size: 20px; background: #fff6c8; border: 2px solid #c79a2c; border-radius: 999px; padding: 2px 10px 2px 6px; min-width: 76px; }
+.d-stars .star-ico { width: 22px; height: 22px; }
+.d-wave { flex: 1; display: flex; flex-direction: column; gap: 2px; font-size: 12px; font-weight: 600; min-width: 0; }
+.d-wavebar { height: 7px; background: var(--paper2); border: 2px solid var(--line); border-radius: 999px; overflow: hidden; }
+.d-wavebar i { display: block; height: 100%; background: #ef5d5d; width: 0; transition: width .4s; }
+.d-cards { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; padding: 6px 8px calc(8px + var(--safe-b)); background: rgba(255, 251, 234, .92); border-top: var(--px) solid var(--line); }
+.d-card { position: relative; display: flex; flex-direction: column; align-items: center; padding: 4px 2px 3px; border: 3px solid var(--line); border-radius: 10px; overflow: hidden; cursor: pointer; font: inherit;
+  background: linear-gradient(180deg, var(--tc) 0 14px, var(--paper) 14px); box-shadow: 0 3px 0 rgba(74, 59, 51, .35); }
+.d-card img { width: 40px; height: 40px; image-rendering: pixelated; border-radius: 6px; border: 2px solid var(--line); background: var(--paper2); }
+.d-card-cost { display: flex; align-items: center; gap: 1px; font-size: 13px; font-weight: 600; }
+.d-card-cost .star-ico { width: 14px; height: 14px; }
+.d-card-role { position: absolute; top: 0; right: 3px; font-size: 11px; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.5); }
+.d-card-cool { position: absolute; left: 0; right: 0; top: 0; background: rgba(40, 30, 25, .55); pointer-events: none; }
+.d-card.sel { transform: translateY(-7px); box-shadow: 0 0 0 3px #fff, 0 6px 0 rgba(74, 59, 51, .35); }
+.d-card.poor img { filter: grayscale(.8); opacity: .7; }
+.d-card.poor .d-card-cost { color: #b3462f; }

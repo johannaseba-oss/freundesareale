@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sternenverteidigung-Balancetest</title>
+<pre id="out">läuft …</pre>
+<script type="module">
+// Balancetest (nur Entwicklung): ein Bot spielt die Sternenverteidigung mit zufälligen Sammlungen.
+// Aufruf im Dev-Server: http://localhost:5190/tools/defense_test.html?n=60   (&cfg={"enemy.hpMult":2} überschreibt Werte)
+import { loadConfig, CFG } from '/src/config.js';
+import { Defense, roleOf, costOf, rollTheme } from '/src/game/defense.js';
+import { canBattle, fromCpu, bdata, moveOf } from '/src/game/battle.js';
+import { effectiveness } from '/src/game/types.js';
+import { mulberry32 } from '/src/rng.js';
+await loadConfig();
+const qs = new URLSearchParams(location.search);
+for (const [k, v] of Object.entries(JSON.parse(qs.get('cfg') || '{}'))) { const p = k.split('.'); let o = CFG.defense; while (p.length > 1) o = o[p.shift()]; o[p[0]] = v; }
+const N = +(qs.get('n') || 60), G = CFG.defense.grid;
+const rnd = mulberry32(5);
+const byR = {};
+for (const p of CFG.dex) if (canBattle(p.dex)) (byR[p.rarity] ||= []).push(p.dex);
+const balls = CFG.balance.gacha.balls;
+const randomDex = () => { let r = rnd() * balls.reduce((s, b) => s + b.weight, 0); const b = balls.find((x) => (r -= x.weight) < 0) || balls[0]; const l = byR[b.rarity]; return l[Math.floor(rnd() * l.length)]; };
+// "Vernünftiger Spieler": aus einer Sammlung von size Pokémon 2 Sammler, 1 Mauer, 1 Mine und die besten Kämpfer gegen das Thema
+function pickTeam(coll, theme, withProducers = true) {
+  const score = (d) => { const mv = moveOf(bdata(d).move); return Math.max(...theme.map((t) => effectiveness(mv.type, [t]))) * mv.power / Math.sqrt(costOf(d)); };
+  const by = (r) => coll.filter((d) => roleOf(d) === r);
+  const team = [];
+  if (withProducers) team.push(...by('produzent').slice(0, 2));
+  team.push(...by('mauer').slice(0, 1), ...by('explosiv').slice(0, 1));
+  const fighters = coll.filter((d) => ['nahkampf', 'fernkampf'].includes(roleOf(d)) && !team.includes(d)).sort((a, b) => score(b) - score(a));
+  for (const d of fighters) if (team.length < 6 && !team.includes(d)) team.push(d);
+  return team.slice(0, 6);
+}
+function bot(g) {
+  for (const d of [...g.drops]) if (g.t - d.born > 0.6) g.collect(d);
+  const threat = Array.from({ length: G.cols }, (_, c) => g.enemies.filter((e) => e.hp > 0 && e.col === c).length);
+  const attackers = (c) => g.units.filter((u) => u.col === c && ['nahkampf', 'fernkampf'].includes(u.role) && u.hp > 0).length;
+  const ready = g.cards.filter((c) => g.cardReady(c));
+  const tryAt = (card, col, rows) => { for (const r of rows) if (g.place(card, col, r)) return true; return false; };
+  const prod = ready.find((c) => c.role === 'produzent');
+  if (prod && g.units.filter((u) => u.role === 'produzent').length < 6) { for (let c = 0; c < G.cols; c++) if (tryAt(prod, c, [8, 7])) return; }
+  const cols = [...Array(G.cols).keys()].sort((a, b) => (threat[b] - attackers(b) * 0.7) - (threat[a] - attackers(a) * 0.7));
+  const c = cols[0];
+  const mine = ready.find((x) => x.role === 'explosiv');
+  if (mine && threat[c] > 0) { const front = g.enemies.filter((e) => e.col === c && e.hp > 0).sort((a, b) => b.y - a.y)[0]; if (front && tryAt(mine, c, [Math.max(3, Math.min(8, Math.floor(front.y) + 2))])) return; }
+  const wall = ready.find((x) => x.role === 'mauer');
+  if (wall && threat[c] > 0 && attackers(c) > 0) { if (tryAt(wall, c, [3, 4])) return; }
+  const fighters = ready.filter((x) => ['nahkampf', 'fernkampf'].includes(x.role)).sort((a, b) => b.cost - a.cost);
+  for (const f of fighters) { if (tryAt(f, c, f.role === 'nahkampf' ? [5, 4, 6] : [6, 7, 5, 4, 8])) return; }
+  // keine akute Gefahr: leere Spalten vorsorglich besetzen, dann verstärken
+  const weakest = [...Array(G.cols).keys()].sort((x, y) => attackers(x) - attackers(y))[0];
+  for (const f of fighters) { if (attackers(weakest) < 3 && tryAt(f, weakest, f.role === 'nahkampf' ? [5, 4, 6] : [7, 6, 5, 4])) return; }
+}
+const out = [];
+for (const [label, prods] of [['mit Sternensammlern', true], ['ohne Sternensammler', false]]) {
+  let won = 0, waves = 0, time = 0, starsLeft = 0;
+  for (let k = 0; k < N; k++) {
+    const theme = rollTheme(rnd);
+    const coll = Array.from({ length: 25 }, randomDex);
+    const team = pickTeam(coll, theme, prods).map((d, i) => fromCpu(d, { id: 'bot' + k, ivs: [0, 31], evs: 0 }, i));
+    const g = new Defense({ team, theme, seed: 100 + k });
+    g.started = true;
+    let i = 0;
+    while (!g.over && g.t < 900) { if (i++ % 10 === 0) bot(g); g.update(0.05); }
+    if (g.over?.won) won++;
+    waves += g.wave + 1; time += g.t; starsLeft += g.stars;
+    if (k % 10 === 9) { document.getElementById('out').textContent = `${label} ${k + 1}/${N} …`; await new Promise((r) => setTimeout(r)); }
+  }
+  out.push(`${label.padEnd(22)} Siege ${Math.round((100 * won) / N)} % · Ø erreichte Welle ${(waves / N).toFixed(1)} · Ø Dauer ${(time / N / 60).toFixed(1)} min · Ø übrige Sterne ${Math.round(starsLeft / N)}`);
+}
+document.getElementById('out').textContent = out.join('\n');
+window.done = out;
+</script>

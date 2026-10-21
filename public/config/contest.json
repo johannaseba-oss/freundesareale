@@ -33,7 +33,7 @@
   "appealExponent": 2,
   "_appeal": "Für den späteren Wettbewerbsmodus: Wirkung einer Eigenschaft = (Punkte/maxPerStat)^appealExponent – ein hoher Einzelwert zählt mehr als viele mittlere.",
   "activities": {
-    "_hinweis": "Welche Aktivität welche Eigenschaft steigert: [min, max] Punkte. perDay = nur einmal pro Tag und Pokémon.",
+    "_hinweis": "Welche Aktivität welche Eigenschaft steigert: [min, max] Punkte. perDay = nur einmal pro Tag und Pokémon. Beeren und Kämpfe verändern die Wettbewerbswerte nicht.",
     "putzen": {
       "gains": {
         "beauty": [
@@ -50,36 +50,6 @@
         ]
       },
       "perDay": true
-    },
-    "fuettern_sinelbeere": {
-      "gains": {
-        "smart": [
-          1,
-          2
-        ]
-      },
-      "perDay": true
-    },
-    "fuettern_tsitrubeere": {
-      "gains": {
-        "tough": [
-          1,
-          2
-        ]
-      },
-      "perDay": true
-    },
-    "kampf": {
-      "gains": {
-        "cool": [
-          1,
-          2
-        ],
-        "tough": [
-          0,
-          2
-        ]
-      }
     }
   },
   "stamina": {
@@ -90,5 +60,222 @@
       0.6,
       0.8
     ]
+  },
+  "start": {
+    "_hinweis": "Startwerte je Art (werden nur erhöht, nie gesenkt). total = Punkte zum Start je Entwicklungsstufe (legendaer für Legendäre). Verteilung nach Typ-Neigung (typeAffinity) und Basiswerten, quadriert, damit sich jede Art auf 1–2 Eigenschaften spezialisiert. variation = individuelle Schwankung je Exemplar.",
+    "total": {
+      "1": 45,
+      "2": 80,
+      "3": 110,
+      "legendaer": 140
+    },
+    "variation": 0.15,
+    "typeAffinity": {
+      "Normal": {
+        "cute": 2,
+        "tough": 1
+      },
+      "Feuer": {
+        "cool": 3,
+        "beauty": 1
+      },
+      "Wasser": {
+        "beauty": 3,
+        "cute": 1
+      },
+      "Pflanze": {
+        "cute": 2,
+        "beauty": 1,
+        "smart": 1
+      },
+      "Elektro": {
+        "cool": 3,
+        "cute": 1
+      },
+      "Eis": {
+        "beauty": 3,
+        "cool": 1
+      },
+      "Kampf": {
+        "cool": 3,
+        "tough": 2
+      },
+      "Gift": {
+        "smart": 2,
+        "tough": 1
+      },
+      "Boden": {
+        "tough": 3
+      },
+      "Flug": {
+        "cool": 2,
+        "beauty": 1
+      },
+      "Psycho": {
+        "smart": 3,
+        "beauty": 1
+      },
+      "Käfer": {
+        "tough": 2,
+        "cute": 1
+      },
+      "Gestein": {
+        "tough": 3
+      },
+      "Geist": {
+        "smart": 3,
+        "cool": 1
+      },
+      "Drache": {
+        "cool": 3,
+        "beauty": 1
+      },
+      "Unlicht": {
+        "cool": 2,
+        "smart": 2
+      },
+      "Stahl": {
+        "tough": 2,
+        "cool": 1
+      },
+      "Fee": {
+        "cute": 3,
+        "beauty": 2
+      }
+    },
+    "species": {
+      "6": {
+        "cool": 90
+      },
+      "25": {
+        "cute": 50
+      },
+      "26": {
+        "cute": 45,
+        "cool": 40
+      },
+      "35": {
+        "cute": 45
+      },
+      "36": {
+        "cute": 75
+      },
+      "38": {
+        "beauty": 85
+      },
+      "39": {
+        "cute": 50
+      },
+      "40": {
+        "cute": 70
+      },
+      "65": {
+        "smart": 95
+      },
+      "66": {
+        "cool": 40
+      },
+      "67": {
+        "cool": 80
+      },
+      "68": {
+        "cool": 95
+      },
+      "76": {
+        "tough": 85
+      },
+      "94": {
+        "smart": 60,
+        "cool": 50
+      },
+      "95": {
+        "tough": 70
+      },
+      "113": {
+        "cute": 60
+      },
+      "124": {
+        "beauty": 60
+      },
+      "130": {
+        "cool": 85
+      },
+      "131": {
+        "beauty": 75
+      },
+      "133": {
+        "cute": 45
+      },
+      "134": {
+        "beauty": 80
+      },
+      "143": {
+        "tough": 90
+      },
+      "150": {
+        "smart": 100
+      },
+      "196": {
+        "smart": 70
+      },
+      "197": {
+        "cool": 75
+      },
+      "242": {
+        "cute": 90
+      },
+      "248": {
+        "tough": 90
+      },
+      "254": {
+        "cool": 85
+      },
+      "257": {
+        "cool": 90
+      },
+      "260": {
+        "tough": 75
+      },
+      "282": {
+        "beauty": 85,
+        "smart": 30
+      },
+      "306": {
+        "tough": 95
+      },
+      "334": {
+        "beauty": 75
+      },
+      "349": {
+        "beauty": 5
+      },
+      "350": {
+        "beauty": 95
+      },
+      "373": {
+        "cool": 95
+      },
+      "445": {
+        "cool": 95
+      },
+      "448": {
+        "cool": 95
+      },
+      "468": {
+        "cute": 85,
+        "beauty": 40
+      },
+      "470": {
+        "cute": 60,
+        "beauty": 40
+      },
+      "471": {
+        "beauty": 85
+      },
+      "700": {
+        "cute": 85
+      },
+      "_hinweis": "Feste Mindestwerte für besonders bekannte Fälle (Pokédex-Nummer)."
+    }
   }
 }

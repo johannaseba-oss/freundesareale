@@ -157,7 +157,7 @@ export function openSheet(p) {
   const berryBtns = CFG.balance.berries.map((b) => {
     const btn = h('button.btn.small', { title: b.name + ': ' + b.text, onclick: () => {
       const r = app.act((s2, t) => A.giveBerry(s2, p, b.id, t));
-      if (r.ok) { fx.bowl = performance.now() + 1800; play('Eat', 1800); portrait.src = portraitUrl(p.dex, 'Happy'); toast(`${nameOf(p)} hat eine ${b.name} gegessen.`); if (r.contest) gainPop(gainLines(r.contest)); }
+      if (r.ok) { fx.bowl = performance.now() + 1800; play('Eat', 1800); portrait.src = portraitUrl(p.dex, 'Happy'); toast(`${nameOf(p)} hat eine ${b.name} gegessen.`); }
     } });
     btn.dataset.id = b.id;
     return btn;

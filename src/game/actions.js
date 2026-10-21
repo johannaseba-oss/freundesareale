@@ -73,7 +73,7 @@ export function giveBerry(s, p, berryId, t) {
     if (existing) existing.until += b.hours * 3600e3; // gleiche Beere verlängert die Dauer
     else p.effects.push({ type: 'produktion', berry: b.id, factor: b.factor, until: t + b.hours * 3600e3 });
   }
-  return { ok: true, contest: trainContest(p, 'fuettern_' + b.id, t) };
+  return { ok: true };
 }
 
 // Alle Beeren einer Sorte verteilen: immer an das gerade hungrigste Pokémon in einem Areal,

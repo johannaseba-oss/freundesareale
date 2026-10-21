@@ -1,7 +1,7 @@
 import { CFG, areaById, species, isHairy } from '../config.js';
 import { hashString } from '../rng.js';
 import { rollIvs } from './battle.js';
-import { emptyContest, staminaOf } from './contest.js';
+import { emptyContest, staminaOf, contestStart } from './contest.js';
 
 export const SCHEMA = 1;
 
@@ -46,6 +46,7 @@ export function migrate(s) {
   s.berries ||= {};
   s.battle ||= { team: [], towers: [] };
   s.profile ||= { name: '', sprite: 1 };
+  s.defense ||= { team: [] };
   s.achievements ||= {};
   s.eggs ||= { pairs: {}, list: [] };
   s.dexOwned = [...new Set([...(s.dexOwned || []), ...s.pokemon.map((p) => p.dex)])];
@@ -83,6 +84,12 @@ export function ensureBattleData(p) {
   p.evs ||= [0, 0, 0, 0, 0, 0];
   p.moves ||= [];
   p.contest ||= emptyContest();
+  // Startwerte der Art einmalig übernehmen – vorhandene Werte werden nur erhöht, nie gesenkt
+  if (!p.contestInit) {
+    const st = contestStart(p.dex, Math.abs(Math.floor(p.uid % 233280)));
+    for (const [k, v] of Object.entries(st)) p.contest[k] = Math.max(p.contest[k] || 0, v);
+    p.contestInit = true;
+  }
   p.stamina ??= staminaOf(p.dex);
   return p;
 }
