@@ -31,6 +31,8 @@ function starCanvas() {
   rows.forEach((r, y) => [...r].forEach((ch, i) => { if (col[ch]) { x.fillStyle = col[ch]; x.fillRect(i, y, 1, 1); } }));
   return starCv;
 }
+const ROLE_SHORT = { produzent: 'Sammler', explosiv: 'Explosiv', mauer: 'Mauer', nahkampf: 'Nahkampf', fernkampf: 'Fernkampf' };
+const roleTag = (role) => h('span.role-tag.r-' + role, D().roles[role].icon + ' ' + ROLE_SHORT[role]);
 const starImg = () => { const i = h('img.star-ico', { src: starCanvas().toDataURL(), alt: '★' }); return i; };
 
 // ================= Vorbereitung =================
@@ -39,13 +41,14 @@ export function renderDefenseSetup(el, back) {
   theme ||= rollTheme();
   const mons = s.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => costOf(a.dex) - costOf(b.dex) || a.dex - b.dex);
   const N = Math.min(D().teamSize, mons.length);
-  const hint = (p) => h('small.mv', D().roles[roleOf(p.dex)].icon, ' ', starImg(), String(costOf(p.dex)));
+  // Rolle als farbiges Etikett, Kosten als schlichte Zahl in der Ecke (kein Stern – sonst sieht alles nach Sternensammler aus)
+  const hint = (p) => [roleTag(roleOf(p.dex)), h('span.d-price', String(costOf(p.dex)))];
   const picker = teamPicker({ mons, N, hint, onFull: (uids) => confirmTeam(uids, () => picker.clear()) });
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '★ PokeDefense'), picker.count),
     h('div.d-theme', h('b', 'Erwartete Gegner: '), h('span.type-chips.inline', theme.map((t) => typeChip(t)))),
-    h('p.note', `Tippe ${N} Pokémon an. ★ Sternensammler · ✸ Explosiv · ▣ Mauer · ✊ Nahkampf · ➶ Fernkampf`),
+    h('p.note', `Tippe ${N} Pokémon an. Die Zahl in der Ecke sind die Sternenkosten. Nur ★ Sammler erzeugen Sterne.`),
     picker.grid));
 }
 
@@ -59,7 +62,7 @@ function confirmTeam(uids, reset) {
         const p = app.state.pokemon.find((q) => q.uid === u);
         return h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(p.dex), alt: '' }),
           h('div', h('b', p.nick || species(p.dex).name), h('small', `${D().roles[roleOf(p.dex)].icon} ${abilityText(p.dex)}`)),
-          h('span.d-cost', starImg(), String(costOf(p.dex))));
+          h('span.d-price.inline', String(costOf(p.dex))));
       })),
       h('div.row', h('button.btn', { onclick: () => { close(); reset(); } }, 'Neu wählen'), h('button.btn.primary.big', { onclick: () => { close(); start(); } }, 'Los!')));
   });
@@ -167,10 +170,10 @@ function flyStar(from) {
 // ---------- Karten ----------
 function buildCards() {
   ui.cards.replaceChildren(...game.cards.map((c) => {
-    const el = h('button.d-card', { style: { '--tc': typeColor(species(c.dex).types[0]) } },
+    const el = h('button.d-card.r-' + c.role, { style: { '--tc': typeColor(species(c.dex).types[0]) } },
       h('img', { src: portraitUrl(c.dex), alt: '', draggable: false }),
-      h('span.d-card-cost', starImg(), String(c.cost)),
-      h('span.d-card-role', D().roles[c.role].icon),
+      h('span.d-card-cost', String(c.cost)),
+      h('span.d-card-role.r-' + c.role, D().roles[c.role].icon),
       h('i.d-card-cool'));
     el.addEventListener('click', () => {
       if (game.over) return;
