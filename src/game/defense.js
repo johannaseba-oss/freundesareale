@@ -162,7 +162,7 @@ export class Defense {
       const E = D().chaos.endless;
       this.waves.push({ count: Math.round((E.base + this.wave * E.perWave) * (D().chaos.countMult || 1)), spread: 28, final: false });
       if (this.wave > 0 && this.wave % E.familyRefresh === 0) this.families = pickFamilies(this.level, this.rnd);
-      level = E.baseLevel + this.wave * E.levelPerWave;
+      level = Math.round(E.baseLevel + this.wave * E.levelPerWave);
       p = Math.min(1, this.wave / 10);
     } else {
       level = this.level.enemyLevel + this.wave * D().enemy.levelPerWave;
@@ -176,7 +176,19 @@ export class Defense {
       for (let k = 0; k < 3; k++) { if ((r -= weights[k]) < 0) { stage = k + 1; break; } }
       const fam = this.families[Math.floor(this.rnd() * this.families.length)];
       const dex = fam[Math.min(stage, fam.length) - 1];
-      this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * W.spread + this.rnd() * 3), dex, level, col: Math.floor(this.rnd() * D().grid.cols) });
+      const fast = this.endless && this.rnd() < D().chaos.fast.chance;
+      this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * W.spread + this.rnd() * 3), dex, level, col: Math.floor(this.rnd() * D().grid.cols), fast });
+    }
+    if (this.endless) { // Chaos: ein Boss pro Welle, begleitet von Leibwächtern in den Nachbarspalten
+      const Bo = D().chaos.boss, at = this.t + W.spread * (0.35 + this.rnd() * 0.3), col = Math.floor(this.rnd() * D().grid.cols);
+      const strong = this.families.map((fm) => fm[fm.length - 1]);
+      this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true });
+      const n = Bo.guards[0] + Math.floor(this.rnd() * (Bo.guards[1] - Bo.guards[0] + 1));
+      for (let g = 0; g < n; g++) {
+        const gc = Math.max(0, Math.min(D().grid.cols - 1, col + (g % 2 ? 1 : -1) * Math.ceil((g + 1) / 2)));
+        const fam = this.families[Math.floor(this.rnd() * this.families.length)];
+        this.queue.push({ at: at + 0.3 + g * 0.25, dex: fam[Math.min(1, fam.length - 1)], level, col: gc === col ? (col + 1) % D().grid.cols : gc, guard: true });
+      }
     }
     this.queue.sort((a, b) => a.at - b.at);
     this.events.push({ type: 'wave', wave: this.wave, final: !!W.final, minRow: this.minRow() });
@@ -185,6 +197,14 @@ export class Defense {
     const st = calcStats(q.dex, q.level, rollIvs('g' + this.nextId, [0, 31]), [0, 0, 0, 0, 0, 0]);
     const v = D().enemy.speedVariation || [1, 1];
     const e = { id: this.nextId++, dex: q.dex, x: q.col + 0.5, y: -0.4, col: q.col, stats: st, level: q.level, maxHp: st[0] * D().enemy.hpMult, cd: 0, slowUntil: 0, pace: v[0] + this.rnd() * (v[1] - v[0]) };
+    if (q.fast) { e.pace *= D().chaos.fast.pace; e.fast = true; }
+    if (q.boss) { // sehr stark: viel mehr KP, bessere Verteidigung, etwas langsamer
+      const Bo = D().chaos.boss;
+      e.boss = true; e.maxHp *= Bo.hpMult; e.pace *= Bo.pace;
+      e.stats = e.stats.map((v, i) => (i === 2 || i === 4 ? Math.round(v * Bo.defMult) : v));
+      this.events.push({ type: 'boss', e });
+    }
+    if (q.guard) e.guard = true;
     e.hp = e.maxHp;
     this.enemies.push(e);
   }

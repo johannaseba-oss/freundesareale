@@ -523,14 +523,30 @@
     ],
     "startCards": 2,
     "handMax": 6,
-    "countMult": 1.3,
+    "countMult": 1.5,
     "endless": {
       "baseLevel": 8,
-      "levelPerWave": 2,
+      "levelPerWave": 2.5,
       "base": 5,
-      "perWave": 1.2,
+      "perWave": 1.45,
       "familyRefresh": 4,
       "_hinweis": "Chaos ist endlos: Gegner aller Typen, alle familyRefresh Wellen neue Familien, Gegneranzahl = (base + Welle × perWave) × countMult, Level = baseLevel + Welle × levelPerWave"
+    },
+    "boss": {
+      "_hinweis": "Pro Welle ein Boss: hpMult = KP-Faktor, defMult = Vert/SpVert-Faktor, guards = Anzahl Leibwächter [min, max], pace = Tempo-Faktor, scale = Darstellungsgröße",
+      "hpMult": 6,
+      "defMult": 1.5,
+      "guards": [
+        2,
+        3
+      ],
+      "pace": 0.8,
+      "scale": 1.45
+    },
+    "fast": {
+      "_hinweis": "Flinke Gegner: chance je Gegner, pace = Tempo-Faktor",
+      "chance": 0.18,
+      "pace": 1.75
     }
   },
   "levelGap": 5,

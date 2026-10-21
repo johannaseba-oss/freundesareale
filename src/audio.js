@@ -22,7 +22,7 @@ function player() {
   return music;
 }
 // Lautstärke der Musik setzen (über den Verstärker, sonst direkt am Element)
-function setVol(v) { if (musicGain) musicGain.gain.value = v; else if (music) music.volume = v; }
+function setVol(v) { if (musicGain) { musicGain.gain.cancelScheduledValues(ac.currentTime); musicGain.gain.value = v; } else if (music) music.volume = v; }
 const getVol = () => (musicGain ? musicGain.gain.value : music ? music.volume : 0);
 export const musicState = () => ({ routed: !!musicGain, level: getVol(), playing, paused: music?.paused ?? true }); // zum Prüfen
 // welche Datei zu einem Bereich gehört
@@ -38,20 +38,13 @@ function start(key, force = false) {
   clearInterval(fadeTimer);
   if (!file || audioSettings.music <= 0) { m.pause(); playing = null; return; }
   if (!force && playing === key && !m.paused) return;
-  const switchTo = () => {
-    m.src = `${base}audio/${file}.mp3`;
-    m.loop = key !== 'areas'; // Level- und Menü-Stücke laufen in Schleife, die Areale wechseln ab
-    setVol(audioSettings.music);
-    playing = key;
-    m.play().catch(() => {});
-  };
-  // kurz ausblenden, dann umschalten
-  if (!m.paused && m.src) {
-    fadeTimer = setInterval(() => {
-      setVol(Math.max(0, getVol() - audioSettings.music / 8));
-      if (getVol() <= 0.001) { clearInterval(fadeTimer); switchTo(); }
-    }, 50);
-  } else switchTo();
+  // sofort umschalten (noch innerhalb des Antippens – sonst blockiert Safari auf dem iPhone den Start) und weich einblenden
+  m.src = `${base}audio/${file}.mp3`;
+  m.loop = key !== 'areas'; // Level- und Menü-Stücke laufen in Schleife, die Areale wechseln ab
+  playing = key;
+  if (musicGain) { musicGain.gain.cancelScheduledValues(ac.currentTime); musicGain.gain.setValueAtTime(0.0001, ac.currentTime); musicGain.gain.setTargetAtTime(audioSettings.music, ac.currentTime, 0.25); }
+  else setVol(audioSettings.music);
+  m.play().catch(() => {});
 }
 // key = gewünschter Musik-Bereich (siehe oben)
 let lastKey = null;

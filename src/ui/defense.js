@@ -443,6 +443,16 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   const f = frameOf(e, name, name === 'Sleep' ? 0 : mine || confused ? 4 : 0, ms, once);
   let s = T / 28;
   if (e.anims.Idle.fh * s > T * 1.6) s = (T * 1.6) / e.anims.Idle.fh;
+  if (o.boss) { // goldene, pulsierende Aura unter dem Boss
+    s *= CFG.defense.chaos.boss.scale;
+    const pr = T * (0.55 + Math.sin(now / 160) * 0.05);
+    const gr = x.createRadialGradient(X, Y, 0, X, Y, pr); gr.addColorStop(0, 'rgba(255,200,60,.45)'); gr.addColorStop(1, 'rgba(255,200,60,0)');
+    x.fillStyle = gr; x.beginPath(); x.arc(X, Y, pr, 0, 7); x.fill();
+  }
+  if (o.fast && !o.eating) { // Tempo-Streifen hinter flinken Gegnern
+    x.fillStyle = 'rgba(255,255,255,.55)';
+    for (let i = 0; i < 3; i++) { const off = ((now / 80 + i * 7) % 10) / 10; x.fillRect(X - T * 0.25 + i * T * 0.22, Y - T * (0.65 + off * 0.3), 2, T * 0.25); }
+  }
   // Rückstoß nach Treffern (Gegner werden kurz nach oben gedrückt), Pop beim Einsetzen
   const since = o.hurtT != null ? game.t - o.hurtT : 9;
   const knock = !mine && since < 0.15 ? -(1 - since / 0.15) * T * 0.12 : 0;
@@ -471,10 +481,11 @@ function drawMon(x, o, mine, [X, Y], T, now) {
     for (let i = 0; i < 3; i++) { const a = now / 180 + (i * Math.PI * 2) / 3; x.fillStyle = i % 2 ? '#f95587' : '#ffe066'; x.fillRect(X + Math.cos(a) * T * 0.28 - 2, Y - T * 0.62 + Math.sin(a) * T * 0.08 - 2, 4, 4); }
   }
   if (o.role === 'explosiv' && game.t < o.armAt) { x.fillStyle = 'rgba(40,30,25,.6)'; x.fillRect(X - T * 0.3, Y + T * 0.3, T * 0.6 * (1 - (o.armAt - game.t) / (CFG.defense.roles.explosiv.armSeconds || 1)), 3); }
-  if (o.hp < o.maxHp) {
-    const bw = T * 0.7, bh = Math.max(3, T / 14), bx = X - bw / 2, by = Y - T * 0.55;
+  if (o.hp < o.maxHp || o.boss) {
+    const bw = T * (o.boss ? 1.2 : 0.7), bh = Math.max(3, T / (o.boss ? 9 : 14)), bx = X - bw / 2, by = Y - T * (o.boss ? 0.85 : 0.55);
     x.fillStyle = '#2f2622'; x.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-    x.fillStyle = mine ? '#4f9ff0' : '#ef5d5d'; x.fillRect(bx, by, bw * o.hp / o.maxHp, bh);
+    x.fillStyle = mine ? '#4f9ff0' : o.boss ? '#ffb02e' : '#ef5d5d'; x.fillRect(bx, by, bw * o.hp / o.maxHp, bh);
+    if (o.boss) { x.font = `600 ${Math.round(T * 0.22)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; x.lineWidth = 3; x.strokeStyle = 'rgba(40,25,20,.9)'; x.strokeText('BOSS', X, by - 3); x.fillStyle = '#ffd23f'; x.fillText('BOSS', X, by - 3); }
   }
 }
 
@@ -578,6 +589,7 @@ function handleEvents() {
     if (ev.type === 'collect' && ev.drop.dex) { const p = dropPos(ev.drop); say({ x: p.x, y: p.y }, species(ev.drop.dex).name + '!', '#ffffff', 0.28, 1); }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
     if (ev.type === 'heal') { ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
+    if (ev.type === 'boss') { banner('BOSS!', true); shake(T() * 0.08); haptic('strong'); sfx.wave(true); continue; }
     if (ev.type === 'sleep') { say(ev.e, 'schläft ein!', '#cfe0ff', 0.26, 1, -0.9); burst(ev.e, 'Fee', 8, 0.8); continue; }
     if (ev.type === 'confuse') { say(ev.e, 'verwirrt!', '#f95587', 0.28, 1, -0.9); burst(ev.e, 'Psycho', 10, 1.2); sfx.attack('Psycho'); continue; }
     if (ev.type === 'hit') {
