@@ -8,6 +8,7 @@ import { app } from '../app.js';
 import * as A from '../game/actions.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import { haptic } from '../haptics.js';
+import { loopFile } from '../audio.js';
 import { gainLines } from '../game/contest.js';
 import { nameOf } from '../game/state.js';
 import { h, toast, gainPop } from './dom.js';
@@ -73,6 +74,7 @@ export function openGrooming(p, onDone) {
   const soap = []; // Bläschen und Schaumreste, die abgespült werden müssen
   const particles = [];
   let soapMade = 0, tool = null, held = null, shine = -1, closed = false, raf, lastHit = 0;
+  let waterLoop = null, soapLoop = null, soapStopT = 0; // Wasser-/Seifen-Geräusch, solange das Werkzeug benutzt wird
 
   function weighted(list) {
     const tot = list.reduce((s, x) => s + x.weight, 0);
@@ -115,6 +117,7 @@ export function openGrooming(p, onDone) {
       const pt = toLocal(e);
       held = { x: pt.x, y: pt.y - 40, lx: pt.x, ly: pt.y - 40, id: e.pointerId };
       btn.classList.add('out');
+      if (tool === 'water') waterLoop = loopFile('wasser', 0.55);
       try { el.setPointerCapture(e.pointerId); } catch { /* ok */ }
       haptic('tick');
       updateUi();
@@ -132,6 +135,7 @@ export function openGrooming(p, onDone) {
   const drop = (e) => {
     if (!held || (e && e.pointerId !== held.id)) return;
     held = null; tool = null;
+    waterLoop?.stop(); waterLoop = null; soapLoop?.stop(); soapLoop = null;
     soapBtn.classList.remove('out'); waterBtn.classList.remove('out');
     updateUi();
   };
@@ -140,6 +144,10 @@ export function openGrooming(p, onDone) {
 
   // Seife: Bläschen hinter der Seife, Dreck darunter wird kleiner, Schaum bleibt zurück
   function scrub(dist) {
+    // Seifengeräusch läuft, solange geschrubbt wird, und klingt kurz danach aus
+    soapLoop ||= loopFile('seife', 0.7);
+    clearTimeout(soapStopT);
+    soapStopT = setTimeout(() => { soapLoop?.stop(); soapLoop = null; }, 260);
     held.trail = (held.trail || 0) + dist;
     while (held.trail > 24) { held.trail -= 24; addSoap(held.lx, held.ly, 'bubble'); }
     for (const d of dirts) {
@@ -186,6 +194,7 @@ export function openGrooming(p, onDone) {
     if (closed) return;
     closed = true;
     cancelAnimationFrame(raf);
+    waterLoop?.stop(); soapLoop?.stop(); clearTimeout(soapStopT);
     const frac = success ? 1 : progress();
     if (frac > 0) {
       const r = app.act((s, t) => A.groomed(s, p, t, frac), true);

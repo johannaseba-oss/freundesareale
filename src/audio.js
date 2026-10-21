@@ -124,7 +124,35 @@ function allow(max = 10) {
 }
 function ready() { if (!unlocked || audioSettings.sfx <= 0 || !ctx()) return false; master.gain.value = audioSettings.sfx; return true; }
 
+// Aufgenommene Geräusche (public/audio/sfx/<name>.wav): einmal abspielen oder in Schleife (z. B. beim Putzen)
+const buffers = new Map();
+function loadBuf(name) {
+  if (!buffers.has(name)) buffers.set(name, fetch(`${base}audio/sfx/${name}.wav`).then((r) => r.arrayBuffer()).then((b) => new Promise((res, rej) => ac.decodeAudioData(b, res, rej))).catch(() => null));
+  return buffers.get(name);
+}
+export function playFile(name, vol = 1) {
+  if (!ready()) return;
+  loadBuf(name).then((buf) => {
+    if (!buf) return;
+    const s = ac.createBufferSource(), g = ac.createGain();
+    s.buffer = buf; g.gain.value = vol; s.connect(g); g.connect(master); s.start();
+  });
+}
+export function loopFile(name, vol = 1) {
+  let src = null, g = null, stopped = false;
+  if (!ready()) return { stop() {} };
+  loadBuf(name).then((buf) => {
+    if (!buf || stopped) return;
+    src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+    g = ac.createGain(); g.gain.value = 0.0001; g.gain.setTargetAtTime(vol, ac.currentTime, 0.04);
+    src.connect(g); g.connect(master); src.start();
+  });
+  return { stop() { stopped = true; if (g) { g.gain.setTargetAtTime(0.0001, ac.currentTime, 0.06); src.stop(ac.currentTime + 0.3); } } };
+}
+let lastCoin = 0;
+
 export const sfx = {
+  coin() { const t = performance.now(); if (t - lastCoin < 70) return; lastCoin = t; playFile('muenze', 0.6); }, // Münze landet im Zähler
   attack(type) { if (ready() && allow()) (TYPE_SFX[type] || TYPE_SFX.Normal)(); },
   crit() { if (!ready()) return; noise('lowpass', 2000, 200, 0.25, 0.5); tone('square', 880, 1760, 0.12, 0.12, 0.02); },
   ko() { if (ready() && allow(14)) { tone('square', 660, 1320, 0.08, 0.1); tone('square', 990, 1980, 0.1, 0.08, 0.06); } },

@@ -1,6 +1,7 @@
 // Fliegende Münzen/Beeren vom Pokémon zur Anzeige oben. Der angezeigte Münzstand zählt beim Ankommen hoch.
 import { COIN_SHEET } from '../gfx/icons.js';
 import { $ } from './dom.js';
+import { sfx } from '../audio.js';
 
 export const pending = { coins: 0, berries: 0 };
 let onLand = () => {};
@@ -31,6 +32,7 @@ export function fly(kind, from, amount, targetSel, imgSrc) {
       const k = kind === 'coin' ? 'coins' : 'berries';
       pending[k] = Math.max(0, pending[k] - share);
       onLand(kind);
+      if (kind === 'coin') sfx.coin();
       const t = $(targetSel);
       t.classList.remove('bump'); void t.offsetWidth; t.classList.add('bump');
     };
