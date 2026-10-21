@@ -344,6 +344,25 @@ function draw(dt) {
   });
 }
 
+// Sichtbare Höhe der Figur in der Ruhe-Animation (ohne leeren Bildrand), einmal pro Sprite gemessen
+const bodyCache = new WeakMap();
+function bodyHeight(e) {
+  const a = e.anims.Idle;
+  if (bodyCache.has(a)) return bodyCache.get(a);
+  let top = a.fh, bottom = -1;
+  try {
+    const c = document.createElement('canvas');
+    c.width = a.img.width; c.height = a.fh;
+    const x = c.getContext('2d');
+    x.drawImage(a.img, 0, 0, a.img.width, a.fh, 0, 0, a.img.width, a.fh); // Blickrichtung unten, alle Frames
+    const d = x.getImageData(0, 0, c.width, c.height).data;
+    for (let y = 0; y < a.fh; y++) for (let i = 0; i < c.width; i++) if (d[(y * c.width + i) * 4 + 3] > 20) { top = Math.min(top, y); bottom = Math.max(bottom, y); break; }
+  } catch { /* ohne Messung: ganze Bildhöhe */ }
+  const hgt = bottom >= top ? bottom - top + 1 : a.fh;
+  bodyCache.set(a, hgt);
+  return hgt;
+}
+
 function drawUnit(x, u, [X, Y], T, now) {
   const tower = u.tower;
   const down = u.hp <= 0;
@@ -357,6 +376,7 @@ function drawUnit(x, u, [X, Y], T, now) {
     x.strokeStyle = SIDE_COL[u.side]; x.lineWidth = 2; x.beginPath(); x.ellipse(X, Y + T * 0.22, T * 0.34, T * 0.14, 0, 0, 7); x.stroke();
   }
   const e = loadSprites(u.dex, u.gender);
+  let topY = Infinity;
   if (e.ready) {
     const bt = battle.t;
     let name = u.moving ? 'Walk' : 'Idle', ms = now, once = false;
@@ -364,10 +384,11 @@ function drawUnit(x, u, [X, Y], T, now) {
     else if (u.anim && (bt - u.anim.t0) * 1000 < (e.anims[u.anim.name]?.total || 0) * (1000 / 60)) { name = u.anim.name; ms = (bt - u.anim.t0) * 1000; once = true; }
     else if (u.hurtT != null && bt - u.hurtT < 0.25) { name = 'Hurt'; ms = (bt - u.hurtT) * 1000; once = true; }
     const f = frameOf(e, name, u.dir ?? 0, ms, once);
-    const SP = B().sprite, idle = e.anims.Idle;
+    const SP = B().sprite, body = bodyHeight(e);
     let s = T / SP.pixelsPerTile;
-    if (idle.fh * s > T * SP.maxHeight) s = (T * SP.maxHeight) / idle.fh; // sehr große Pokémon begrenzen
+    if (body * s > T * SP.maxHeight) s = (T * SP.maxHeight) / body; // sehr große Pokémon begrenzen (nach sichtbarer Figur, nicht Bildrand)
     if (tower) s *= B().tower.scale;
+    topY = Y - T * 0.12 - (body * s) / 2; // Oberkante der sichtbaren Figur (ungefähr)
     if (down) x.globalAlpha = Math.max(0, 1 - (battle.t - u.faintT) / 0.7);
     if (u.spawnT != null && battle.t - u.spawnT < 0.3) x.globalAlpha = (battle.t - u.spawnT) / 0.3;
     x.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(X - (f.fw * s) / 2), Math.round(Y - T * 0.12 - (f.fh * s) / 2), Math.round(f.fw * s), Math.round(f.fh * s));
@@ -376,7 +397,7 @@ function drawUnit(x, u, [X, Y], T, now) {
   if (down) return;
   // KP-Balken in Teamfarbe + Level
   const bw = T * (tower ? 1.3 : 0.8), bh = Math.max(4, Math.round(T * (tower ? 0.14 : 0.1)));
-  const by = Y - T * (tower ? 1.05 : 0.72), bx = X - bw / 2;
+  const by = Math.min(Y - T * (tower ? 1.05 : 0.72), topY - bh - 2), bx = X - bw / 2;
   x.fillStyle = '#2f2622'; x.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
   x.fillStyle = '#5a4d45'; x.fillRect(bx, by, bw, bh);
   x.fillStyle = SIDE_COL[u.side]; x.fillRect(bx, by, Math.max(0, bw * u.hp / u.maxHp), bh);

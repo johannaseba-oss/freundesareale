@@ -67,7 +67,7 @@
   },
   "names": ["Lukas", "Anna", "Jonas", "Lea", "Felix", "Marie", "Paul", "Sophie", "Leon", "Emma", "Finn", "Mia", "Elias", "Hannah", "Noah", "Lina", "Ben", "Clara", "Luis", "Ida", "Moritz", "Greta", "Jakob", "Frieda", "Theo", "Mila", "Henri", "Lotta", "Emil", "Johanna", "Anton", "Marlene"],
   "_names": "Computergegner bekommen bei jedem Kampf einen zufälligen Namen aus dieser Liste.",
-  "sprite": { "_hinweis": "Größe der Pokémon auf dem Spielfeld: pixelsPerTile = so viele Sprite-Pixel ergeben eine Feldbreite (größer = kleinere Pokémon), maxHeight = höchstens so viele Felder hoch", "pixelsPerTile": 30, "maxHeight": 1.7 },
+  "sprite": { "_hinweis": "Größe der Pokémon auf dem Spielfeld: pixelsPerTile = so viele Sprite-Pixel ergeben eine Feldbreite (größer = kleinere Pokémon), maxHeight = sichtbare Figur höchstens so viele Felder hoch", "pixelsPerTile": 30, "maxHeight": 2 },
   "opponents": [
     {
       "id": "timo", "level": "Leicht", "trainer": 1,
