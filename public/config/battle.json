@@ -40,12 +40,15 @@
     "damageRandom": [0.85, 1],
     "stab": 1.5,
     "useAccuracy": true,
-    "referenceBaseStat": 80
+    "referenceBaseStat": 80,
+    "defenseExponent": 1.5,
+    "_defenseExponent": "Wie stark Angriff/Verteidigung zählen: Schaden ∝ (Ang/Vert)^defenseExponent. 1 = offizielle Formel (auf Level 5 zählt Verteidigung dort kaum, weil der feste Grundschaden +2 überwiegt). Größer = Verteidigung wichtiger."
   },
   "tower": {
-    "_hinweis": "Verteidiger: hpMultiplier = mehr KP als normale Pokémon, extraRange = zusätzliche Reichweite, scale = Darstellungsgröße",
+    "_hinweis": "Verteidiger: hpMultiplier = mehr KP als normale Pokémon, extraRange = zusätzliche Reichweite, damageMultiplier = Schaden der Verteidiger-Attacken (1 = normal), scale = Darstellungsgröße",
     "hpMultiplier": 8,
-    "extraRange": 1.5,
+    "extraRange": 0.5,
+    "damageMultiplier": 0.7,
     "scale": 1.3
   },
   "towerRoles": {
@@ -53,7 +56,7 @@
     "heiler": { "name": "Heiler", "icon": "✚", "text": "heilt verbündete Pokémon in der Nähe", "types": ["Fee", "Pflanze"], "radius": 3, "every": 4, "healPct": 0.12 },
     "anfeuerer": { "name": "Anfeuerer", "icon": "▲", "text": "stärkt den Angriff verbündeter Pokémon in der Nähe", "types": ["Kampf", "Drache", "Feuer", "Elektro"], "radius": 3, "attackMult": 1.3 },
     "beschuetzer": { "name": "Beschützer", "icon": "◆", "text": "stärkt die Verteidigung verbündeter Pokémon in der Nähe", "types": ["Stahl", "Gestein", "Boden"], "radius": 3, "defenseMult": 1.3 },
-    "fernkampf": { "name": "Fernkämpfer", "icon": "➶", "text": "greift aus größerer Entfernung an", "types": [], "extraRange": 1.5 }
+    "fernkampf": { "name": "Fernkämpfer", "icon": "➶", "text": "greift aus größerer Entfernung an", "types": [], "extraRange": 0.75 }
   },
   "towerRoleOverrides": { "35": "heiler", "36": "heiler", "113": "heiler", "242": "heiler", "440": "heiler", "131": "heiler", "279": "heiler" },
   "xp": {

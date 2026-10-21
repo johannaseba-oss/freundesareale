@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Kampf-Balancetest</title>
+<pre id="out">läuft …</pre>
+<script type="module">
+// Balancetest (nur Entwicklung): simuliert Kämpfe Spieler gegen jeden Computergegner ohne Oberfläche.
+// Aufruf im Dev-Server: http://localhost:5190/tools/battle_test.html
+import { loadConfig, CFG } from '/src/config.js';
+import { Battle, fromCpu } from '/src/game/battle.js';
+await loadConfig();
+const out = [];
+const OLD = { extraRange: 1.5, fern: 1.5, dmg: 1, exp: 1 }, NEW = { extraRange: CFG.battle.tower.extraRange, fern: CFG.battle.towerRoles.fernkampf.extraRange, dmg: CFG.battle.tower.damageMultiplier, exp: CFG.battle.combat.defenseExponent };
+for (const [label, v] of [['ALT', OLD], ['NEU', NEW]]) {
+CFG.battle.tower.extraRange = v.extraRange; CFG.battle.towerRoles.fernkampf.extraRange = v.fern; CFG.battle.tower.damageMultiplier = v.dmg; CFG.battle.combat.defenseExponent = v.exp;
+out.push('--- ' + label);
+for (const o of CFG.battle.opponents) {
+  let wins = 0, towersP = 0, towersC = 0, time = 0, firstC = 0;
+  const N = 8;
+  for (let k = 0; k < N; k++) {
+    // Spiegelkampf: Spieler hat dasselbe Team wie der Gegner
+    const ref = o, me = { ...o, id: 'me' + k };
+    const b = new Battle({
+      player: { towers: ref.towers.map((d, i) => fromCpu(d, me, i)), team: ref.team.map((d, i) => fromCpu(d, me, i + 3)) },
+      cpu: { towers: o.towers.map((d, i) => fromCpu(d, o, i)), team: o.team.map((d, i) => fromCpu(d, o, i + 3)) },
+      opponent: o, seed: 1000 + k,
+    });
+    let first = null;
+    for (let i = 0; i < 20 * 600 && !b.over; i++) {
+      if (i % 20 === 0) { const f = b.available('p')[0]; if (f) b.place('p', f, [1, 4, 7][(i / 20) % 3], 14); }
+      b.update(0.05);
+      if (first == null && b.sides.c.towers.some((t) => t.hp <= 0)) first = b.t;
+    }
+    if (b.over?.winner === 'p') wins++;
+    towersC += b.sides.c.towers.filter((t) => t.hp <= 0).length;
+    towersP += b.sides.p.towers.filter((t) => t.hp <= 0).length;
+    time += b.t; firstC += first ?? b.t;
+  }
+  out.push(`${o.level.padEnd(12)} Siege ${wins}/${N} · gegn. Verteidiger besiegt Ø ${(towersC / N).toFixed(1)} · eigene verloren Ø ${(towersP / N).toFixed(1)} · erster Turm fällt nach Ø ${(firstC / N / 60).toFixed(1)} min · Dauer Ø ${(time / N / 60).toFixed(1)} min`);
+}
+}
+document.getElementById('out').textContent = out.join('\n');
+window.done = out;
+</script>

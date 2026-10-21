@@ -63,7 +63,10 @@ function recalc(f, full = false) {
 export function damageOf(att, def, mv, rnd, atkMult = 1, defMult = 1) {
   const phys = mv.cat === 'phys';
   const A = att.stats[phys ? 1 : 3] * atkMult, D = def.stats[phys ? 2 : 4] * defMult;
-  const base = Math.floor(Math.floor(Math.floor((2 * att.level) / 5 + 2) * mv.power * A / D) / 50) + 2;
+  // Offizielle Formel, aber das ganze Ergebnis (inkl. Grundschaden +2) skaliert mit (Ang/Vert)^defenseExponent,
+  // damit Verteidigung schon auf niedrigen Leveln spürbar zählt
+  const ratio = Math.pow(A / D, C().defenseExponent ?? 1);
+  const base = (Math.floor((2 * att.level) / 5 + 2) * mv.power / 50 + 2) * ratio * (att.tower ? B().tower.damageMultiplier ?? 1 : 1);
   const stab = species(att.dex).types.includes(mv.type) ? C().stab : 1;
   const eff = effectiveness(mv.type, species(def.dex).types);
   const [r0, r1] = C().damageRandom;
