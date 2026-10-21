@@ -296,7 +296,7 @@ function draw(dt) {
   for (const u of list) drawUnit(x, u, P(u), T, now);
   // Geschosse
   for (const p of battle.projectiles) {
-    const X = A.ox + p.x * T, Y = A.oy + p.y * T, s = Math.max(3, Math.round(T / 9));
+    const X = A.ox + p.x * T, Y = A.oy + p.y * T - T * 0.2, s = Math.max(3, Math.round(T / 9));
     const col = typeColor(p.type);
     const d = Math.hypot(p.to.x - p.x, p.to.y - p.y) || 1, ux = (p.x - p.to.x) / d, uy = (p.y - p.to.y) / d;
     for (let k = 3; k >= 1; k--) { x.globalAlpha = 0.25 * (4 - k) / 3; x.fillStyle = col; x.fillRect(X + ux * k * s * 1.3 - s / 2, Y + uy * k * s * 1.3 - s / 2, s * 0.8, s * 0.8); }

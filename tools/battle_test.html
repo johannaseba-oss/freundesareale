@@ -3,41 +3,88 @@
 <title>Kampf-Balancetest</title>
 <pre id="out">läuft …</pre>
 <script type="module">
-// Balancetest (nur Entwicklung): simuliert Kämpfe Spieler gegen jeden Computergegner ohne Oberfläche.
-// Aufruf im Dev-Server: http://localhost:5190/tools/battle_test.html
+// Balancetest (nur Entwicklung): simuliert Kämpfe ohne Oberfläche, beide Seiten von der KI gespielt.
+// Aufruf im Dev-Server: http://localhost:5190/tools/battle_test.html   (?n=100 = Anzahl Kämpfe)
+// 1) Fairness: zwei Zufallsteams (Seltenheit wie am Automaten), gleiche KI auf beiden Seiten.
+// 2) Schwierigkeit: Zufallsteam mit mittlerer KI gegen jeden Computergegner.
 import { loadConfig, CFG } from '/src/config.js';
-import { Battle, fromCpu } from '/src/game/battle.js';
+import { Battle, fromCpu, calcStats, canBattle } from '/src/game/battle.js';
+import { mulberry32 } from '/src/rng.js';
 await loadConfig();
+// ?cfg={"tower.hpMultiplier":5} überschreibt Werte aus battle.json nur für diesen Test
+const over = JSON.parse(new URLSearchParams(location.search).get('cfg') || '{}');
+for (const [k, v] of Object.entries(over)) { const p = k.split('.'); let o = CFG.battle; while (p.length > 1) o = o[p.shift()]; o[p[0]] = v; }
+const SKIP2 = new URLSearchParams(location.search).has('nodiff');
+const N = +(new URLSearchParams(location.search).get('n') || 100);
+const B = CFG.battle, MAX_T = 10 * 60;
+const rnd = mulberry32(42);
+const byRarity = {};
+for (const p of CFG.dex) if (canBattle(p.dex)) (byRarity[p.rarity] ||= []).push(p.dex);
+const balls = CFG.balance.gacha.balls;
+function randomDex() {
+  let r = rnd() * balls.reduce((s, b) => s + b.weight, 0);
+  const ball = balls.find((b) => (r -= b.weight) < 0) || balls[0];
+  const list = byRarity[ball.rarity];
+  return list[Math.floor(rnd() * list.length)];
+}
+// Zufallsteam wie ein Spieler: 10 Pokémon, die drei mit den besten Abwehrwerten werden Verteidiger (wie die Empfehlung)
+function randomTeam(id) {
+  const prof = { id, ivs: [0, 31], evs: 0 };
+  const srcs = Array.from({ length: B.teamSize }, (_, i) => fromCpu(randomDex(), prof, i));
+  const def = (s) => { const st = calcStats(s.dex, B.startLevel, s.ivs, s.evs); return st[0] + st[2] + st[4]; };
+  const sorted = [...srcs].sort((a, b) => def(b) - def(a));
+  const towers = sorted.slice(0, B.towerCount);
+  return { towers, team: srcs.filter((s) => !towers.includes(s)), bst: srcs.reduce((s, x) => s + CFG.battleData.pokemon[x.dex].base.reduce((a, b) => a + b, 0), 0) };
+}
+const stale = { n: 0, lv: 0, hp: 0, k: 0, field: 0, down: 0 };
+const MID = { id: 'mid', think: 2.3, aggression: 0.45 };
+function run(player, cpu, opponent, seed) {
+  const b = new Battle({ player, cpu, opponent, seed, playerAi: MID });
+  while (!b.over && b.t < MAX_T) b.update(0.05);
+  if (!b.over) { stale.n++; for (const t of [...b.sides.p.towers, ...b.sides.c.towers]) { stale.lv += t.level; stale.hp += t.hp / t.maxHp; stale.k++; } stale.field += b.activeCount('p') + b.activeCount('c'); stale.down += b.sides.p.towers.filter((t) => t.hp <= 0).length + b.sides.c.towers.filter((t) => t.hp <= 0).length; }
+  return { winner: b.over?.winner || null, t: b.t, downP: b.sides.p.towers.filter((t) => t.hp <= 0).length, downC: b.sides.c.towers.filter((t) => t.hp <= 0).length };
+}
 const out = [];
-const OLD = { extraRange: 1.5, fern: 1.5, dmg: 1, exp: 1 }, NEW = { extraRange: CFG.battle.tower.extraRange, fern: CFG.battle.towerRoles.fernkampf.extraRange, dmg: CFG.battle.tower.damageMultiplier, exp: CFG.battle.combat.defenseExponent };
-for (const [label, v] of [['ALT', OLD], ['NEU', NEW]]) {
-CFG.battle.tower.extraRange = v.extraRange; CFG.battle.towerRoles.fernkampf.extraRange = v.fern; CFG.battle.tower.damageMultiplier = v.dmg; CFG.battle.combat.defenseExponent = v.exp;
-out.push('--- ' + label);
-for (const o of CFG.battle.opponents) {
-  let wins = 0, towersP = 0, towersC = 0, time = 0, firstC = 0;
-  const N = 8;
-  for (let k = 0; k < N; k++) {
-    // Spiegelkampf: Spieler hat dasselbe Team wie der Gegner
-    const ref = o, me = { ...o, id: 'me' + k };
-    const b = new Battle({
-      player: { towers: ref.towers.map((d, i) => fromCpu(d, me, i)), team: ref.team.map((d, i) => fromCpu(d, me, i + 3)) },
-      cpu: { towers: o.towers.map((d, i) => fromCpu(d, o, i)), team: o.team.map((d, i) => fromCpu(d, o, i + 3)) },
-      opponent: o, seed: 1000 + k,
-    });
-    let first = null;
-    for (let i = 0; i < 20 * 600 && !b.over; i++) {
-      if (i % 20 === 0) { const f = b.available('p')[0]; if (f) b.place('p', f, [1, 4, 7][(i / 20) % 3], 14); }
-      b.update(0.05);
-      if (first == null && b.sides.c.towers.some((t) => t.hp <= 0)) first = b.t;
-    }
-    if (b.over?.winner === 'p') wins++;
-    towersC += b.sides.c.towers.filter((t) => t.hp <= 0).length;
-    towersP += b.sides.p.towers.filter((t) => t.hp <= 0).length;
-    time += b.t; firstC += first ?? b.t;
+const show = () => { document.getElementById('out').textContent = out.join('\n'); };
+const tick = () => new Promise((r) => setTimeout(r));
+
+// 1) Fairness
+if (!new URLSearchParams(location.search).has('nofair')) {
+let wp = 0, wc = 0, draw = 0, time = 0, strongerWins = 0, decided = 0, loserTowers = 0;
+const durs = [];
+for (let k = 0; k < N; k++) {
+  const A = randomTeam('a' + k), Bt = randomTeam('b' + k);
+  const r = run(A, Bt, { ...MID, id: 'b' + k }, 7000 + k);
+  if (r.winner === 'p') wp++; else if (r.winner === 'c') wc++; else draw++;
+  if (r.winner) { decided++; if ((r.winner === 'p') === (A.bst >= Bt.bst)) strongerWins++; loserTowers += r.winner === 'p' ? r.downP : r.downC; durs.push(r.t); }
+  time += r.t;
+  if (k % 10 === 9) { out[0] = `Fairness ${k + 1}/${N} …`; show(); await tick(); }
+}
+durs.sort((a, b) => a - b);
+out[0] = `=== Fairness: ${N} Kämpfe, Zufallsteams, gleiche KI ===`;
+out.push(`Siege unten ${wp} · oben ${wc} · unentschieden (>10 min) ${draw}`,
+  `Dauer Ø ${(time / N / 60).toFixed(1)} min · Median ${(durs[durs.length >> 1] / 60 || 0).toFixed(1)} min`,
+  `Stärkeres Team (Basiswert-Summe) gewinnt ${Math.round((100 * strongerWins) / Math.max(1, decided))} %`,
+  `Verlierer schafft Ø ${(loserTowers / Math.max(1, decided)).toFixed(1)} gegnerische Verteidiger`,
+  stale.n ? `Unentschieden: Verteidiger Ø Lv ${(stale.lv / stale.k).toFixed(1)}, Ø KP ${Math.round((100 * stale.hp) / stale.k)} %, Ø ${(stale.field / stale.n).toFixed(1)} Pokémon auf dem Feld, Ø ${(stale.down / stale.n).toFixed(1)} Verteidiger gefallen` : '');
+if (SKIP2) { window.done = out; show(); throw 0; }
+}
+show(); await tick();
+
+// 2) Schwierigkeit der Computergegner (Zufallsteam mit mittlerer KI)
+out.push('', '=== Schwierigkeit (Zufallsteam vs. Gegner) ===');
+const M = Math.max(10, Math.round(N / 4));
+for (const o of B.opponents) {
+  let w = 0, d = 0, t = 0, towers = 0;
+  for (let k = 0; k < M; k++) {
+    const me = randomTeam('m' + o.id + k);
+    const cpu = { towers: o.towers.map((x, i) => fromCpu(x, o, i)), team: o.team.map((x, i) => fromCpu(x, o, i + 3)) };
+    const r = run(me, cpu, o, 9000 + k);
+    if (r.winner === 'p') w++; else if (!r.winner) d++;
+    t += r.t; towers += r.downC;
   }
-  out.push(`${o.level.padEnd(12)} Siege ${wins}/${N} · gegn. Verteidiger besiegt Ø ${(towersC / N).toFixed(1)} · eigene verloren Ø ${(towersP / N).toFixed(1)} · erster Turm fällt nach Ø ${(firstC / N / 60).toFixed(1)} min · Dauer Ø ${(time / N / 60).toFixed(1)} min`);
+  out.push(`${o.level.padEnd(12)} Siegquote ${Math.round((100 * w) / M)} % · unentschieden ${d} · gegn. Verteidiger besiegt Ø ${(towers / M).toFixed(1)} · Dauer Ø ${(t / M / 60).toFixed(1)} min`);
+  show(); await tick();
 }
-}
-document.getElementById('out').textContent = out.join('\n');
 window.done = out;
 </script>

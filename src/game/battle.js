@@ -113,7 +113,8 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
 export class Battle {
   // player/cpu: { towers: [src×3], team: [src…] }, opponent: Eintrag aus battle.json
-  constructor({ player, cpu, opponent, seed = Date.now() }) {
+  // playerAi = Profil wie bei Gegnern: dann spielt auch die Spielerseite automatisch (Balancetests)
+  constructor({ player, cpu, opponent, seed = Date.now(), playerAi = null }) {
     this.rnd = mulberry32(seed >>> 0);
     this.opponent = opponent;
     this.t = 0;
@@ -134,7 +135,7 @@ export class Battle {
         return f;
       });
       const bench = def.team.map((src) => { const f = makeFighter(src, side); f.state = 'bench'; f.readyAt = 0; return f; });
-      this.sides[side] = { towers, bench, ai: side === 'c' ? { t: 1.5 } : null };
+      this.sides[side] = { towers, bench, ai: side === 'c' ? { t: 1.5, o: opponent } : playerAi ? { t: 1.5, o: playerAi } : null };
       this.units.push(...towers);
     }
   }
@@ -234,7 +235,9 @@ export class Battle {
         this.events.push({ type: 'heal', f: u, amt, from: t });
       }
     }
+    // Reihenfolge jede Runde mischen, damit keine Seite durch die Rechenreihenfolge im Vorteil ist
     const fighters = this.units.filter((u) => u.state === 'field' && u.hp > 0);
+    for (let i = fighters.length - 1; i > 0; i--) { const j = Math.floor(this.rnd() * (i + 1)); [fighters[i], fighters[j]] = [fighters[j], fighters[i]]; }
     for (const f of fighters) this.think(f, dt, fighters);
     // Gleichseitige Pokémon nicht übereinander stapeln
     for (const a of fighters) {
@@ -264,7 +267,7 @@ export class Battle {
       u.state = 'bench'; u.hp = u.maxHp; u.anim = null; u.readyAt = u.faintT + B().koCooldown;
       return false;
     });
-    if (this.sides.c.ai) this.cpu(dt);
+    for (const side of this.rnd() < 0.5 ? ['p', 'c'] : ['c', 'p']) if (this.sides[side].ai) this.cpu(side, dt);
     for (const side of ['p', 'c']) if (!this.aliveTowers(side).length && !this.over) this.over = { winner: this.enemyOf(side), t: this.t };
   }
 
@@ -309,7 +312,7 @@ export class Battle {
     f.anim = { name: phys ? 'Attack' : 'Shoot', t0: this.t };
     f.lastMove = choice.k;
     if (phys) this.pending.push({ at: this.t + 0.25, from: f, to: target, move: choice.k });
-    else this.projectiles.push({ x: f.x, y: f.y - 0.2, from: f, to: target, move: choice.k, type: choice.m.type });
+    else this.projectiles.push({ x: f.x, y: f.y, from: f, to: target, move: choice.k, type: choice.m.type });
     this.events.push({ type: 'attack', f, target, move: choice.k });
   }
 
@@ -333,7 +336,7 @@ export class Battle {
     if (killer.hp <= 0) return;
     killer.kos++;
     addEvs(killer, bdata(f.dex).ev);
-    this.gainExp(killer, expYield(killer, f));
+    this.gainExp(killer, Math.floor(expYield(killer, f) * (killer.tower ? B().tower.expMultiplier ?? 1 : 1)));
   }
 
   gainExp(f, amount) {
@@ -369,17 +372,18 @@ export class Battle {
   }
 
   // ---- Computergegner ----
-  cpu(dt) {
-    const S = this.sides.c, ai = S.ai, o = this.opponent;
+  cpu(side, dt) {
+    const S = this.sides[side], ai = S.ai, o = ai.o, foeSide = this.enemyOf(side);
     ai.t -= dt;
     if (ai.t > 0) return;
     ai.t = o.think * (0.7 + this.rnd() * 0.6);
-    const ready = this.available('c');
+    const ready = this.available(side);
     if (!ready.length) return;
     const G = B().grid, R = G.riverRow;
-    const mine = this.aliveTowers('c');
+    const mine = this.aliveTowers(side);
     // Bedrohung: Spieler-Pokémon auf der eigenen Hälfte oder kurz davor
-    const threats = this.units.filter((u) => u.side === 'p' && !u.tower && u.hp > 0 && u.state === 'field' && u.y < R + 2.5)
+    const onMyHalf = (u) => (side === 'c' ? u.y < R + 2.5 : u.y > R - 1.5);
+    const threats = this.units.filter((u) => u.side === foeSide && !u.tower && u.hp > 0 && u.state === 'field' && onMyHalf(u))
       .sort((a, b) => Math.min(...mine.map((t) => dist(a, t))) - Math.min(...mine.map((t) => dist(b, t))));
     const score = (f, foe) => {
       const m = moveOf(movesOf(f)[0]), fm = moveOf(movesOf(foe)[0]);
@@ -393,18 +397,18 @@ export class Battle {
       const tower = mine.sort((a, b) => dist(a, foe) - dist(b, foe))[0] || foe;
       // Verteidigen: in der hinteren Reihe hinter dem bedrohten Verteidiger einsetzen
       const f = pickFor(foe);
-      const cell = this.nearestFree('c', (foe.x + tower.x) / 2, 0);
-      if (cell) this.place('c', f, cell[0], cell[1]);
+      const cell = this.nearestFree(side, (foe.x + tower.x) / 2, 0);
+      if (cell) this.place(side, f, cell[0], cell[1]);
       return;
     }
     if (this.rnd() > o.aggression) return; // abwarten
     // Angriff: auf den schwächsten Verteidiger des Spielers
-    const targets = this.aliveTowers('p').sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
+    const targets = this.aliveTowers(foeSide).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
     if (!targets.length) return;
     const tgt = targets[0];
     const f = pickFor(tgt);
-    const cell = this.nearestFree('c', G.lanes[tgt.lane] + 0.5 + (this.rnd() - 0.5) * 2, 0);
-    if (cell) this.place('c', f, cell[0], cell[1]);
+    const cell = this.nearestFree(side, G.lanes[tgt.lane] + 0.5 + (this.rnd() - 0.5) * 2, 0);
+    if (cell) this.place(side, f, cell[0], cell[1]);
   }
   nearestFree(side, x, y) {
     const G = B().grid;

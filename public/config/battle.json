@@ -1,6 +1,6 @@
 {
   "_hinweis": "Kampfmodus. Alle Werte frei anpassbar. Kampfdaten der Arten (Basiswerte, EP, Entwicklungen, Attacken) stehen in public/data/battle.json (Bau: node tools/build_battle.mjs, Attacken-Ausnahmen in attacks.json).",
-  "teamSize": 15,
+  "teamSize": 10,
   "towerCount": 3,
   "startLevel": 5,
   "maxLevel": 100,
@@ -45,10 +45,11 @@
     "_defenseExponent": "Wie stark Angriff/Verteidigung zählen: Schaden ∝ (Ang/Vert)^defenseExponent. 1 = offizielle Formel (auf Level 5 zählt Verteidigung dort kaum, weil der feste Grundschaden +2 überwiegt). Größer = Verteidigung wichtiger."
   },
   "tower": {
-    "_hinweis": "Verteidiger: hpMultiplier = mehr KP als normale Pokémon, extraRange = zusätzliche Reichweite, damageMultiplier = Schaden der Verteidiger-Attacken (1 = normal), scale = Darstellungsgröße",
-    "hpMultiplier": 8,
+    "_hinweis": "Verteidiger: hpMultiplier = mehr KP als normale Pokémon, extraRange = zusätzliche Reichweite, damageMultiplier = Schaden der Verteidiger-Attacken (1 = normal), expMultiplier = Anteil EP, den Verteidiger für K.O.s bekommen (sonst werden sie durch Level unbesiegbar), scale = Darstellungsgröße",
+    "hpMultiplier": 6,
     "extraRange": 0.5,
-    "damageMultiplier": 0.7,
+    "damageMultiplier": 0.6,
+    "expMultiplier": 0.25,
     "scale": 1.3
   },
   "towerRoles": {
@@ -61,7 +62,7 @@
   "towerRoleOverrides": { "35": "heiler", "36": "heiler", "113": "heiler", "242": "heiler", "440": "heiler", "131": "heiler", "279": "heiler" },
   "xp": {
     "_hinweis": "Offizielle EP-Formel (5. Gen.): EP = (Basis-EP · L_besiegt / 5) · ((2·L_besiegt + 10) / (L_besiegt + L_sieger + 10))^2,5 + 1. multiplier beschleunigt das für kurze Kämpfe.",
-    "multiplier": 3,
+    "multiplier": 2,
     "towerMultiplier": 1.5
   },
   "stones": {
@@ -74,28 +75,28 @@
   "opponents": [
     {
       "id": "timo", "level": "Leicht", "trainer": 1,
-      "towers": [74, 95, 111], "team": [16, 19, 10, 13, 21, 29, 32, 41, 43, 52, 60, 69],
+      "towers": [74, 95, 111], "team": [16, 19, 10, 13, 21, 29, 32],
       "ivs": [0, 15], "evs": 0, "think": 3.2, "aggression": 0.25
     },
     {
       "id": "flora", "level": "Mittel", "trainer": 2,
-      "towers": [182, 113, 45], "team": [1, 43, 69, 152, 187, 191, 270, 273, 285, 315, 331, 173],
-      "ivs": [8, 24], "evs": 0, "think": 2.6, "aggression": 0.35
+      "towers": [182, 113, 45], "team": [1, 43, 69, 152, 187, 191, 270],
+      "ivs": [18, 31], "evs": 20, "think": 1.6, "aggression": 0.5
     },
     {
       "id": "flamme", "level": "Mittel", "trainer": 3,
-      "towers": [324, 59, 126], "team": [4, 37, 58, 77, 155, 218, 228, 240, 255, 322, 66, 296],
-      "ivs": [10, 26], "evs": 20, "think": 2.3, "aggression": 0.45
+      "towers": [324, 59, 126], "team": [4, 37, 58, 77, 155, 218, 228],
+      "ivs": [18, 31], "evs": 20, "think": 1.7, "aggression": 0.45
     },
     {
       "id": "nils", "level": "Schwer", "trainer": 4,
-      "towers": [131, 9, 130], "team": [7, 54, 60, 72, 86, 90, 98, 116, 118, 120, 158, 183],
+      "towers": [131, 9, 130], "team": [7, 54, 60, 72, 86, 90, 98],
       "ivs": [15, 31], "evs": 40, "think": 1.8, "aggression": 0.5
     },
     {
       "id": "silvan", "level": "Sehr schwer", "trainer": 5,
-      "towers": [248, 376, 242], "team": [6, 149, 94, 65, 68, 445, 212, 130, 59, 135, 134, 230],
-      "ivs": [31, 31], "evs": 80, "think": 1.2, "aggression": 0.6
+      "towers": [248, 375, 242], "team": [5, 148, 93, 64, 67, 444, 123],
+      "ivs": [24, 31], "evs": 40, "think": 1.4, "aggression": 0.6
     }
   ]
 }
