@@ -3,7 +3,7 @@
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import * as A from '../game/actions.js';
-import { capacityOf, residents, genderSymbol } from '../game/state.js';
+import { capacityOf, residents, genderSymbol, nameOf } from '../game/state.js';
 import { areaBonuses, areaMood } from '../game/bonuses.js';
 import { fmtDuration, now } from '../time.js';
 import { habitatFit } from '../game/habitat.js';
@@ -59,6 +59,7 @@ export function initAreas() {
   $('#area-prev').onclick = () => switchArea(-1);
   $('#area-next').onclick = () => switchArea(1);
   $('#shop-btn').onclick = openShop;
+  document.querySelector('.area-title').onclick = openAreaList;
   if (import.meta.env.DEV) app.scene = scene;
   app.views.add(() => render());
   let last = performance.now();
@@ -166,6 +167,24 @@ function dropOn(p, x, y) {
   return r.ok;
 }
 
+// Übersicht aller eigenen Areale (klein, mit Bewohnern und Stimmung) – antippen springt direkt hin
+function openAreaList() {
+  const s = app.state;
+  haptic('tick');
+  modal((el, close) => {
+    el.append(h('h3', 'Deine Areale'), h('div.area-list', owned().map((i) => {
+      const a = CFG.areas[i], res = residents(s, a.id), am = areaMood(res);
+      return h('button.area-pick' + (i === idx ? '.on' : ''), { onclick: () => { close(); if (i !== idx) { idx = i; render(true); haptic('tick'); } } },
+        h('div.area-pick-img', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/areale/${a.image})` } },
+          h('div.area-pick-mons', res.slice(0, 6).map((p) => h('img', { src: portraitUrl(p.dex), alt: '' })))),
+        h('b', a.name),
+        h('small', `${res.length}/${capacityOf(s, a.id)}${am ? ` · ♥ ${Math.round(am.value)} %` : ''}`));
+    })),
+    owned().length < CFG.areas.length ? h('button.btn', { onclick: () => { close(); openShop(); } }, '🛒 Weitere Areale freischalten') : null,
+    h('div.row', h('button.btn', { onclick: close }, 'Schließen')));
+  });
+}
+
 export function showArea(areaId) {
   const i = CFG.areas.findIndex((a) => a.id === areaId);
   if (i >= 0) idx = i;
@@ -187,7 +206,7 @@ function render(force = false) {
     lastKey = key;
     $('#area-name').textContent = area.name;
     // Arealstimmung: Durchschnitt der Bewohner, gute Stimmung = Münzbonus
-    $('#area-cap').replaceChildren(st.unlocked ? `${res.length} / ${cap} Pokémon` : '🔒', ...(am ? [' · ', h('span.area-mood' + (am.bonus > 0 ? '.good' : ''), { title: 'Arealstimmung' }, `♥ ${Math.round(am.value)} %${am.bonus > 0 ? ` · Münzen +${Math.round(am.bonus * 100)} %` : ''}`)] : []));
+    $('#area-cap').replaceChildren(st.unlocked ? `${res.length}/${cap}` : '🔒', ...(am ? [' · ', h('span.area-mood' + (am.bonus > 0 ? '.good' : ''), { title: 'Arealstimmung' }, `♥ ${Math.round(am.value)} %${am.bonus > 0 ? ` · +${Math.round(am.bonus * 100)} % Münzen` : ''}`)] : []));
     $('#area-types').replaceChildren(...areaTypeChips(area));
     $('#area-dots').replaceChildren(...(ownedList.length > 1 ? ownedList.map((i) => h('i' + (i === idx ? '.on' : ''))) : []));
     for (const id of ['#area-prev', '#area-next']) $(id).classList.toggle('hidden', ownedList.length < 2);
@@ -267,21 +286,25 @@ const fitMark = (dex, areaId) => { const f = habitatFit(dex, areaId).fit; return
 function pickResident(area) {
   const s = app.state;
   const free = s.pokemon.filter((p) => !p.area);
+  const others = s.pokemon.filter((p) => p.area && p.area !== area.id);
   closeSheet();
   modal((el, close) => {
     menu = null;
     el.append(h('h3', `Wer zieht in ${area.name} ein?`));
-    if (!free.length) {
-      el.append(h('p', 'In deiner Sammlung wartet gerade kein Pokémon. Neue Pokémon gibt es am Automaten.'), h('button.btn', { onclick: close }, 'OK'));
+    if (!free.length && !others.length) {
+      el.append(h('p', 'Du hast noch keine weiteren Pokémon. Neue Pokémon gibt es am Automaten.'), h('button.btn', { onclick: close }, 'OK'));
       return;
     }
-    el.append(h('div.grid', free.map((p) => {
+    const card = (p) => {
       const sp = species(p.dex);
       return h('div.card.r-' + sp.rarity, { onclick: () => {
         const r = app.act((s2) => A.assign(s2, p, area.id), true);
-        if (r.ok) { close(); toast(`${sp.name} zieht ein!`); }
-      } }, h('img.portrait', { src: portraitUrl(p.dex), alt: '' }), h('div.nm', sp.name, h('span.gender.' + p.gender, genderSymbol(p))), h('div.sub', `Lv. ${p.level}`), fitMark(p.dex, area.id));
-    })));
+        if (r.ok) { close(); toast(`${nameOf(p)} zieht in ${area.name} ein!`); }
+      } }, h('img.portrait', { src: portraitUrl(p.dex), alt: '' }), h('div.nm', h('span.n', nameOf(p)), h('span.gender.' + p.gender, genderSymbol(p))),
+      h('div.sub', p.area ? `aus ${CFG.areas.find((a) => a.id === p.area)?.name}` : `Lv. ${p.level} · Beutel`), fitMark(p.dex, area.id));
+    };
+    if (free.length) el.append(h('b', 'Im Beutel'), h('div.grid', free.map(card)));
+    if (others.length) el.append(h('b', 'Aus anderen Arealen'), h('div.grid', others.sort((a, b) => a.area.localeCompare(b.area)).map(card)));
     el.append(h('button.btn', { onclick: close }, 'Schließen'));
   });
 }
