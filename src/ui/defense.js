@@ -89,7 +89,7 @@ function openField() {
   const root = h('div.battle.defense', top, h('div.b-field', canvas, go), cards, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
-  ui = { root, canvas, ctx: canvas.getContext('2d'), cards, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], rings: [], slashes: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
+  ui = { root, canvas, ctx: canvas.getContext('2d'), cards, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], rings: [], slashes: [], beams: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
   for (const c of game.cards) loadSprites(c.dex, c.src.gender);
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`; ui.trainer = tr;
   ui.ro = new ResizeObserver(() => layout()); ui.ro.observe(canvas.parentElement);
@@ -255,6 +255,7 @@ function draw(dt) {
   for (const { o, mine } of all) drawMon(x, o, mine, P(o), T, now);
   // Geschosse: leuchtender Kern mit Schweif in Typfarbe
   for (const p of game.projectiles) {
+    if (p.boomerang) { drawBone(x, P(p), T, p.spin || 0); continue; }
     const [X, Y] = P(p), col = typeColor(p.type), s = Math.max(4, Math.round(T / 6.5));
     (p.trail ||= []).push([X, Y]); if (p.trail.length > 7) p.trail.shift();
     p.trail.forEach(([tx, ty], i) => { const k = (i + 1) / p.trail.length; x.globalAlpha = k * 0.5; x.fillStyle = col; const q = s * (0.4 + k * 0.6); x.fillRect(tx - q / 2, ty - q / 2, q, q); });
@@ -263,6 +264,12 @@ function draw(dt) {
     x.fillStyle = col; x.fillRect(X - s / 2, Y - s / 2, s, s);
     x.fillStyle = '#fff'; x.fillRect(X - s / 4, Y - s / 4, s / 3, s / 3);
   }
+  // Strahlen (Rankenhieb, Feuerstrahl, Wasserstrahl): Pixel-Säule über length Felder
+  U.beams = U.beams.filter((b) => {
+    b.t += dt; if (b.t > 0.32) return false;
+    drawBeam(x, b, P(b.u), T, now);
+    return true;
+  });
   // Explosionen: Feuerball + Schockwelle
   U.booms = U.booms.filter((b) => {
     b.t += dt; if (b.t > 0.7) return false;
@@ -339,7 +346,8 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   let name = mine ? 'Idle' : (o.eating ? 'Idle' : 'Walk'), ms = now, once = false;
   if (o.anim && (game.t - o.anim.t0) * 1000 < (e.anims[o.anim.name]?.total || 0) * (1000 / 60)) { name = o.anim.name; ms = (game.t - o.anim.t0) * 1000; once = true; }
   else if (o.hurtT != null && game.t - o.hurtT < 0.2) { name = 'Hurt'; ms = (game.t - o.hurtT) * 1000; once = true; }
-  const f = frameOf(e, name, mine ? 4 : 0, ms, once);
+  const confused = !mine && game.t < (o.confusedUntil || 0);
+  const f = frameOf(e, name, mine || confused ? 4 : 0, ms, once);
   let s = T / 28;
   if (e.anims.Idle.fh * s > T * 1.6) s = (T * 1.6) / e.anims.Idle.fh;
   // Rückstoß nach Treffern (Gegner werden kurz nach oben gedrückt), Pop beim Einsetzen
@@ -359,12 +367,53 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   }
   x.globalAlpha = 1;
   if (dead) return;
+  if (confused) { // kreisende Sternchen über dem Kopf
+    for (let i = 0; i < 3; i++) { const a = now / 180 + (i * Math.PI * 2) / 3; x.fillStyle = i % 2 ? '#f95587' : '#ffe066'; x.fillRect(X + Math.cos(a) * T * 0.28 - 2, Y - T * 0.62 + Math.sin(a) * T * 0.08 - 2, 4, 4); }
+  }
   if (o.role === 'explosiv' && game.t < o.armAt) { x.fillStyle = 'rgba(40,30,25,.6)'; x.fillRect(X - T * 0.3, Y + T * 0.3, T * 0.6 * (1 - (o.armAt - game.t) / (CFG.defense.roles.explosiv.armSeconds || 1)), 3); }
   if (o.hp < o.maxHp) {
     const bw = T * 0.7, bh = Math.max(3, T / 14), bx = X - bw / 2, by = Y - T * 0.55;
     x.fillStyle = '#2f2622'; x.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
     x.fillStyle = mine ? '#4f9ff0' : '#ef5d5d'; x.fillRect(bx, by, bw * o.hp / o.maxHp, bh);
   }
+}
+
+// Strahl in Pixeln: Ranke (grün, peitscht), Feuer (flackernd), Wasser (Strom mit Glanz)
+function drawBeam(x, b, [X, Y], T, now) {
+  const k = b.t / 0.32, len = b.length * T, grow = Math.min(1, b.t / 0.08), fade = 1 - Math.max(0, (b.t - 0.2) / 0.12);
+  const top = Y - T * 0.35 - len * grow, px = Math.max(3, Math.round(T / 9));
+  x.globalAlpha = fade;
+  if (b.fx === 'ranke') {
+    for (let y = Y - T * 0.35; y > top; y -= px) {
+      const wob = Math.sin((y / px) * 0.9 + now / 40) * px * 1.4;
+      x.fillStyle = '#2f6b25'; x.fillRect(X - px + wob, y, px * 2, px);
+      x.fillStyle = '#7ac74c'; x.fillRect(X - px / 2 + wob, y, px, px);
+      if (Math.round(y / px) % 4 === 0) { x.fillStyle = '#bde58f'; x.fillRect(X + wob + px, y, px * 1.5, px); x.fillRect(X + wob - px * 2.5, y + px, px * 1.5, px); }
+    }
+  } else {
+    const pal = b.fx === 'feuer' ? ['#ff6a3a', '#ffb84a', '#fff3a0'] : ['#3d7be0', '#6fb7ff', '#e8f6ff'];
+    const w = T * 0.42 * (0.85 + Math.sin(now / 30) * 0.15);
+    for (let y = Y - T * 0.35; y > top; y -= px) {
+      const jit = b.fx === 'feuer' ? (Math.random() - 0.5) * px * 2 : Math.sin(y / 9 + now / 50) * px;
+      x.fillStyle = pal[0]; x.fillRect(X - w / 2 + jit, y, w, px);
+      x.fillStyle = pal[1]; x.fillRect(X - w / 3 + jit, y, (w * 2) / 3, px);
+      x.fillStyle = pal[2]; x.fillRect(X - w / 8 + jit, y, w / 4, px);
+    }
+    // Funken/Tropfen am Ende des Strahls
+    x.fillStyle = pal[2];
+    for (let i = 0; i < 5; i++) x.fillRect(X + (Math.random() - 0.5) * T * 0.7, top + (Math.random() - 0.5) * T * 0.3, px, px);
+  }
+  x.globalAlpha = 1;
+  if (k < 0.1) return;
+}
+// rotierender Knochen
+function drawBone(x, [X, Y], T, spin) {
+  const L = T * 0.42, w = Math.max(3, T / 10);
+  x.save(); x.translate(X, Y); x.rotate(spin);
+  x.fillStyle = '#4a3b33'; x.fillRect(-L / 2 - 1, -w / 2 - 1, L + 2, w + 2);
+  x.fillStyle = '#f4ecd8'; x.fillRect(-L / 2, -w / 2, L, w);
+  for (const sx of [-1, 1]) { x.fillStyle = '#4a3b33'; x.fillRect(sx * L / 2 - w - 1, -w - 1, w * 2 + 2, w * 2 + 2); x.fillStyle = '#f4ecd8'; x.fillRect(sx * L / 2 - w, -w, w * 2, w * 2); }
+  x.restore();
 }
 
 // ---------- Effekte ----------
@@ -400,6 +449,9 @@ function handleEvents() {
     if (ev.type === 'shoot') { if (!ev.melee) sfx.attack(ev.moveType); continue; }
     if (ev.type === 'level') { say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
     if (ev.type === 'evolve') { evolveFx(ev); continue; }
+    if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
+    if (ev.type === 'heal') { ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
+    if (ev.type === 'confuse') { say(ev.e, 'verwirrt!', '#f95587', 0.28, 1, -0.9); burst(ev.e, 'Psycho', 10, 1.2); sfx.attack('Psycho'); continue; }
     if (ev.type === 'hit') {
       const o = ev.target, type = ev.move?.type || 'Normal';
       if (!ev.mine && ev.melee) sfx.attack(type);

@@ -10,9 +10,14 @@ import { pickWeather, nextWeatherIn, weatherBoost } from './weather.js';
 const D = () => CFG.defense;
 const bst = (dex) => bdata(dex).base.reduce((a, b) => a + b, 0);
 
-// Rolle einer Art (siehe defense.json roles)
+// Sonderfähigkeit einer Art (defense.json abilities)
+export const abilityOf = (dex) => D().abilities?.[dex] || null;
+
+// Rolle einer Art (siehe defense.json roles); Panzer = Mauer, Explosion bei Angriff = Explosiv
 export function roleOf(dex) {
-  const R = D().roles;
+  const R = D().roles, ab = abilityOf(dex);
+  if (ab?.type === 'shield') return 'mauer';
+  if (ab?.type === 'reactive') return 'explosiv';
   for (const r of ['produzent', 'explosiv', 'mauer']) if (R[r].dex.includes(dex)) return r;
   return moveOf(bdata(dex).move)?.range === 'nah' ? 'nahkampf' : 'fernkampf';
 }
@@ -40,11 +45,12 @@ export const roleInfo = (dex) => D().roles[roleOf(dex)];
 
 // Kurzbeschreibung der Fähigkeit (für Karten und Teamwahl)
 export function abilityText(dex) {
-  const role = roleOf(dex), mv = moveOf(bdata(dex).move), R = D().roles;
+  const role = roleOf(dex), mv = moveOf(bdata(dex).move), R = D().roles, ab = abilityOf(dex);
+  if (ab) return `${ab.name}: ${ab.text}`;
   if (role === 'produzent') return `erzeugt alle ${R.produzent.every[0]}–${R.produzent.every[1]} s ${evolved(dex) ? R.produzent.valueEvolved : R.produzent.value} Sterne`;
   if (role === 'explosiv') return evolved(dex) ? 'explodiert sofort und trifft alles in der Nähe' : `Mine: explodiert, sobald ein Gegner sie erreicht (${R.explosiv.armSeconds} s scharf machen)`;
   if (role === 'mauer') return 'sehr robust – hält Gegner auf';
-  const slow = mv.type === 'Eis' ? ', verlangsamt' : '';
+  const slow = mv.type === 'Eis' ? ', verlangsamt' : mv.type === 'Elektro' ? ', bremst etwas' : '';
   return role === 'nahkampf' ? `${mv.name}: starker Hieb aufs Feld davor${slow}` : `${mv.name}: schießt die Spalte hinauf${slow}`;
 }
 
@@ -94,11 +100,13 @@ export class Defense {
     card.readyAt = this.t + card.recharge;
     const src = card.src, L = D().level, R = D().roles;
     const stats = calcStats(src.dex, L, src.ivs, src.evs);
-    const hpMult = D().defenderHpMult * (card.role === 'mauer' ? R.mauer.hpMult : 1);
+    const ab = abilityOf(src.dex);
+    const hpMult = D().defenderHpMult * (ab?.type === 'shield' ? ab.hpMult : card.role === 'mauer' ? R.mauer.hpMult : 1);
     const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: L, exp: expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t };
     u.hp = u.maxHp;
     if (card.role === 'produzent') u.nextStar = this.t + this.between(R.produzent.every) * 0.5;
-    if (card.role === 'explosiv') u.armAt = this.t + (evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
+    if (card.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
+    if (ab?.type === 'heal') u.nextHeal = this.t + ab.every * 0.5;
     this.units.push(u);
     this.events.push({ type: 'place', u });
     return true;
@@ -153,7 +161,10 @@ export class Defense {
   hurtEnemy(e, dmg, eff, from, mv, crit = false) {
     if (e.hp <= 0) return;
     e.hp -= dmg; e.hurtT = this.t;
-    if (mv?.type === 'Eis') e.slowUntil = this.t + D().iceSlow.seconds;
+    if (mv?.type === 'Eis') { e.slowUntil = this.t + D().iceSlow.seconds; e.slowFactor = D().iceSlow.factor; }
+    else if (mv?.type === 'Elektro' && !(this.t < e.slowUntil && e.slowFactor < D().elecSlow.factor)) { e.slowUntil = this.t + D().elecSlow.seconds; e.slowFactor = D().elecSlow.factor; }
+    const ab = from?.dex ? abilityOf(from.dex) : null;
+    if (ab?.type === 'confuse' && e.hp > 0 && this.rnd() < ab.chance) { e.confusedUntil = this.t + ab.seconds; this.events.push({ type: 'confuse', e }); }
     this.events.push({ type: 'hit', target: e, dmg, eff, move: mv, crit, melee: from?.role === 'nahkampf' });
     if (e.hp <= 0) { this.events.push({ type: 'defeat', e }); if (from?.role && from.hp > 0) this.reward(from, e); }
   }
@@ -169,6 +180,14 @@ export class Defense {
     this.events.push({ type: 'level', u, level: u.level });
     const evo = levelEvolution(u);
     if (evo) { const from = u.dex; u.dex = evo.to; this.restat(u); this.events.push({ type: 'evolve', u, from, to: evo.to }); }
+  }
+  explode(u, rad, damage) {
+    for (const e of this.enemies) if (e.hp > 0 && dist(e, u) <= rad + 0.3) {
+      const eff = effectiveness(moveOf(bdata(u.dex).move).type, species(e.dex).types) || 1;
+      this.hurtEnemy(e, Math.round(damage * Math.max(0.5, eff)), eff, u, null);
+    }
+    u.hp = 0;
+    this.events.push({ type: 'explode', u, radius: rad });
   }
   restat(u) {
     const old = u.maxHp;
@@ -203,24 +222,27 @@ export class Defense {
         if (this.t >= u.nextStar) { u.nextStar = this.t + this.between(R.produzent.every); this.dropStar(u.x, u.y - 0.3, u.y, evolved(u.dex) ? R.produzent.valueEvolved : R.produzent.value); u.anim = { name: 'Hop', t0: this.t }; }
         continue;
       }
+      const ab = abilityOf(u.dex);
+      // Heilende Aura: heilt eigene Pokémon in der Nähe (zusätzlich zum normalen Angriff)
+      if (ab?.type === 'heal' && this.t >= u.nextHeal) {
+        u.nextHeal = this.t + ab.every;
+        const healed = [];
+        for (const o of this.units) if (o.hp > 0 && o.hp < o.maxHp && dist(o, u) <= ab.radius) { const amt = Math.max(1, Math.round(o.maxHp * ab.pct)); o.hp = Math.min(o.maxHp, o.hp + amt); healed.push({ o, amt }); }
+        this.events.push({ type: 'heal', u, radius: ab.radius, healed });
+      }
       if (u.role === 'mauer') continue;
       if (u.role === 'explosiv') {
+        if (ab?.type === 'reactive') continue; // explodiert erst, wenn es angegriffen wird
         if (this.t < u.armAt) continue;
         const big = evolved(u.dex);
         const trigger = big || this.enemies.some((e) => e.hp > 0 && e.col === u.col && Math.abs(e.y - u.y) < 0.6);
         if (!trigger) continue;
-        const rad = big ? R.explosiv.radiusBig : R.explosiv.radiusSmall;
-        for (const e of this.enemies) if (e.hp > 0 && dist(e, u) <= rad + 0.3) {
-          const eff = effectiveness(moveOf(bdata(u.dex).move).type, species(e.dex).types) || 1;
-          this.hurtEnemy(e, Math.round(R.explosiv.damage * Math.max(0.5, eff)), eff, u, null);
-        }
-        u.hp = 0;
-        this.events.push({ type: 'explode', u, radius: rad });
+        this.explode(u, big ? R.explosiv.radiusBig : R.explosiv.radiusSmall, R.explosiv.damage);
         continue;
       }
       u.cd -= dt;
       if (u.cd > 0) continue;
-      const melee = u.role === 'nahkampf', range = R[u.role].range;
+      const melee = u.role === 'nahkampf', range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : R[u.role].range;
       // nächster Gegner in der eigenen Spalte oberhalb (Nahkampf: direkt davor)
       let target = null;
       for (const e of this.enemies) {
@@ -233,11 +255,17 @@ export class Defense {
       u.cd = R[u.role].cooldown / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3)));
       u.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
       this.events.push({ type: 'shoot', u, moveType: moveOf(bdata(u.dex).move).type, melee });
-      if (melee) { const r = this.damage(u, u.level, target, R.nahkampf.damageMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); }
+      if (ab?.type === 'beam') { // Strahl: trifft alle Gegner in length Feldern
+        this.events.push({ type: 'beam', u, length: ab.length, fx: ab.fx });
+        for (const e of this.enemies) if (e.hp > 0 && e.col === u.col && u.y - e.y > -0.2 && u.y - e.y <= ab.length + 0.3) { const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); }
+      } else if (ab?.type === 'boomerang') {
+        this.projectiles.push({ x: u.x, y: u.y - 0.3, col: u.col, from: u, type: moveOf(bdata(u.dex).move).type, boomerang: true, out: true, startY: u.y - 0.3, range: ab.range, hits: new Set(), left: ab.pierce, ab });
+      } else if (melee) { const r = this.damage(u, u.level, target, R.nahkampf.damageMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); }
       else this.projectiles.push({ x: u.x, y: u.y - 0.3, col: u.col, from: u, type: moveOf(bdata(u.dex).move).type });
     }
     // Geschosse fliegen die Spalte hinauf und treffen den ersten Gegner
     this.projectiles = this.projectiles.filter((p) => {
+      if (p.boomerang) return this.flyBoomerang(p, dt);
       p.y -= 6 * dt;
       const hit = this.enemies.find((e) => e.hp > 0 && e.col === p.col && Math.abs(e.y - p.y) < 0.35);
       if (hit) { const r = this.damage(p.from, p.from.level, hit, R.fernkampf.damageMult); this.hurtEnemy(hit, r.dmg, r.eff, p.from, r.mv, r.crit); return false; }
@@ -247,7 +275,20 @@ export class Defense {
     const E = D().enemy;
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
-      const block = this.units.find((u) => u.hp > 0 && u.col === e.col && u.y - e.y > 0 && u.y - e.y < 0.75 && u.role !== 'explosiv');
+      // verwirrt: dreht um, greift Gegner hinter sich an oder trifft sich selbst
+      if (this.t < (e.confusedUntil || 0)) {
+        e.cd -= dt; e.eating = false;
+        const other = this.enemies.find((o) => o !== e && o.hp > 0 && o.col === e.col && e.y - o.y > 0 && e.y - o.y < 0.8);
+        if (e.cd <= 0) {
+          e.cd = E.biteCooldown; e.anim = { name: 'Attack', t0: this.t };
+          const victim = other || e, r = this.damage(e, e.level, victim, other ? 1 : 0.5);
+          this.hurtEnemy(victim, r.dmg, r.eff, null, r.mv, r.crit);
+        }
+        if (!other) e.y = Math.max(-0.3, e.y - E.tilesPerSecond * 0.5 * dt);
+        continue;
+      }
+      const block = this.units.find((u) => u.hp > 0 && u.col === e.col && u.y - e.y > 0 && u.y - e.y < 0.75 && (u.role !== 'explosiv' || abilityOf(u.dex)?.type === 'reactive'));
+      if (block && abilityOf(block.dex)?.type === 'reactive') { const ab = abilityOf(block.dex); this.explode(block, ab.radius, ab.damage); continue; }
       if (block) {
         e.cd -= dt; e.eating = true;
         if (e.cd <= 0) {
@@ -260,7 +301,7 @@ export class Defense {
         continue;
       }
       e.eating = false;
-      const sp = E.tilesPerSecond * (e.pace || 1) * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (this.t < e.slowUntil ? D().iceSlow.factor : 1);
+      const sp = E.tilesPerSecond * (e.pace || 1) * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (this.t < e.slowUntil ? e.slowFactor || D().iceSlow.factor : 1);
       e.y += sp * dt;
       if (e.y >= G.rows) { this.over = { won: false, t: this.t, by: e }; return; }
     }
@@ -268,6 +309,19 @@ export class Defense {
     this.units = this.units.filter((u) => u.hp > 0 || this.t - (u.hurtT || u.placedAt) < 0.5);
     // Sieg: alle Wellen vorbei, nichts mehr unterwegs
     if (this.wave === D().waves.length - 1 && !this.queue.length && !this.enemies.some((e) => e.hp > 0)) this.over = { won: true, t: this.t };
+  }
+  // Knochenbumerang: hin bis range, dann zurück; durchschlägt je Richtung pierce Gegner (zurück schwächer)
+  flyBoomerang(p, dt) {
+    p.spin = (p.spin || 0) + dt * 18;
+    p.y += (p.out ? -5 : 5) * dt;
+    if (p.out && p.startY - p.y >= p.range) { p.out = false; p.hits = new Set(); p.left = p.ab.pierce; }
+    for (const e of this.enemies) {
+      if (p.left <= 0 || e.hp <= 0 || e.col !== p.col || p.hits.has(e.id) || Math.abs(e.y - p.y) > 0.35) continue;
+      p.hits.add(e.id); p.left--;
+      const r = this.damage(p.from, p.from.level, e, p.out ? 1 : p.ab.backMult);
+      this.hurtEnemy(e, r.dmg, r.eff, p.from, r.mv, r.crit);
+    }
+    return p.out || p.y < p.startY;
   }
   waveProgress() { return { wave: Math.max(0, this.wave + 1), total: D().waves.length }; }
 }

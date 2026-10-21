@@ -81,9 +81,6 @@
       "dex": [
         100,
         101,
-        74,
-        75,
-        76,
         109,
         110,
         204,
@@ -312,5 +309,194 @@
   "xp": {
     "multiplier": 3,
     "_hinweis": "EP für eigene Pokémon pro besiegtem Gegner (offizielle Formel × multiplier). Nur der Angreifer, der den Gegner besiegt, bekommt die EP."
+  },
+  "abilities": {
+    "1": {
+      "type": "beam",
+      "name": "Rankenhieb",
+      "text": "peitscht 2 Felder weit durch alle Gegner",
+      "length": 2,
+      "fx": "ranke",
+      "mult": 1.2
+    },
+    "2": {
+      "type": "beam",
+      "name": "Rankenhieb",
+      "text": "peitscht 2 Felder weit durch alle Gegner",
+      "length": 2,
+      "fx": "ranke",
+      "mult": 1.2
+    },
+    "3": {
+      "type": "beam",
+      "name": "Rankenhieb",
+      "text": "peitscht 2 Felder weit durch alle Gegner",
+      "length": 2,
+      "fx": "ranke",
+      "mult": 1.2
+    },
+    "5": {
+      "type": "beam",
+      "name": "Feuerstrahl",
+      "text": "Flammenstrahl 2 Felder weit durch alle Gegner",
+      "length": 2,
+      "fx": "feuer",
+      "mult": 1.2
+    },
+    "6": {
+      "type": "beam",
+      "name": "Feuerstrahl",
+      "text": "Flammenstrahl 2 Felder weit durch alle Gegner",
+      "length": 2,
+      "fx": "feuer",
+      "mult": 1.2
+    },
+    "8": {
+      "type": "beam",
+      "name": "Wasserstrahl",
+      "text": "Wasserstrahl 2 Felder weit durch alle Gegner",
+      "length": 2,
+      "fx": "wasser",
+      "mult": 1.2
+    },
+    "9": {
+      "type": "beam",
+      "name": "Wasserstrahl",
+      "text": "Wasserstrahl 2 Felder weit durch alle Gegner",
+      "length": 2,
+      "fx": "wasser",
+      "mult": 1.2
+    },
+    "11": {
+      "type": "shield",
+      "name": "Kokon-Panzer",
+      "text": "extrem harter Panzer – ein Schild gegen Gegner",
+      "hpMult": 16
+    },
+    "14": {
+      "type": "shield",
+      "name": "Kokon-Panzer",
+      "text": "extrem harter Panzer – ein Schild gegen Gegner",
+      "hpMult": 16
+    },
+    "40": {
+      "type": "heal",
+      "name": "Heilende Aura",
+      "text": "heilt regelmäßig eigene Pokémon in der Nähe",
+      "every": 6,
+      "radius": 1.6,
+      "pct": 0.15
+    },
+    "54": {
+      "type": "confuse",
+      "name": "Konfustrahl",
+      "text": "10 % Chance: Gegner wird verwirrt, dreht um und greift andere Gegner oder sich selbst an",
+      "chance": 0.1,
+      "seconds": 6
+    },
+    "55": {
+      "type": "confuse",
+      "name": "Konfustrahl",
+      "text": "10 % Chance: Gegner wird verwirrt, dreht um und greift andere Gegner oder sich selbst an",
+      "chance": 0.1,
+      "seconds": 6
+    },
+    "74": {
+      "type": "reactive",
+      "name": "Explosion",
+      "text": "explodiert, sobald es angegriffen wird (großer Radius)",
+      "radius": 1.5,
+      "damage": 900
+    },
+    "75": {
+      "type": "reactive",
+      "name": "Explosion",
+      "text": "explodiert, sobald es angegriffen wird (großer Radius)",
+      "radius": 1.5,
+      "damage": 900
+    },
+    "76": {
+      "type": "reactive",
+      "name": "Explosion",
+      "text": "explodiert, sobald es angegriffen wird (großer Radius)",
+      "radius": 1.5,
+      "damage": 900
+    },
+    "96": {
+      "type": "confuse",
+      "name": "Konfustrahl",
+      "text": "10 % Chance: Gegner wird verwirrt, dreht um und greift andere Gegner oder sich selbst an",
+      "chance": 0.1,
+      "seconds": 6
+    },
+    "97": {
+      "type": "confuse",
+      "name": "Konfustrahl",
+      "text": "10 % Chance: Gegner wird verwirrt, dreht um und greift andere Gegner oder sich selbst an",
+      "chance": 0.1,
+      "seconds": 6
+    },
+    "104": {
+      "type": "boomerang",
+      "name": "Knochenbumerang",
+      "text": "Knochen fliegt 3 Felder hin und zurück, durchschlägt je 3 Gegner (zurück schwächer)",
+      "range": 3,
+      "pierce": 3,
+      "backMult": 0.6
+    },
+    "105": {
+      "type": "boomerang",
+      "name": "Knochenbumerang",
+      "text": "Knochen fliegt 3 Felder hin und zurück, durchschlägt je 3 Gegner (zurück schwächer)",
+      "range": 3,
+      "pierce": 3,
+      "backMult": 0.6
+    },
+    "113": {
+      "type": "heal",
+      "name": "Heilende Aura",
+      "text": "heilt regelmäßig eigene Pokémon in der Nähe",
+      "every": 6,
+      "radius": 1.6,
+      "pct": 0.15
+    },
+    "242": {
+      "type": "heal",
+      "name": "Heilende Aura",
+      "text": "heilt regelmäßig eigene Pokémon in der Nähe",
+      "every": 6,
+      "radius": 1.6,
+      "pct": 0.15
+    },
+    "266": {
+      "type": "shield",
+      "name": "Kokon-Panzer",
+      "text": "extrem harter Panzer – ein Schild gegen Gegner",
+      "hpMult": 16
+    },
+    "268": {
+      "type": "shield",
+      "name": "Kokon-Panzer",
+      "text": "extrem harter Panzer – ein Schild gegen Gegner",
+      "hpMult": 16
+    },
+    "541": {
+      "type": "shield",
+      "name": "Kokon-Panzer",
+      "text": "extrem harter Panzer – ein Schild gegen Gegner",
+      "hpMult": 16
+    },
+    "665": {
+      "type": "shield",
+      "name": "Kokon-Panzer",
+      "text": "extrem harter Panzer – ein Schild gegen Gegner",
+      "hpMult": 16
+    },
+    "_hinweis": "Sonderfähigkeiten einzelner Pokémon (Pokédex-Nummer). Typen: beam (Strahl über length Felder, durchschlägt), shield (Panzer, hpMult statt Mauer-Faktor), confuse (chance auf Verwirrung für seconds), reactive (explodiert bei Angriff), boomerang (hin und zurück, pierce Gegner je Richtung), heal (heilt pct der KP im radius alle every s). Neue Einträge einfach ergänzen."
+  },
+  "elecSlow": {
+    "factor": 0.8,
+    "seconds": 1.5,
+    "_hinweis": "Elektro-Attacken verlangsamen Gegner ein wenig"
   }
 }
