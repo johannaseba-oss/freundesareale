@@ -1,10 +1,11 @@
-// Sternenverteidigung: Tower Defense wie Plants vs. Zombies, vertikal.
+// PokeDefense: Tower Defense wie Plants vs. Zombies, vertikal.
 // Eigene Pokémon werden mit Sternen auf das untere Feld gesetzt, Gegner laufen in ihren Spalten von oben nach unten.
 // Erreicht ein Gegner die untere Linie (Trainer), ist die Runde verloren; nach fünf abgewehrten Wellen gewonnen.
 import { CFG, species } from '../config.js';
 import { effectiveness } from './types.js';
 import { calcStats, bdata, moveOf, rollIvs } from './battle.js';
 import { mulberry32 } from '../rng.js';
+import { pickWeather, nextWeatherIn, weatherBoost } from './weather.js';
 
 const D = () => CFG.defense;
 const bst = (dex) => bdata(dex).base.reduce((a, b) => a + b, 0);
@@ -71,6 +72,8 @@ export class Defense {
     this.nextSky = 4;
     this.nextWaveAt = D().firstWaveDelay;
     this.nextId = 1;
+    this.weather = pickWeather(this.rnd);
+    this.weatherNext = nextWeatherIn(this.rnd);
   }
 
   // ---- Platzieren ----
@@ -143,13 +146,15 @@ export class Defense {
     const stab = species(att.dex).types.includes(mv.type) ? 1.5 : 1;
     const eff = effectiveness(mv.type, species(def.dex).types);
     const base = (Math.floor((2 * attLevel) / 5 + 2) * mv.power * A / Dv) / 50 + 2;
-    return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * (0.9 + this.rnd() * 0.1))) : 0, eff, mv };
+    const crit = eff > 0 && this.rnd() < D().crit.chance; // Volltreffer
+    const w = weatherBoost(att.dex, this.weather);
+    return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * w * (crit ? D().crit.mult : 1) * (0.9 + this.rnd() * 0.1))) : 0, eff, mv, crit };
   }
-  hurtEnemy(e, dmg, eff, from, mv) {
+  hurtEnemy(e, dmg, eff, from, mv, crit = false) {
     if (e.hp <= 0) return;
     e.hp -= dmg; e.hurtT = this.t;
     if (mv?.type === 'Eis') e.slowUntil = this.t + D().iceSlow.seconds;
-    this.events.push({ type: 'hit', target: e, dmg, eff, move: mv });
+    this.events.push({ type: 'hit', target: e, dmg, eff, move: mv, crit, melee: from?.role === 'nahkampf' });
     if (e.hp <= 0) this.events.push({ type: 'defeat', e });
   }
 
@@ -158,6 +163,7 @@ export class Defense {
     if (!this.started || this.over) return;
     this.t += dt;
     const G = D().grid, S = D().stars, R = D().roles, L = D().level;
+    if (this.t >= this.weatherNext) { this.weather = pickWeather(this.rnd, this.weather); this.weatherNext = this.t + nextWeatherIn(this.rnd); this.events.push({ type: 'weather', weather: this.weather }); }
     // Sternenregen
     if (this.t >= this.nextSky) {
       this.nextSky = this.t + this.between(S.skyEvery);
@@ -207,14 +213,14 @@ export class Defense {
       const spd = u.stats[5] / refSpeed(L);
       u.cd = R[u.role].cooldown / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3)));
       u.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
-      if (melee) { const r = this.damage(u, L, target, R.nahkampf.damageMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv); }
+      if (melee) { const r = this.damage(u, L, target, R.nahkampf.damageMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); }
       else this.projectiles.push({ x: u.x, y: u.y - 0.3, col: u.col, from: u, type: moveOf(bdata(u.dex).move).type });
     }
     // Geschosse fliegen die Spalte hinauf und treffen den ersten Gegner
     this.projectiles = this.projectiles.filter((p) => {
       p.y -= 6 * dt;
       const hit = this.enemies.find((e) => e.hp > 0 && e.col === p.col && Math.abs(e.y - p.y) < 0.35);
-      if (hit) { const r = this.damage(p.from, L, hit, R.fernkampf.damageMult); this.hurtEnemy(hit, r.dmg, r.eff, p.from, r.mv); return false; }
+      if (hit) { const r = this.damage(p.from, L, hit, R.fernkampf.damageMult); this.hurtEnemy(hit, r.dmg, r.eff, p.from, r.mv, r.crit); return false; }
       return p.y > -1;
     });
     // Gegner laufen nach unten, beißen eigene Pokémon, die im Weg stehen
@@ -228,7 +234,7 @@ export class Defense {
           e.cd = E.biteCooldown; e.anim = { name: 'Attack', t0: this.t };
           const r = this.damage(e, e.level, block);
           block.hp -= r.dmg; block.hurtT = this.t;
-          this.events.push({ type: 'hit', target: block, dmg: r.dmg, eff: r.eff, move: r.mv, mine: true });
+          this.events.push({ type: 'hit', target: block, dmg: r.dmg, eff: r.eff, move: r.mv, mine: true, crit: r.crit });
           if (block.hp <= 0) this.events.push({ type: 'lost', u: block });
         }
         continue;

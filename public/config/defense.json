@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Sternenverteidigung (Tower Defense wie Plants vs. Zombies, vertikal). Gegner kommen von oben, der Trainer steht unten. Alle Werte frei anpassbar.",
+  "_hinweis": "PokeDefense (Tower Defense wie Plants vs. Zombies, vertikal). Gegner kommen von oben, der Trainer steht unten. Alle Werte frei anpassbar.",
   "teamSize": 6,
   "grid": {
     "cols": 5,
@@ -260,5 +260,11 @@
       "Fee",
       "Normal"
     ]
-  }
+  },
+  "crit": {
+    "chance": 0.08,
+    "mult": 1.5,
+    "_hinweis": "Volltreffer: Chance und Schadensfaktor"
+  },
+  "_weather": "Wetter wie in der Arena (battle.json weather): passende Typen machen mehr Schaden."
 }

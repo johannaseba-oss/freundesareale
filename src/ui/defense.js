@@ -1,4 +1,4 @@
-// Sternenverteidigung – Oberfläche: Team (6) mit Blick auf die angekündigten Gegner-Typen wählen (ohne Zeitlimit),
+// PokeDefense – Oberfläche: Team (6) mit Blick auf die angekündigten Gegner-Typen wählen (ohne Zeitlimit),
 // dann das vertikale Spielfeld: Sterne einsammeln, Karten antippen und Pokémon auf das untere Feld setzen.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
@@ -6,8 +6,11 @@ import { Defense, roleOf, costOf, rechargeOf, abilityText, rollTheme } from '../
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
-import { $, h, toast, confirmDialog } from './dom.js';
+import { $, h, toast, confirmDialog, modal } from './dom.js';
+import { teamPicker } from './teampick.js';
 import { haptic } from '../haptics.js';
+import { drawWeather } from './weatherfx.js';
+import { weatherInfo, weatherText } from '../game/weather.js';
 
 const D = () => CFG.defense;
 const base = import.meta.env.BASE_URL;
@@ -35,31 +38,30 @@ export function renderDefenseSetup(el, back) {
   theme ||= rollTheme();
   const mons = s.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => costOf(a.dex) - costOf(b.dex) || a.dex - b.dex);
   const N = Math.min(D().teamSize, mons.length);
-  if (!pick.length && s.defense?.team?.length) pick = s.defense.team.filter((u) => mons.some((p) => p.uid === u)).slice(0, N);
-  pick = pick.filter((u) => mons.some((p) => p.uid === u));
-  const toggle = (p) => {
-    const i = pick.indexOf(p.uid);
-    if (i >= 0) pick.splice(i, 1); else if (pick.length < N) pick.push(p.uid); else { toast(`Höchstens ${N} Pokémon.`); return; }
-    haptic('tick');
-    renderDefenseSetup(el, back);
-  };
+  const hint = (p) => h('small.mv', D().roles[roleOf(p.dex)].icon, ' ', starImg(), String(costOf(p.dex)));
+  const picker = teamPicker({ mons, N, hint, onFull: (uids) => confirmTeam(uids, () => picker.clear()) });
   el.replaceChildren(h('div.bs',
-    h('div.bs-head', h('h2', '★ Sternenverteidigung'), h('span.bs-count' + (pick.length === N ? '.full' : ''), `${pick.length}/${N}`)),
-    h('div.d-theme', h('b', 'Erwartete Gegner: '), h('span.type-chips.inline', theme.map((t) => typeChip(t))), h('small', ' – hauptsächlich diese Typen, in 5 Wellen')),
-    h('p.note', `Wähle ${N} Pokémon – du hast beliebig Zeit. Sterne fallen vom Himmel, Sternensammler (★) erzeugen weitere. Setze damit deine Pokémon aufs Feld, bevor die Gegner unten beim Trainer ankommen.`),
-    h('div.bs-list', mons.map((p) => {
-      const role = D().roles[roleOf(p.dex)], mv = moveOf(bdata(p.dex).move);
-      return h('button.bs-row' + (pick.includes(p.uid) ? '.on' : ''), { onclick: () => toggle(p) },
-        h('img.bs-por', { src: portraitUrl(p.dex), alt: '', loading: 'lazy' }),
-        h('div.bs-row-text',
-          h('div', h('b', p.nick || species(p.dex).name), ' ', h('span.type-chips.left.inline', species(p.dex).types.map((t) => typeChip(t)))),
-          h('small', `${role.icon} ${role.name} · ${abilityText(p.dex)}`),
-          h('small', `Attacke-Typ: `, h('span', { style: { color: typeColor(mv.type), fontWeight: 600 } }, mv.type), ` · Aufladen ${rechargeOf(p.dex)} s`)),
-        h('span.d-cost', starImg(), String(costOf(p.dex))));
-    })),
-    h('div.bs-bar',
-      h('button.btn', { onclick: back }, 'Zurück'),
-      h('button.btn.primary.big', { disabled: !pick.length || pick.length < N, onclick: start }, 'Kampf starten'))));
+    h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
+    h('div.bs-head', h('h2', '★ PokeDefense'), picker.count),
+    h('div.d-theme', h('b', 'Erwartete Gegner: '), h('span.type-chips.inline', theme.map((t) => typeChip(t)))),
+    h('p.note', `Tippe ${N} Pokémon an. ★ Sternensammler · ✸ Explosiv · ▣ Mauer · ✊ Nahkampf · ➶ Fernkampf`),
+    picker.grid));
+}
+
+// Bestätigung mit Rollen, Kosten und Fähigkeit – dann geht es aufs Feld
+function confirmTeam(uids, reset) {
+  pick = uids;
+  modal((el, close) => {
+    el.append(h('h3', 'Dein PokeDefense-Team'),
+      h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', theme.map((t) => typeChip(t)))),
+      h('div.confirm-list', pick.map((u, i) => {
+        const p = app.state.pokemon.find((q) => q.uid === u);
+        return h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(p.dex), alt: '' }),
+          h('div', h('b', p.nick || species(p.dex).name), h('small', `${D().roles[roleOf(p.dex)].icon} ${abilityText(p.dex)}`)),
+          h('span.d-cost', starImg(), String(costOf(p.dex))));
+      })),
+      h('div.row', h('button.btn', { onclick: () => { close(); reset(); } }, 'Neu wählen'), h('button.btn.primary.big', { onclick: () => { close(); start(); } }, 'Los!')));
+  });
 }
 
 function start() {
@@ -77,13 +79,13 @@ function openField() {
   const starsEl = h('div.d-stars');
   const waveEl = h('div.d-wave', h('span'), h('div.d-wavebar', h('i')));
   const msg = h('div.b-msg');
-  const top = h('div.b-top', starsEl, waveEl, h('span.type-chips.inline', theme.map((t) => typeChip(t))), h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
+  const top = h('div.b-top', starsEl, waveEl, h('span.b-weather.d-weather'), h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
   // Vorbereitung ohne Zeitlimit: erst mit „Los!“ beginnen Sternenregen und Wellen
   const go = h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message('Los! Sammle Sterne und verteidige deinen Trainer.'); haptic('medium'); } }, 'Los!');
   const root = h('div.battle.defense', top, h('div.b-field', canvas, go), cards, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
-  ui = { root, canvas, ctx: canvas.getContext('2d'), cards, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], cardEls: [], last: performance.now(), raf: 0, hover: null };
+  ui = { root, canvas, ctx: canvas.getContext('2d'), cards, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], rings: [], slashes: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
   for (const c of game.cards) loadSprites(c.dex, c.src.gender);
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`; ui.trainer = tr;
   ui.ro = new ResizeObserver(() => layout()); ui.ro.observe(canvas.parentElement);
@@ -91,6 +93,7 @@ function openField() {
   canvas.addEventListener('pointermove', (e) => { ui.hover = ui.sel ? cellAt(e.clientX, e.clientY) : null; });
   buildCards();
   layout();
+  renderWeatherChip();
   message('Stell in Ruhe dein erstes Team auf – dann „Los!“');
   const loop = (t) => {
     if (!ui) return;
@@ -122,7 +125,8 @@ function layout() {
 
 function frame(dt) {
   if (!ui || !game) return;
-  game.update(dt);
+  if (ui.freeze > 0) ui.freeze -= dt; // kurzer Trefferstopp bei Volltreffern/Explosionen
+  else game.update(dt);
   handleEvents();
   draw(dt);
   renderTop();
@@ -144,12 +148,12 @@ function onField(e) {
   // Sterne haben Vorrang
   const g = toGrid(e.clientX, e.clientY);
   const d = game.drops.find((x) => { const p = dropPos(x); return Math.hypot(p.x - g.x, p.y - g.y) < 0.65; });
-  if (d) { const p = dropPos(d); game.collect(d); flyStar(toScreen(p.x, p.y)); haptic('tick'); return; }
+  if (d) { const p = dropPos(d); game.collect(d); flyStar(toScreen(p.x, p.y)); haptic('tick'); handleEvents(); return; }
   if (!ui.sel) return;
   const c = cellAt(e.clientX, e.clientY);
   if (!c) return;
   if (!game.canPlace(c[0], c[1])) { toast('Hier kannst du nichts hinsetzen.'); return; }
-  if (game.place(ui.sel, c[0], c[1])) { haptic('medium'); ui.sel = null; }
+  if (game.place(ui.sel, c[0], c[1])) { haptic('medium'); shake(ui.tile * 0.04); ui.sel = null; handleEvents(); }
 }
 
 function flyStar(from) {
@@ -203,9 +207,11 @@ function message(text) {
 // ---------- Zeichnen ----------
 function draw(dt) {
   const U = ui, x = U.ctx, T = U.tile, G = D().grid, now = performance.now();
-  x.setTransform(U.dpr, 0, 0, U.dpr, 0, 0);
+  U.shakeAmt *= Math.exp(-dt * 12);
+  const sx = (Math.random() - 0.5) * 2 * U.shakeAmt, sy = (Math.random() - 0.5) * 2 * U.shakeAmt;
+  x.setTransform(U.dpr, 0, 0, U.dpr, U.dpr * sx, U.dpr * sy);
   x.imageSmoothingEnabled = false;
-  x.fillStyle = '#5e9a46'; x.fillRect(0, 0, U.w, U.h);
+  x.fillStyle = '#5e9a46'; x.fillRect(-20, -20, U.w + 40, U.h + 40);
   // Rasen in Streifen (wie PvZ), Gegner-Bereich oben etwas dunkler
   for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
     const own = r >= G.placeRows[0];
@@ -243,27 +249,56 @@ function draw(dt) {
   // eigene Pokémon und Gegner (nach Tiefe)
   const all = [...game.units.map((u) => ({ o: u, mine: true })), ...game.enemies.map((e) => ({ o: e, mine: false }))].sort((a, b) => a.o.y - b.o.y);
   for (const { o, mine } of all) drawMon(x, o, mine, P(o), T, now);
-  // Geschosse
+  // Geschosse: leuchtender Kern mit Schweif in Typfarbe
   for (const p of game.projectiles) {
-    const [X, Y] = P(p), s = Math.max(4, Math.round(T / 7)), col = typeColor(p.type);
-    x.fillStyle = 'rgba(255,255,255,.5)'; x.fillRect(X - s / 2, Y - s / 2 + s, s, s * 0.8);
-    x.fillStyle = '#fff'; x.fillRect(X - s / 2 - 1, Y - s / 2 - 1, s + 2, s + 2);
+    const [X, Y] = P(p), col = typeColor(p.type), s = Math.max(4, Math.round(T / 6.5));
+    (p.trail ||= []).push([X, Y]); if (p.trail.length > 7) p.trail.shift();
+    p.trail.forEach(([tx, ty], i) => { const k = (i + 1) / p.trail.length; x.globalAlpha = k * 0.5; x.fillStyle = col; const q = s * (0.4 + k * 0.6); x.fillRect(tx - q / 2, ty - q / 2, q, q); });
+    x.globalAlpha = 0.35; x.fillStyle = col; x.beginPath(); x.arc(X, Y, s * 1.3, 0, 7); x.fill();
+    x.globalAlpha = 1; x.fillStyle = '#fff'; x.fillRect(X - s / 2 - 1, Y - s / 2 - 1, s + 2, s + 2);
     x.fillStyle = col; x.fillRect(X - s / 2, Y - s / 2, s, s);
+    x.fillStyle = '#fff'; x.fillRect(X - s / 4, Y - s / 4, s / 3, s / 3);
   }
-  // Explosionen
+  // Explosionen: Feuerball + Schockwelle
   U.booms = U.booms.filter((b) => {
-    b.t += dt; if (b.t > 0.6) return false;
-    const [X, Y] = P(b.u), k = b.t / 0.6;
-    x.globalAlpha = 1 - k; x.fillStyle = '#ffe066'; x.beginPath(); x.arc(X, Y, (b.r + 0.3) * T * (0.4 + k * 0.8), 0, 7); x.fill();
-    x.fillStyle = '#ff7b3a'; x.beginPath(); x.arc(X, Y, (b.r + 0.3) * T * (0.2 + k * 0.5), 0, 7); x.fill(); x.globalAlpha = 1;
+    b.t += dt; if (b.t > 0.7) return false;
+    const [X, Y] = P(b.u), k = b.t / 0.7, R = (b.r + 0.4) * T;
+    x.globalAlpha = 1 - k;
+    x.fillStyle = '#fff6c0'; x.beginPath(); x.arc(X, Y, R * (0.3 + k * 0.9), 0, 7); x.fill();
+    x.fillStyle = '#ffb84a'; x.beginPath(); x.arc(X, Y, R * (0.25 + k * 0.6), 0, 7); x.fill();
+    x.fillStyle = '#ff6a3a'; x.beginPath(); x.arc(X, Y, R * (0.15 + k * 0.35), 0, 7); x.fill();
+    x.strokeStyle = '#fff'; x.lineWidth = Math.max(2, T / 10) * (1 - k); x.beginPath(); x.arc(X, Y, R * (0.5 + k * 1.3), 0, 7); x.stroke();
+    x.globalAlpha = 1;
     return true;
   });
-  // Partikel
+  // Treffer-Ringe und Hieb-Bögen
+  U.rings = U.rings.filter((r) => {
+    r.t += dt; if (r.t > r.dur) return false;
+    const k = r.t / r.dur;
+    x.globalAlpha = 1 - k; x.strokeStyle = r.color; x.lineWidth = Math.max(2, T / 12) * (1 - k * 0.6);
+    x.beginPath(); x.arc(U.ox + r.x * T, U.oy + r.y * T, T * (r.r0 + k * r.grow), 0, 7); x.stroke();
+    x.globalAlpha = 1;
+    return true;
+  });
+  U.slashes = U.slashes.filter((s) => {
+    s.t += dt; if (s.t > 0.22) return false;
+    const k = s.t / 0.22, X = U.ox + s.x * T, Y = U.oy + s.y * T;
+    x.globalAlpha = 1 - k; x.strokeStyle = '#fff'; x.lineWidth = Math.max(3, T / 8) * (1 - k);
+    x.beginPath(); x.arc(X, Y + T * 0.3, T * 0.55, Math.PI * (1.15 + k * 0.2), Math.PI * (1.85 + k * 0.2)); x.stroke();
+    x.strokeStyle = s.color; x.lineWidth = Math.max(2, T / 14) * (1 - k);
+    x.beginPath(); x.arc(X, Y + T * 0.3, T * 0.45, Math.PI * (1.2 + k * 0.2), Math.PI * (1.8 + k * 0.2)); x.stroke();
+    x.globalAlpha = 1;
+    return true;
+  });
+  // Partikel (Form je Typ: Funken, Tropfen, Blätter, Splitter, Brocken …)
   U.fx = U.fx.filter((f) => {
     f.life -= dt; if (f.life <= 0) return false;
-    f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 3 * dt;
-    x.globalAlpha = Math.min(1, f.life / 0.25); x.fillStyle = f.color;
-    const s = Math.max(3, T / 9); x.fillRect(U.ox + f.x * T - s / 2, U.oy + f.y * T - s / 2, s, s);
+    f.x += f.vx * dt; f.y += f.vy * dt; f.vy += f.g * dt; f.vx *= 1 - dt * f.drag;
+    x.globalAlpha = Math.min(1, f.life / 0.3); x.fillStyle = f.color;
+    const s = Math.max(2, (T / 10) * f.size), X = U.ox + f.x * T, Y = U.oy + f.y * T;
+    if (f.shape === 'spark') { x.strokeStyle = f.color; x.lineWidth = Math.max(1.5, s / 2); x.beginPath(); x.moveTo(X, Y); x.lineTo(X - f.vx * T * 0.05, Y - f.vy * T * 0.05); x.stroke(); }
+    else if (f.shape === 'ring') { x.strokeStyle = f.color; x.lineWidth = 1.5; x.beginPath(); x.arc(X, Y, s, 0, 7); x.stroke(); }
+    else x.fillRect(X - s / 2, Y - s / 2, s, f.shape === 'leaf' ? s / 2 : s);
     return true;
   });
   x.globalAlpha = 1;
@@ -276,36 +311,49 @@ function draw(dt) {
     x.fillStyle = 'rgba(255,230,120,.35)'; x.beginPath(); x.arc(U.ox + p.x * T, U.oy + p.y * T, ss * 0.75 * pulse, 0, 7); x.fill();
     x.drawImage(star, U.ox + p.x * T - (ss * pulse) / 2, U.oy + p.y * T - (ss * pulse) / 2, ss * pulse, ss * pulse);
   }
-  // schwebende Texte
+  drawWeather(x, U, game.weather, U.w, U.h, T, dt, now);
+  // schwebende Zahlen: springen auf, Volltreffer groß und golden
   U.texts = U.texts.filter((t) => {
-    t.t += dt; if (t.t > 0.8) return false;
-    x.globalAlpha = Math.min(1, (0.8 - t.t) / 0.3);
-    x.font = `600 ${Math.round(T * 0.3)}px 'Pixelify Sans', sans-serif`; x.textAlign = 'center';
-    x.lineWidth = 3; x.strokeStyle = 'rgba(40,25,20,.9)';
-    const X = U.ox + t.x * T, Y = U.oy + t.y * T - t.t * T * 0.6;
+    t.t += dt; if (t.t > t.dur) return false;
+    const pop = t.t < 0.12 ? 1 + (1 - t.t / 0.12) * 0.8 : 1;
+    x.globalAlpha = Math.min(1, (t.dur - t.t) / 0.3);
+    x.font = `600 ${Math.round(T * t.size * pop)}px 'Pixelify Sans', sans-serif`; x.textAlign = 'center';
+    x.lineWidth = Math.max(3, T / 12); x.strokeStyle = 'rgba(40,25,20,.95)';
+    const X = U.ox + t.x * T, Y = U.oy + t.y * T - t.t * T * 0.7;
     x.strokeText(t.text, X, Y); x.fillStyle = t.color; x.fillText(t.text, X, Y);
     x.globalAlpha = 1;
     return true;
   });
+  // Bildschirm-Blitz (Explosion, Volltreffer)
+  if (U.flash > 0) { x.setTransform(U.dpr, 0, 0, U.dpr, 0, 0); x.fillStyle = `rgba(255,255,240,${Math.min(0.7, U.flash * 2.5)})`; x.fillRect(0, 0, U.w, U.h); U.flash -= dt; }
 }
 
 function drawMon(x, o, mine, [X, Y], T, now) {
   const e = loadSprites(o.dex, o.gender);
   const dead = o.hp <= 0;
-  x.fillStyle = 'rgba(0,0,0,.2)'; x.beginPath(); x.ellipse(X, Y + T * 0.25, T * 0.3, T * 0.12, 0, 0, 7); x.fill();
-  if (e.ready) {
-    let name = mine ? 'Idle' : (o.eating ? 'Idle' : 'Walk'), ms = now, once = false;
-    if (o.anim && (game.t - o.anim.t0) * 1000 < (e.anims[o.anim.name]?.total || 0) * (1000 / 60)) { name = o.anim.name; ms = (game.t - o.anim.t0) * 1000; once = true; }
-    else if (o.hurtT != null && game.t - o.hurtT < 0.2) { name = 'Hurt'; ms = (game.t - o.hurtT) * 1000; once = true; }
-    const f = frameOf(e, name, mine ? 4 : 0, ms, once);
-    const idle = e.anims.Idle;
-    let s = T / 28;
-    if (idle.fh * s > T * 1.6) s = (T * 1.6) / idle.fh;
-    if (dead) x.globalAlpha = 0.4;
-    if (!mine && game.t < o.slowUntil) x.filter = 'hue-rotate(160deg) saturate(1.4)';
-    x.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(X - (f.fw * s) / 2), Math.round(Y - T * 0.1 - (f.fh * s) / 2), Math.round(f.fw * s), Math.round(f.fh * s));
-    x.filter = 'none'; x.globalAlpha = 1;
+  if (!e.ready) return;
+  let name = mine ? 'Idle' : (o.eating ? 'Idle' : 'Walk'), ms = now, once = false;
+  if (o.anim && (game.t - o.anim.t0) * 1000 < (e.anims[o.anim.name]?.total || 0) * (1000 / 60)) { name = o.anim.name; ms = (game.t - o.anim.t0) * 1000; once = true; }
+  else if (o.hurtT != null && game.t - o.hurtT < 0.2) { name = 'Hurt'; ms = (game.t - o.hurtT) * 1000; once = true; }
+  const f = frameOf(e, name, mine ? 4 : 0, ms, once);
+  let s = T / 28;
+  if (e.anims.Idle.fh * s > T * 1.6) s = (T * 1.6) / e.anims.Idle.fh;
+  // Rückstoß nach Treffern (Gegner werden kurz nach oben gedrückt), Pop beim Einsetzen
+  const since = o.hurtT != null ? game.t - o.hurtT : 9;
+  const knock = !mine && since < 0.15 ? -(1 - since / 0.15) * T * 0.12 : 0;
+  const shake = since < 0.15 ? (Math.random() - 0.5) * T * 0.08 : 0;
+  const pop = mine && o.placedAt != null && game.t - o.placedAt < 0.25 ? 1 + (1 - (game.t - o.placedAt) / 0.25) * 0.35 : 1;
+  const w = f.fw * s * pop, hh = f.fh * s * pop, dx = Math.round(X - w / 2 + shake), dy = Math.round(Y - T * 0.1 - hh / 2 + knock);
+  if (dead) x.globalAlpha = 0.4;
+  x.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, dx, dy, Math.round(w), Math.round(hh));
+  // weißes Aufblitzen bei Treffern, bläulicher Schimmer wenn verlangsamt
+  if (since < 0.09 || (!mine && game.t < o.slowUntil)) {
+    x.globalCompositeOperation = 'lighter';
+    x.globalAlpha = since < 0.09 ? 0.75 : 0.25;
+    x.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, dx, dy, Math.round(w), Math.round(hh));
+    x.globalCompositeOperation = 'source-over';
   }
+  x.globalAlpha = 1;
   if (dead) return;
   if (o.role === 'explosiv' && game.t < o.armAt) { x.fillStyle = 'rgba(40,30,25,.6)'; x.fillRect(X - T * 0.3, Y + T * 0.3, T * 0.6 * (1 - (o.armAt - game.t) / (CFG.defense.roles.explosiv.armSeconds || 1)), 3); }
   if (o.hp < o.maxHp) {
@@ -315,19 +363,71 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   }
 }
 
+// ---------- Effekte ----------
+const FX = {
+  Feuer: { c: ['#ffe066', '#ffb84a', '#ff6a3a'], g: -2.5, shape: 'sq' }, Wasser: { c: ['#bfe3ff', '#6fb7ff', '#3d7be0'], g: 6, shape: 'sq' },
+  Elektro: { c: ['#ffffff', '#ffe066', '#f7d02c'], g: 0, shape: 'spark' }, Pflanze: { c: ['#bde58f', '#7ac74c', '#4f8f30'], g: 1.2, shape: 'leaf' },
+  Eis: { c: ['#ffffff', '#bff4ff', '#96d9d6'], g: 3, shape: 'spark' }, Gestein: { c: ['#c9b07a', '#a08050', '#6d5a3a'], g: 9, shape: 'sq' },
+  Boden: { c: ['#e2bf65', '#a08050'], g: 8, shape: 'sq' }, Geist: { c: ['#b89ae0', '#735797'], g: -1.5, shape: 'ring' },
+  Psycho: { c: ['#ffb3d0', '#f95587'], g: -1, shape: 'ring' }, Gift: { c: ['#d79ae0', '#a33ea1'], g: -1.8, shape: 'ring' },
+  Unlicht: { c: ['#8a7464', '#3b2f28'], g: 2, shape: 'sq' }, Fee: { c: ['#ffd6ec', '#d685ad', '#ffffff'], g: -1, shape: 'spark' },
+};
+function burst(o, type, n, power = 1, size = 1) {
+  const st = FX[type] || { c: [typeColor(type), '#ffffff'], g: 4, shape: 'sq' };
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = (1 + Math.random() * 2.2) * power;
+    ui.fx.push({ x: o.x, y: o.y - 0.15, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.8 * power, g: st.g, drag: 2, color: st.c[Math.floor(Math.random() * st.c.length)], shape: st.shape, size: (0.6 + Math.random() * 0.8) * size, life: 0.35 + Math.random() * 0.35 });
+  }
+}
+const ring = (o, color, r0 = 0.2, grow = 0.7, dur = 0.3) => ui.rings.push({ x: o.x, y: o.y - 0.1, color, r0, grow, dur, t: 0 });
+const say = (o, text, color, size = 0.32, dur = 0.8, dy = -0.45) => ui.texts.push({ x: o.x, y: o.y + dy, text, color, size, dur, t: 0 });
+const shake = (amount) => { ui.shakeAmt = Math.max(ui.shakeAmt, amount); };
+// Haptik, gedrosselt (sonst brummt das Handy bei vielen Treffern dauernd)
+let lastBuzz = 0;
+function buzz(kind) {
+  const t = performance.now();
+  if (t - lastBuzz < (kind === 'tick' ? 110 : 60)) return;
+  lastBuzz = t;
+  haptic(kind);
+}
+
 function handleEvents() {
   for (const ev of game.events) {
     if (ev.type === 'hit') {
-      const o = ev.target;
-      for (let i = 0; i < 5; i++) ui.fx.push({ x: o.x, y: o.y - 0.1, vx: (Math.random() - 0.5) * 2, vy: -Math.random() * 1.5, color: ev.move ? typeColor(ev.move.type) : '#ffb84a', life: 0.35 });
-      if (!ev.mine) ui.texts.push({ x: o.x, y: o.y - 0.4, text: String(ev.dmg), color: ev.eff > 1 ? '#ffe066' : '#fff', t: 0 });
-    } else if (ev.type === 'explode') { ui.booms.push({ u: ev.u, r: ev.radius, t: 0 }); haptic('strong'); }
-    else if (ev.type === 'wave') { message(ev.final ? '★ Letzte Welle! ★' : `Welle ${ev.wave + 1} kommt!`); if (ev.wave > 0 && ev.minRow >= D().grid.placeRows[0]) message('Eine weitere Reihe ist frei!'); haptic('medium'); }
-    else if (ev.type === 'lost') ui.texts.push({ x: ev.u.x, y: ev.u.y - 0.4, text: 'K.O.', color: '#ffb0b0', t: 0 });
-    else if (ev.type === 'place') { for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; ui.fx.push({ x: ev.u.x, y: ev.u.y + 0.2, vx: Math.cos(a) * 1.4, vy: Math.sin(a) * 0.6, color: '#efe3c0', life: 0.35 }); } }
+      const o = ev.target, type = ev.move?.type || 'Normal';
+      if (ev.mine) { burst(o, 'Unlicht', 4, 0.7, 0.8); continue; } // eigenes Pokémon wird gebissen
+      burst(o, type, ev.crit ? 18 : ev.eff > 1 ? 12 : 7, ev.crit ? 1.6 : 1, ev.crit ? 1.3 : 1);
+      ring(o, typeColor(type), 0.15, ev.crit ? 1.1 : 0.6, ev.crit ? 0.4 : 0.25);
+      if (ev.melee) ui.slashes.push({ x: o.x, y: o.y, color: typeColor(type), t: 0 });
+      if (ev.crit) { say(o, 'VOLLTREFFER!', '#ffe066', 0.36, 1, -0.95); say(o, String(ev.dmg), '#ffe066', 0.55, 0.9); shake(T() * 0.12); ui.freeze = 0.07; ui.flash = Math.max(ui.flash, 0.12); buzz('medium'); }
+      else { say(o, String(ev.dmg), ev.eff > 1 ? '#ffd23f' : ev.eff < 1 ? '#d0c8bc' : '#ffffff', ev.eff > 1 ? 0.42 : 0.32); if (ev.eff > 1) { shake(T() * 0.05); buzz('tick'); } }
+    } else if (ev.type === 'defeat') {
+      const e = ev.e, type = species(e.dex).types[0];
+      burst(e, type, 20, 1.6, 1.2); burst(e, 'Fee', 8, 1.2, 0.8);
+      ring(e, '#ffffff', 0.2, 1.3, 0.45);
+      shake(T() * 0.07); buzz('tick');
+    } else if (ev.type === 'explode') {
+      ui.booms.push({ u: ev.u, r: ev.radius, t: 0 });
+      burst(ev.u, 'Feuer', 34, 2.6, 1.5); burst(ev.u, 'Gestein', 16, 2.2, 1.2);
+      shake(T() * 0.3); ui.flash = 0.3; ui.freeze = 0.1; haptic('strong');
+    } else if (ev.type === 'wave') {
+      banner(ev.final ? 'LETZTE WELLE!' : `WELLE ${ev.wave + 1}`, ev.final);
+      if (ev.wave > 0 && ev.minRow >= D().grid.placeRows[0]) message('Eine weitere Reihe ist frei!');
+      shake(T() * (ev.final ? 0.12 : 0.05)); haptic(ev.final ? 'strong' : 'medium');
+    } else if (ev.type === 'weather') { renderWeatherChip(); message('Wetter: ' + weatherText(game.weather)); }
+    else if (ev.type === 'lost') { burst(ev.u, 'Normal', 14, 1.2); say(ev.u, 'K.O.', '#ffb0b0', 0.34); shake(T() * 0.06); buzz('medium'); }
+    else if (ev.type === 'place') { burst(ev.u, 'Boden', 10, 1, 0.9); ring(ev.u, '#fff6c0', 0.2, 0.6, 0.3); }
+    else if (ev.type === 'collect') { const d = ev.drop, p = dropPos(d); const o = { x: p.x, y: p.y + 0.15 }; burst(o, 'Fee', 10, 1.2); burst(o, 'Elektro', 6, 1); ring(o, '#ffe066', 0.2, 0.8, 0.35); }
   }
   game.events.length = 0;
 }
+const T = () => ui.tile;
+function banner(text, big) {
+  const el = h('div.d-banner' + (big ? '.final' : ''), text);
+  ui.root.append(el);
+  setTimeout(() => el.remove(), 1900);
+}
+function renderWeatherChip() { const el = ui.root.querySelector('.d-weather'); el.textContent = weatherInfo(game.weather).icon; el.title = weatherText(game.weather); }
 
 async function giveUp() {
   if (!game || game.over) return;
@@ -341,5 +441,5 @@ function end() {
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
     h('h2', won ? 'Geschafft!' : 'Niederlage'),
     h('p', won ? 'Du hast alle fünf Wellen abgewehrt.' : game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`),
-    h('button.btn.primary.big', { onclick: () => { closeField(); game = null; theme = null; app.refresh(); document.dispatchEvent(new Event('defense-closed')); } }, 'Weiter')));
+    h('button.btn.primary.big', { onclick: () => { closeField(); game = null; theme = null; pick = []; app.refresh(); document.dispatchEvent(new Event('defense-closed')); } }, 'Weiter')));
 }

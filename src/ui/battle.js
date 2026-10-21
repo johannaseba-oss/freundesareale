@@ -2,19 +2,22 @@
 // Handkarten werden aufs Spielfeld gezogen (oder antippen + Feld antippen). Kampf-Level/Entwicklungen gelten nur im Kampf.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
-import { Battle, fromPokemon, fromCpu, towerRole, movesOf, moveOf, calcStats, STAT_NAMES, stonesFor, stoneName, stoneEvolution, canBattle } from '../game/battle.js';
+import { Battle, fromPokemon, fromCpu, towerRole, movesOf, moveOf, calcStats, stonesFor, stoneName, stoneEvolution, canBattle } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconImg } from '../gfx/icons.js';
 import { $, h, toast, modal, confirmDialog } from './dom.js';
 import { renderDefenseSetup } from './defense.js';
+import { teamPicker } from './teampick.js';
+import { drawWeather } from './weatherfx.js';
 import { haptic } from '../haptics.js';
 
 const B = () => CFG.battle;
 const base = import.meta.env.BASE_URL;
 const SIDE_COL = { p: '#4f9ff0', c: '#ef5d5d' };
 
-let step = 'team';
+let step = 'opponent';
+let chosenOpp = null;
 let mode = 'menu'; // 'menu' | 'arena' | 'defense'
 let sel = [];
 let towers = [];
@@ -36,90 +39,81 @@ export function initBattle() {
 const owned = () => (app.state?.pokemon || []).filter((p) => canBattle(p.dex)).sort((a, b) => a.dex - b.dex || a.uid - b.uid);
 const byUid = (uid) => app.state.pokemon.find((p) => p.uid === uid);
 const moveName = (dex) => moveOf(CFG.battleData.pokemon[dex].move)?.name || '';
-// Attacke mit Kategorie (physisch/speziell) und Reichweite (Nah/Fern)
-const moveKind = (mv) => `${mv.cat === 'phys' ? 'Physisch' : 'Speziell'} · ${mv.range === 'nah' ? 'Nahkampf' : 'Fernkampf'}`;
-const moveInfo = (dex) => { const mv = moveOf(CFG.battleData.pokemon[dex].move); return mv ? `${mv.name} (${moveKind(mv)})` : ''; };
 const ROLE_COL = { heiler: '#78e68c', anfeuerer: '#ff9650', beschuetzer: '#8fa8ff' };
 const lv5 = (p) => calcStats(p.dex, B().startLevel, p.ivs, p.evs);
 
 export function renderBattleSetup() {
   const el = $('#scr-battle');
   if (!el || !app.state) return;
-  // Modus-Auswahl: Arena (bisheriger Kampf) oder Sternenverteidigung
+  // Modus-Auswahl: PokeDefense oder Arena
   if (mode === 'menu') {
     el.replaceChildren(h('div.bs', h('div.bs-head', h('h2', 'Kampf')),
-      h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ Sternenverteidigung'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
-      h('button.mode-card', { onclick: () => { mode = 'arena'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.'))));
+      h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
+      h('button.mode-card', { onclick: () => { mode = 'arena'; step = 'opponent'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.'))));
     return;
   }
   if (mode === 'defense') { renderDefenseSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   const mons = owned();
-  const N = B().teamSize, T = B().towerCount;
-  // gespeicherte Auswahl übernehmen (nur noch vorhandene Pokémon)
-  if (!sel.length && app.state.battle?.team?.length) sel = app.state.battle.team.filter((u) => mons.some((p) => p.uid === u)).slice(0, N);
-  sel = sel.filter((u) => mons.some((p) => p.uid === u));
-  if (!towers.length && app.state.battle?.towers?.length) towers = app.state.battle.towers.filter((u) => sel.includes(u));
-  towers = towers.filter((u) => sel.includes(u)).slice(0, T);
-  if (step !== 'team' && sel.length !== N) step = 'team';
+  const N = B().teamSize;
+  const back = (fn) => h('button.btn.small.mode-back', { onclick: fn }, '‹ Zurück');
 
-  const portrait = (p) => h('img.bs-por', { src: portraitUrl(p.dex), alt: '', loading: 'lazy' });
-  if (step === 'team') {
-    const toggle = (p) => {
-      const i = sel.indexOf(p.uid);
-      if (i >= 0) sel.splice(i, 1); else if (sel.length < N) sel.push(p.uid); else { toast(`Höchstens ${N} Pokémon.`); return; }
-      haptic('tick');
-      renderBattleSetup();
-    };
+  // 1) Gegner wählen
+  if (step === 'opponent') {
     el.replaceChildren(h('div.bs',
-      h('button.btn.small.mode-back', { onclick: () => { mode = 'menu'; renderBattleSetup(); } }, '‹ Modi'),
-      h('div.bs-head', h('h2', 'Kampfteam'), h('span.bs-count' + (sel.length === N ? '.full' : ''), `${sel.length}/${N}`)),
-      mons.length < N
-        ? h('p.note.warn', `Du brauchst ${N} Pokémon für ein Kampfteam – du hast ${mons.length}. Ziehe am Automaten weitere!`)
-        : h('p.note', `Wähle ${N} Pokémon. Im Kampf starten alle auf Level ${B().startLevel} und haben eine Attacke.`),
-      h('div.bs-grid', mons.map((p) => h('button.bs-mon' + (sel.includes(p.uid) ? '.on' : ''), { onclick: () => toggle(p) },
-        portrait(p), h('b', p.nick || species(p.dex).name), h('small', moveName(p.dex))))),
-      h('div.bs-bar', h('button.btn.primary.big', { disabled: sel.length !== N, onclick: () => { step = 'towers'; if (!towers.length) towers = recommendTowers(); renderBattleSetup(); el.scrollTop = 0; } }, 'Weiter'))));
+      back(() => { mode = 'menu'; renderBattleSetup(); }),
+      h('div.bs-head', h('h2', '⚔ Arena – Gegner')),
+      h('div.bs-list', B().opponents.map((o) => h('button.bs-row.opp', { onclick: () => { chosenOpp = o; step = 'team'; renderBattleSetup(); el.scrollTop = 0; } },
+        trainerCanvas(o.trainer, 1),
+        h('div.bs-row-text', h('b', oppName(o)), h('small', o.level),
+          h('div.bs-mini', o.towers.map((d) => h('img', { src: portraitUrl(d), alt: species(d)?.name || '' })))),
+        h('span.bs-go', '›'))))));
     return;
   }
-  if (step === 'towers') {
-    const toggle = (uid) => {
-      const i = towers.indexOf(uid);
-      if (i >= 0) towers.splice(i, 1); else if (towers.length < T) towers.push(uid); else { toast(`Genau ${T} Verteidiger – tippe erst einen anderen ab.`); return; }
-      haptic('tick');
-      renderBattleSetup();
-    };
-    const list = sel.map(byUid).sort((a, b) => towers.includes(b.uid) - towers.includes(a.uid));
-    el.replaceChildren(h('div.bs',
-      h('div.bs-head', h('h2', 'Verteidiger'), h('span.bs-count' + (towers.length === T ? '.full' : ''), `${towers.length}/${T}`)),
-      h('p.note', `Wähle ${T} Verteidiger. Sie stehen fest auf dem Feld – fallen alle ${T}, ist die Runde verloren. Gut geeignet: viel KP und Verteidigung.`),
-      h('div.bs-list', list.map((p) => {
-        const role = B().towerRoles[towerRole(p.dex)];
-        const st = lv5(p);
-        return h('button.bs-row' + (towers.includes(p.uid) ? '.on' : ''), { onclick: () => toggle(p.uid) },
-          portrait(p),
-          h('div.bs-row-text',
-            h('div', h('b', p.nick || species(p.dex).name), ' ', h('span.type-chips.left.inline', species(p.dex).types.map((t) => typeChip(t)))),
-            h('small', `${role.icon} ${role.name} – ${role.text}`),
-            h('small.bs-stats', st.map((v, i) => `${STAT_NAMES[i]} ${v}`).join(' · ')),
-            h('small', `Attacke: ${moveInfo(p.dex)}`)),
-          h('span.bs-check', towers.includes(p.uid) ? '🛡' : ''));
-      })),
-      h('div.bs-bar',
-        h('button.btn', { onclick: () => { step = 'team'; renderBattleSetup(); } }, 'Zurück'),
-        h('button.btn.primary.big', { disabled: towers.length !== T, onclick: () => { step = 'opponent'; renderBattleSetup(); el.scrollTop = 0; } }, 'Weiter'))));
+
+  // 2) Team wählen: leer starten, Antippen nummeriert; beim 10. Pokémon kommt die Bestätigung
+  if (mons.length < N) {
+    el.replaceChildren(h('div.bs', back(() => { step = 'opponent'; renderBattleSetup(); }), h('p.note.warn', `Du brauchst ${N} Pokémon für ein Kampfteam – du hast ${mons.length}. Ziehe am Automaten weitere!`)));
     return;
   }
-  // Gegnerwahl
+  const hint = (p) => {
+    const mv = moveOf(CFG.battleData.pokemon[p.dex].move);
+    return h('small.mv', h('i.tdot', { style: { background: typeColor(mv.type) } }), mv.name, ' ', mv.range === 'nah' ? '✊' : '➶');
+  };
+  const picker = teamPicker({ mons, N, hint, onFull: (uids) => confirmTeam(uids, () => picker.clear()) });
   el.replaceChildren(h('div.bs',
-    h('div.bs-head', h('h2', 'Gegner')),
-    h('p.note', 'Wähle deinen Gegner.'),
-    h('div.bs-list', B().opponents.map((o) => h('button.bs-row.opp', { onclick: () => startBattle(o) },
-      trainerCanvas(o.trainer, 1),
-      h('div.bs-row-text', h('b', oppName(o)), h('small', o.level),
-        h('div.bs-mini', o.towers.map((d) => h('img', { src: portraitUrl(d), alt: species(d)?.name || '' })))),
-      h('span.bs-go', '⚔')))),
-    h('div.bs-bar', h('button.btn', { onclick: () => { step = 'towers'; renderBattleSetup(); } }, 'Zurück'))));
+    back(() => { step = 'opponent'; renderBattleSetup(); }),
+    h('div.bs-head', h('h2', `Team gegen ${oppName(chosenOpp)}`), picker.count),
+    h('p.note', `Tippe ${N} Pokémon an. Alle starten auf Level ${B().startLevel}. ✊ Nahkampf · ➶ Fernkampf`),
+    picker.grid));
 }
+
+// Bestätigung: Team zeigen, 3 Verteidiger (vorgeschlagen, antippen zum Ändern), dann geht es los
+function confirmTeam(uids, reset) {
+  sel = uids;
+  towers = recommendTowers();
+  modal((el, close) => {
+    const T = B().towerCount;
+    const grid = h('div.confirm-grid');
+    const go = h('button.btn.primary.big', { onclick: () => { close(); startBattle(chosenOpp); } }, 'Los!');
+    const render = () => {
+      grid.replaceChildren(...sel.map((u, i) => {
+        const p = byUid(u), isT = towers.includes(u);
+        return h('button.confirm-mon' + (isT ? '.tower' : ''), { onclick: () => {
+          if (isT) towers = towers.filter((x) => x !== u); else if (towers.length < T) towers.push(u); else { toast(`Genau ${T} Verteidiger – tippe erst einen anderen ab.`); return; }
+          haptic('tick'); render();
+        } }, h('span.bs-num', String(i + 1)), isT ? h('span.confirm-shield', B().towerRoles[towerRole(p.dex)].icon) : null,
+        h('img', { src: portraitUrl(p.dex), alt: '' }), h('small', p.nick || species(p.dex).name));
+      }));
+      go.disabled = towers.length !== T;
+    };
+    render();
+    el.append(h('h3', `Dein Team gegen ${oppName(chosenOpp)}`),
+      h('p.note', `Goldener Rahmen = Verteidiger (${T}). Antippen zum Tauschen.`),
+      grid,
+      h('div.row', h('button.btn', { onclick: () => { close(); reset(); } }, 'Neu wählen'), go));
+  });
+}
+
 
 // Empfehlung: die drei Pokémon mit den höchsten Abwehrwerten (KP + Vert + SpVert)
 function recommendTowers() {
@@ -142,7 +136,7 @@ function trainerCanvas(n, scale = 1) {
 // ================= Kampf =================
 function startBattle(o) {
   const N = B().teamSize;
-  if (sel.length !== N || towers.length !== B().towerCount) { step = 'team'; renderBattleSetup(); return; }
+  if (sel.length !== N || towers.length !== B().towerCount) { step = 'opponent'; renderBattleSetup(); return; }
   app.act((s) => { s.battle = { team: [...sel], towers: [...towers] }; return { ok: true }; });
   const player = {
     towers: towers.map((u) => fromPokemon(byUid(u))),
@@ -361,7 +355,7 @@ function draw(dt) {
     x.globalAlpha = 1;
     return true;
   });
-  drawWeather(x, dt, now);
+  drawWeather(x, A, battle.weather, A.w, A.h, A.tile, dt, now);
   // schwebende Texte
   A.texts = A.texts.filter((t) => {
     t.t += dt;
@@ -397,28 +391,6 @@ function bodyHeight(e) {
   return hgt;
 }
 
-// ---------- Wetter-Effekte ----------
-function drawWeather(x, dt, now) {
-  const A = arena, w = battle.weather, W = A.w, H = A.h, T = A.tile;
-  if (A.wxKind !== w) { // Partikel für das neue Wetter
-    A.wxKind = w;
-    const n = { regen: 70, schnee: 55, wind: 34, sonne: 6, bewoelkt: 4, nacht: 18 }[w] || 0;
-    A.wx = Array.from({ length: n }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 0.5 + Math.random() * 0.8, s: Math.random() }));
-  }
-  const tint = { sonne: 'rgba(255,200,80,.10)', regen: 'rgba(50,80,150,.13)', schnee: 'rgba(225,235,255,.16)', wind: 'rgba(230,240,220,.06)', nacht: 'rgba(15,25,70,.34)', bewoelkt: 'rgba(110,115,130,.16)' }[w];
-  if (tint) { x.fillStyle = tint; x.fillRect(0, 0, W, H); }
-  const px = Math.max(2, Math.round(T / 14));
-  for (const p of A.wx) {
-    if (w === 'regen') { p.y += H * 1.6 * p.v * dt; p.x += H * 0.25 * dt; x.fillStyle = 'rgba(200,220,255,.65)'; for (let k = 0; k < 4; k++) x.fillRect(p.x - k * px * 0.3, p.y - k * px, px * 0.7, px); }
-    else if (w === 'schnee') { p.y += H * 0.12 * p.v * dt; p.x += Math.sin(now / 700 + p.s * 9) * 12 * dt; x.fillStyle = '#ffffff'; x.fillRect(p.x, p.y, px, px); }
-    else if (w === 'wind') { p.x += W * 0.9 * p.v * dt; p.y += Math.sin(now / 300 + p.s * 7) * 8 * dt; x.fillStyle = p.s < 0.3 ? '#5fae3a' : 'rgba(255,255,255,.7)'; if (p.s < 0.3) x.fillRect(p.x, p.y, px * 2, px * 1.5); else x.fillRect(p.x, p.y, T * 1.1, Math.max(2, px * 0.7)); }
-    else if (w === 'sonne') { p.x += 6 * dt; x.fillStyle = 'rgba(255,240,170,.08)'; x.save(); x.translate(p.x, 0); x.rotate(0.35); x.fillRect(0, -H * 0.2, T * (0.5 + p.s), H * 1.6); x.restore(); }
-    else if (w === 'bewoelkt') { p.x += 10 * p.v * dt; x.fillStyle = 'rgba(40,40,60,.07)'; x.beginPath(); x.ellipse(p.x, p.y, T * 2.5, T * 1.2, 0, 0, 7); x.fill(); }
-    else if (w === 'nacht') { const a = 0.4 + 0.4 * Math.sin(now / 400 + p.s * 20); x.fillStyle = `rgba(255,250,170,${a})`; x.fillRect(p.x, p.y, px, px); } // Glühwürmchen
-    if (p.y > H + 10) { p.y = -10; p.x = Math.random() * W; }
-    if (p.x > W + T * 3) { p.x = -T * 3; p.y = Math.random() * H; }
-  }
-}
 function renderWeather() {
   const wi = battle.weatherInfo(), el = arena.root.querySelector('.b-weather');
   el.textContent = wi.icon;
@@ -432,10 +404,6 @@ function drawUnit(x, u, [X, Y], T, now) {
     x.fillStyle = '#6d6556';
     for (let k = 0; k < 5; k++) x.fillRect(X - T * 0.35 + k * T * 0.15, Y - T * 0.05 + ((k * 7) % 3) * T * 0.05, T * 0.12, T * 0.1);
     return;
-  }
-  if (!tower) { // Schatten in Teamfarbe
-    x.fillStyle = 'rgba(0,0,0,.18)'; x.beginPath(); x.ellipse(X, Y + T * 0.22, T * 0.34, T * 0.14, 0, 0, 7); x.fill();
-    x.strokeStyle = SIDE_COL[u.side]; x.lineWidth = 2; x.beginPath(); x.ellipse(X, Y + T * 0.22, T * 0.34, T * 0.14, 0, 0, 7); x.stroke();
   }
   const e = loadSprites(u.dex, u.gender);
   let topY = Infinity;
@@ -722,6 +690,6 @@ function endBattle() {
     best.length ? h('div.b-best', best.map((f) => h('div', h('img', { src: portraitUrl(f.dex), alt: '' }), h('small', `${species(f.dex).name} · Lv ${f.level}`)))) : null,
     B().stats.evsPersist && gains.length ? h('p.note', `${gains.length} Pokémon haben EVs gesammelt (bleiben erhalten).`) : null,
     h('p.note', 'Level und Entwicklungen aus dem Kampf verfallen jetzt wieder.'),
-    h('button.btn.primary.big', { onclick: () => { closeArena(); battle = null; oppNames = {}; step = 'opponent'; renderBattleSetup(); } }, 'Weiter'));
+    h('button.btn.primary.big', { onclick: () => { closeArena(); battle = null; oppNames = {}; step = 'opponent'; sel = []; towers = []; renderBattleSetup(); } }, 'Weiter'));
   arena.root.append(box);
 }
