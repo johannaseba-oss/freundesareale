@@ -2,7 +2,7 @@
 // Der Aufrufer (main.js) speichert danach automatisch in der Cloud.
 import { CFG, areaById, berryById, isHairy } from '../config.js';
 import { dayKey } from '../time.js';
-import { capacityOf, residents, rollGender } from './state.js';
+import { capacityOf, residents, rollGender, ensureBattleData } from './state.js';
 import { modsFor } from './bonuses.js';
 import { coinRatePerHour, cycleCoins } from './sim.js';
 import { dispenseBall, canForesee, revealActive } from './gacha.js';
@@ -117,6 +117,7 @@ export function draw(s, t, key) {
     level: 1, xp: 0, fullness: CFG.balance.newPokemon.fullness, satisfaction: CFG.balance.newPokemon.satisfaction, affection: CFG.balance.newPokemon.affection,
     gender: rollGender(ball.dex), cleanliness: isHairy(ball.dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
   };
+  ensureBattleData(p);
   s.pokemon.push(p);
   return { ok: true, pokemon: p, ball, free };
 }

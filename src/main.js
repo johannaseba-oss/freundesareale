@@ -14,6 +14,7 @@ import { initAreas } from './ui/areas.js';
 import { initCollection, render as renderCollection, setFilter } from './ui/collection.js';
 import { ballCanvas } from './gfx/balls.js';
 import { initGacha } from './ui/gacha.js';
+import { initBattle, renderBattleSetup } from './ui/battle.js';
 import { closeSheet } from './ui/sheet.js';
 import { openSettings } from './ui/settings.js';
 
@@ -85,7 +86,7 @@ async function startGame(user) {
     if (!row || recovered) app.saver.markDirty(true);
     if (recovered) toast('Nicht gespeicherter Fortschritt wurde hochgeladen.');
 
-    if (!screensReady) { initAreas(); initCollection(); await initGacha(); bindChrome(); screensReady = true; }
+    if (!screensReady) { initAreas(); initCollection(); await initGacha(); initBattle(); bindChrome(); screensReady = true; }
     $('#app').classList.remove('hidden');
     hideBoot();
     switchTab(state.pokemon.length ? 'areas' : 'gacha');
@@ -169,8 +170,9 @@ function updateSaveState(status, err) {
 
 function switchTab(tab) {
   for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('active', b.dataset.tab === tab);
-  for (const id of ['areas', 'collection', 'gacha']) $('#scr-' + id).classList.toggle('hidden', id !== tab);
+  for (const id of ['areas', 'collection', 'gacha', 'battle']) $('#scr-' + id).classList.toggle('hidden', id !== tab);
   if (tab === 'collection') renderCollection(true);
+  if (tab === 'battle') renderBattleSetup();
   app.refresh();
 }
 

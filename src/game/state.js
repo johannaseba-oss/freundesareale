@@ -1,5 +1,6 @@
 import { CFG, areaById, species, isHairy } from '../config.js';
 import { hashString } from '../rng.js';
+import { rollIvs } from './battle.js';
 
 export const SCHEMA = 1;
 
@@ -17,6 +18,7 @@ export function newGame(nowMs) {
     gacha: null,
     berries: {},
     stats: { draws: 0, coinsEarned: 0 },
+    battle: { team: [], towers: [] },
   };
 }
 
@@ -37,6 +39,7 @@ export function migrate(s) {
   for (const a of CFG.areas) s.areas[a.id] ||= { unlocked: a.unlockCost === 0, level: 0 };
   s.stats ||= { draws: 0, coinsEarned: 0 };
   s.berries ||= {};
+  s.battle ||= { team: [], towers: [] };
   for (const p of s.pokemon) {
     p.effects ||= [];
     p.pet ||= { day: '', amount: 0 };
@@ -49,9 +52,18 @@ export function migrate(s) {
     }
     if (isHairy(p.dex) && p.cleanliness == null) p.cleanliness = CFG.grooming.startCleanliness;
     if (p.gender === undefined) p.gender = rollGender(p.dex, hashString('g' + p.uid) / 4294967296);
+    ensureBattleData(p);
     if (p.area && !areaById(p.area)) p.area = null; // Areal wurde aus der Konfiguration entfernt
   }
   return s;
+}
+
+// Dauerhafte Kampfwerte: IVs (fest, beim Fang ausgewürfelt), EVs (aus Kämpfen), zusätzlich gekaufte Attacken (später)
+export function ensureBattleData(p) {
+  p.ivs ||= rollIvs(`${p.uid}|${p.caughtAt}`);
+  p.evs ||= [0, 0, 0, 0, 0, 0];
+  p.moves ||= [];
+  return p;
 }
 
 export const capacityOf = (s, areaId) => {
