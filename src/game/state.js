@@ -41,6 +41,12 @@ export function migrate(s) {
     p.effects ||= [];
     p.pet ||= { day: '', amount: 0 };
     p.berriesReady ||= {};
+    if (p.coinBatches == null) {
+      // alte Spielstände: aufgehäufte Münzen auf höchstens einen Takt begrenzen
+      const max = (CFG.balance.coins.byRarity[species(p.dex)?.rarity] || CFG.balance.coins.byRarity.gewoehnlich).coins[1];
+      p.coinsReady = Math.min(p.coinsReady || 0, max);
+      p.coinBatches = p.coinsReady > 0 ? 1 : 0;
+    }
     if (isHairy(p.dex) && p.cleanliness == null) p.cleanliness = CFG.grooming.startCleanliness;
     if (p.gender === undefined) p.gender = rollGender(p.dex, hashString('g' + p.uid) / 4294967296);
     if (p.area && !areaById(p.area)) p.area = null; // Areal wurde aus der Konfiguration entfernt

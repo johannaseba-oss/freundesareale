@@ -4,7 +4,7 @@ import { openGrooming } from './groom.js';
 import { app } from '../app.js';
 import { now, fmtDuration } from '../time.js';
 import * as A from '../game/actions.js';
-import { capacityOf, residents, xpForLevel, genderSymbol } from '../game/state.js';
+import { capacityOf, residents, genderSymbol } from '../game/state.js';
 import { msToNextCoin, msToNextBerry, coinRange } from '../game/sim.js';
 import { modsFor, bonusTraits } from '../game/bonuses.js';
 import { habitatText, habitatFit } from '../game/habitat.js';

@@ -40,7 +40,8 @@ export function collectCoins(s, list) {
   for (const p of list) {
     // seltene Beere, wenn das Pokémon Münzen abgibt
     if (p.coinsReady > 0 && drop && Math.random() < drop.chance) { s.berries[drop.berry] = (s.berries[drop.berry] || 0) + 1; dropped.push({ uid: p.uid, berry: drop.berry }); }
-    total += p.coinsReady; p.coinsReady = 0;
+    total += p.coinsReady; p.coinsReady = 0; p.coinBatches = 0;
+    if (p.coinProgress >= 1) p.coinProgress = 0; // pausierter Takt startet neu
     for (const [id, n] of Object.entries(p.berriesReady || {})) { berries[id] = (berries[id] || 0) + n; s.berries[id] = (s.berries[id] || 0) + n; }
     p.berriesReady = {};
   }
@@ -62,7 +63,9 @@ export function giveBerry(s, p, berryId, t) {
   p.fullness = clamp(p.fullness + (b.hunger || 0));
   if (b.effect === 'zeitsprung') {
     p.coinProgress += coinRatePerHour(p, t, modsFor(s, p)) * b.hours;
-    while (p.coinProgress >= 1) { p.coinProgress -= 1; p.coinsReady += cycleCoins(p); p.coinCycles = (p.coinCycles || 0) + 1; }
+    const maxB = CFG.balance.coins.maxBatchesReady || 1;
+    while (p.coinProgress >= 1 && (p.coinBatches || 0) < maxB) { p.coinProgress -= 1; p.coinBatches = (p.coinBatches || 0) + 1; p.coinsReady += cycleCoins(p); p.coinCycles = (p.coinCycles || 0) + 1; }
+    if ((p.coinBatches || 0) >= maxB) p.coinProgress = Math.min(1, p.coinProgress);
   } else if (b.effect === 'produktion') {
     const existing = p.effects.find((e) => e.berry === b.id && e.until > t);
     if (existing) existing.until += b.hours * 3600e3; // gleiche Beere verlängert die Dauer

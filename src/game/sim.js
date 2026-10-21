@@ -5,7 +5,6 @@
 import { CFG, isHairy, species } from '../config.js';
 import { HOUR } from '../time.js';
 import { hashString } from '../rng.js';
-import { xpForLevel } from './state.js';
 import { allMods, modsFor } from './bonuses.js';
 import { habitatFit } from './habitat.js';
 import { mood, socialClimate } from './mood.js';
@@ -59,19 +58,19 @@ function stepPokemon(p, t, dtH, m, fit, social) {
   }
   if (n.affectionDecayPerDay) p.affection = clamp(p.affection - (n.affectionDecayPerDay / 24) * dtH);
 
-  if (p.level < L.max) {
-    p.xp += L.xpPerHour * dtH * m.xp * tierFactor(L.satisfactionFactor, mood(p, t)) * (1 + L.affectionBonusAt100 * (p.affection / 100));
-    while (p.level < L.max && p.xp >= xpForLevel(p.level)) { p.xp -= xpForLevel(p.level); p.level++; p.levelUps = (p.levelUps || 0) + 1; }
-  }
 
-  p.coinProgress += coinRatePerHour(p, t, m) * dtH;
-  const cap = b.coins.storageCapPerPokemon;
-  while (p.coinProgress >= 1) {
-    if (cap && p.coinsReady >= cap) { p.coinProgress = 1; break; }
+
+  // Münzen: höchstens maxBatchesReady fertige Takte, dann Pause bis zum Abholen (kein Stapeln)
+  const maxB = b.coins.maxBatchesReady || 1;
+  if ((p.coinBatches || 0) >= maxB) p.coinProgress = Math.min(1, p.coinProgress);
+  else p.coinProgress += coinRatePerHour(p, t, m) * dtH;
+  while (p.coinProgress >= 1 && (p.coinBatches || 0) < maxB) {
     p.coinProgress -= 1;
+    p.coinBatches = (p.coinBatches || 0) + 1;
     p.coinsReady += cycleCoins(p);
     p.coinCycles = (p.coinCycles || 0) + 1;
   }
+  if ((p.coinBatches || 0) >= maxB) p.coinProgress = Math.min(1, p.coinProgress);
 
   const br = berryRatePerHour(p, m, t);
   if (br) {
@@ -90,7 +89,15 @@ function stepPokemon(p, t, dtH, m, fit, social) {
 }
 
 // Nur Pokémon, die in einem Areal leben, verändern sich. Pokémon in der Sammlung (ohne Areal) ruhen.
+// Level: ein Level pro vollem Tag, den man das Pokémon besitzt
+export function updateLevel(p, t) {
+  const target = Math.min(CFG.balance.level.max, 1 + Math.floor(Math.max(0, t - (p.caughtAt || t)) / (24 * HOUR)));
+  if (target > p.level) p.levelUps = (p.levelUps || 0) + (target - p.level);
+  p.level = target;
+}
+
 export function simulate(s, nowMs) {
+  for (const p of s.pokemon) updateLevel(p, nowMs);
   const sim = CFG.balance.simulation;
   let t = Math.max(s.lastSim, nowMs - sim.maxOfflineDays * 24 * HOUR);
   if (nowMs <= t) return false;

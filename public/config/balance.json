@@ -70,7 +70,8 @@
         "factor": 0.5
       }
     ],
-    "storageCapPerPokemon": 0
+    "maxBatchesReady": 1,
+    "_stapel": "maxBatchesReady = wie viele fertige Münz-Takte ein Pokémon höchstens bereithält; danach pausiert es, bis man abholt (kein Stapeln über Nacht)."
   },
   "needs": {
     "hungerPerHour": 1.6,
@@ -89,27 +90,8 @@
     "_feeding": "Gefüttert wird mit Beeren (berries[].hunger = wie viel Hunger eine Beere stillt)."
   },
   "level": {
-    "max": 100,
-    "xpPerHour": 1,
-    "xpForLevel": {
-      "base": 6,
-      "exponent": 1.35
-    },
-    "satisfactionFactor": [
-      {
-        "min": 80,
-        "factor": 1.5
-      },
-      {
-        "min": 50,
-        "factor": 1
-      },
-      {
-        "min": 0,
-        "factor": 0.5
-      }
-    ],
-    "affectionBonusAt100": 0.5
+    "_hinweis": "Level = 1 + volle Tage, die man das Pokémon besitzt (max = Höchstlevel).",
+    "max": 100
   },
   "berries": [
     {
@@ -183,7 +165,7 @@
   "berryProduction": {
     "_hinweis": "Diese Pokémon produzieren Beeren STATT Glücksmünzen. baseIntervalHours = Zeit pro Beere (Level, Stimmung und Boni beschleunigen). berries = Gewichte, welche Beere entsteht. Eigene Beeren-Sprites: assets-input/items/<beeren-id>.png, dann npm run assets:art.",
     "baseIntervalHours": 0.5,
-    "storageCapPerPokemon": 0,
+    "storageCapPerPokemon": 1,
     "producers": [
       {
         "dex": [
