@@ -1,6 +1,7 @@
 import { CFG, areaById, species, isHairy } from '../config.js';
 import { hashString } from '../rng.js';
 import { rollIvs } from './battle.js';
+import { emptyContest, staminaOf } from './contest.js';
 
 export const SCHEMA = 1;
 
@@ -19,6 +20,10 @@ export function newGame(nowMs) {
     berries: {},
     stats: { draws: 0, coinsEarned: 0 },
     battle: { team: [], towers: [] },
+    profile: { name: '', sprite: 1 },
+    achievements: {},
+    dexOwned: [],
+    eggs: { pairs: {}, list: [] },
   };
 }
 
@@ -40,6 +45,12 @@ export function migrate(s) {
   s.stats ||= { draws: 0, coinsEarned: 0 };
   s.berries ||= {};
   s.battle ||= { team: [], towers: [] };
+  s.profile ||= { name: '', sprite: 1 };
+  s.achievements ||= {};
+  s.eggs ||= { pairs: {}, list: [] };
+  s.dexOwned = [...new Set([...(s.dexOwned || []), ...s.pokemon.map((p) => p.dex)])];
+  for (const k of ['battlesWon', 'battlesPlayed', 'grooms', 'eggsHatched']) s.stats[k] ||= 0;
+  s.stats.beaten ||= {};
   // jedes Exemplar braucht eine eigene ID – doppelte (aus älteren Ständen) bekommen eine neue
   const seen = new Set();
   for (const p of s.pokemon) {
@@ -65,11 +76,14 @@ export function migrate(s) {
   return s;
 }
 
-// Dauerhafte Kampfwerte: IVs (fest, beim Fang ausgewürfelt), EVs (aus Kämpfen), zusätzlich gekaufte Attacken (später)
+// Dauerhafte Werte je Exemplar: IVs (fest, beim Fang ausgewürfelt), EVs (aus Kämpfen), zusätzlich gekaufte Attacken (später),
+// Wettbewerbspunkte und Ausdauer (nur für Minispiele, die sie ausdrücklich nutzen)
 export function ensureBattleData(p) {
   p.ivs ||= rollIvs(`${p.uid}|${p.caughtAt}`);
   p.evs ||= [0, 0, 0, 0, 0, 0];
   p.moves ||= [];
+  p.contest ||= emptyContest();
+  p.stamina ??= staminaOf(p.dex);
   return p;
 }
 
@@ -98,4 +112,6 @@ export function rollGender(dex, r = Math.random()) {
   if (g < 0) return null;
   return r < g / 8 ? 'w' : 'm';
 }
+// Anzeigename: Spitzname, sonst Artname
+export const nameOf = (p) => p.nick || species(p.dex)?.name || '';
 export const genderSymbol = (p) => (p.gender === 'm' ? '♂' : p.gender === 'w' ? '♀' : '');

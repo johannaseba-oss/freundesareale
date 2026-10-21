@@ -8,7 +8,9 @@ import { app } from '../app.js';
 import * as A from '../game/actions.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import { haptic } from '../haptics.js';
-import { h, toast } from './dom.js';
+import { gainLines } from '../game/contest.js';
+import { nameOf } from '../game/state.js';
+import { h, toast, gainPop } from './dom.js';
 
 const BASE = import.meta.env.BASE_URL;
 const ART = `${BASE}art/putzen/`;
@@ -30,7 +32,7 @@ export function openGrooming(p, onDone) {
   const cv = h('canvas.groom-cv');
   const bar = h('i', { style: { width: '0%' } });
   const portrait = h('img.portrait', { src: portraitUrl(p.dex, 'Worried'), alt: '' });
-  const titleEl = h('b', `${sp.name} putzen`);
+  const titleEl = h('b', `${nameOf(p)} putzen`);
   const hint = h('div.groom-hint', 'Zieh die Seife über den Dreck!');
   const soapBtn = h('div.tool', { 'data-tool': 'soap' }, h('img', { src: ART + 'seife.png', alt: 'Seife', draggable: false }));
   const waterBtn = h('div.tool', { 'data-tool': 'water' }, h('img', { src: ART + 'brause.png', alt: 'Brause', draggable: false }));
@@ -54,7 +56,7 @@ export function openGrooming(p, onDone) {
   // Verschmutzungsgrad würfeln (schmutzigere Pokémon sind eher stark/extrem verschmutzt)
   const dirtiness = Math.min(1, Math.max(0, (100 - (p.cleanliness ?? 50)) / 100));
   const sev = weighted(G.severity.map((v) => ({ ...v, weight: v.weightClean + (v.weightDirty - v.weightClean) * dirtiness })));
-  titleEl.textContent = `${sp.name} putzen · ${sev.name}`;
+  titleEl.textContent = `${nameOf(p)} putzen · ${sev.name}`;
   const count = Math.round(rand(sev.count[0], sev.count[1] + 0.99) - 0.49);
   // Härtere Schmutzarten werden bei starker Verschmutzung häufiger
   const kinds = G.dirt.map((k) => ({ ...k, weight: k.weight * (k.hp >= 7 ? sev.heavy : 1) }));
@@ -177,7 +179,7 @@ export function openGrooming(p, onDone) {
     hint.remove();
     el.querySelector('.tool-tray')?.remove();
     done.classList.remove('hidden');
-    done.replaceChildren(h('img.portrait.big', { src: portraitUrl(p.dex, 'Joyous'), alt: '' }), h('h2', 'Blitzsauber!'), h('p', `${sp.name} fühlt sich pudelwohl.`), h('button.btn.primary', { onclick: () => finish(true) }, 'Fertig'));
+    done.replaceChildren(h('img.portrait.big', { src: portraitUrl(p.dex, 'Joyous'), alt: '' }), h('h2', 'Blitzsauber!'), h('p', `${nameOf(p)} fühlt sich pudelwohl.`), h('button.btn.primary', { onclick: () => finish(true) }, 'Fertig'));
   }
 
   function finish(success) {
@@ -187,8 +189,8 @@ export function openGrooming(p, onDone) {
     const frac = success ? 1 : progress();
     if (frac > 0) {
       const r = app.act((s, t) => A.groomed(s, p, t, frac), true);
-      if (r.ok && !r.partial) toast(`${sp.name} ist jetzt blitzsauber!`);
-      else if (r.ok) toast(`${sp.name} ist etwas sauberer.`);
+      if (r.ok && !r.partial) { toast(`${nameOf(p)} ist jetzt blitzsauber!`); if (r.contest) setTimeout(() => gainPop(gainLines(r.contest)), 250); }
+      else if (r.ok) toast(`${nameOf(p)} ist etwas sauberer.`);
     }
     el.remove();
     onDone?.();

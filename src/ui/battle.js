@@ -7,6 +7,7 @@ import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconImg } from '../gfx/icons.js';
 import { $, h, toast, modal, confirmDialog } from './dom.js';
+import { trainContest, gainLines } from '../game/contest.js';
 import { haptic } from '../haptics.js';
 
 const B = () => CFG.battle;
@@ -33,6 +34,10 @@ export function initBattle() {
 const owned = () => (app.state?.pokemon || []).filter((p) => canBattle(p.dex)).sort((a, b) => a.dex - b.dex || a.uid - b.uid);
 const byUid = (uid) => app.state.pokemon.find((p) => p.uid === uid);
 const moveName = (dex) => moveOf(CFG.battleData.pokemon[dex].move)?.name || '';
+// Attacke mit Kategorie (physisch/speziell) und Reichweite (Nah/Fern)
+const moveKind = (mv) => `${mv.cat === 'phys' ? 'Physisch' : 'Speziell'} · ${mv.range === 'nah' ? 'Nahkampf' : 'Fernkampf'}`;
+const moveInfo = (dex) => { const mv = moveOf(CFG.battleData.pokemon[dex].move); return mv ? `${mv.name} (${moveKind(mv)})` : ''; };
+const ROLE_COL = { heiler: '#78e68c', anfeuerer: '#ff9650', beschuetzer: '#8fa8ff' };
 const lv5 = (p) => calcStats(p.dex, B().startLevel, p.ivs, p.evs);
 
 export function renderBattleSetup() {
@@ -61,7 +66,7 @@ export function renderBattleSetup() {
         ? h('p.note.warn', `Du brauchst ${N} Pokémon für ein Kampfteam – du hast ${mons.length}. Ziehe am Automaten weitere!`)
         : h('p.note', `Wähle ${N} Pokémon. Im Kampf starten alle auf Level ${B().startLevel} und haben eine Attacke.`),
       h('div.bs-grid', mons.map((p) => h('button.bs-mon' + (sel.includes(p.uid) ? '.on' : ''), { onclick: () => toggle(p) },
-        portrait(p), h('b', species(p.dex).name), h('small', moveName(p.dex))))),
+        portrait(p), h('b', p.nick || species(p.dex).name), h('small', moveName(p.dex))))),
       h('div.bs-bar', h('button.btn.primary.big', { disabled: sel.length !== N, onclick: () => { step = 'towers'; if (!towers.length) towers = recommendTowers(); renderBattleSetup(); el.scrollTop = 0; } }, 'Weiter'))));
     return;
   }
@@ -82,10 +87,10 @@ export function renderBattleSetup() {
         return h('button.bs-row' + (towers.includes(p.uid) ? '.on' : ''), { onclick: () => toggle(p.uid) },
           portrait(p),
           h('div.bs-row-text',
-            h('div', h('b', species(p.dex).name), ' ', h('span.type-chips.left.inline', species(p.dex).types.map((t) => typeChip(t)))),
+            h('div', h('b', p.nick || species(p.dex).name), ' ', h('span.type-chips.left.inline', species(p.dex).types.map((t) => typeChip(t)))),
             h('small', `${role.icon} ${role.name} – ${role.text}`),
             h('small.bs-stats', st.map((v, i) => `${STAT_NAMES[i]} ${v}`).join(' · ')),
-            h('small', `Attacke: ${moveName(p.dex)}`)),
+            h('small', `Attacke: ${moveInfo(p.dex)}`)),
           h('span.bs-check', towers.includes(p.uid) ? '🛡' : ''));
       })),
       h('div.bs-bar',
@@ -143,19 +148,22 @@ function openArena(o) {
   const hand = h('div.b-hand');
   const ghost = h('img.b-ghost.hidden', { alt: '' });
   const msg = h('div.b-msg');
-  const stoneBtn = h('button.b-btn', { onclick: openStoneShop }, '💎 Steine');
+  const stoneBtn = h('button.b-btn', { onclick: openStoneShop, title: 'Entwicklungssteine', 'aria-label': 'Entwicklungssteine' }, '💎');
   const count = h('span.b-count');
   const top = h('div.b-top',
     trainerCanvas(o.trainer, 0.85),
     h('div.b-name', h('b', oppName(o)), h('small', o.level)),
     count,
+    h('span.b-weather'),
     stoneBtn,
-    h('button.b-btn', { onclick: giveUp }, 'Aufgeben'));
+    h('button.b-btn', { onclick: giveUp, title: 'Aufgeben', 'aria-label': 'Aufgeben' }, '🏳'));
   const root = h('div.battle', top, h('div.b-field', canvas), hand, ghost, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
-  arena = { root, canvas, ctx: canvas.getContext('2d'), hand, ghost, msg, fx: [], texts: [], flashes: [], sel: null, drag: null, hover: null, cards: null, count, last: performance.now(), raf: 0, opp: o };
+  arena = { root, canvas, ctx: canvas.getContext('2d'), hand, ghost, msg, fx: [], texts: [], flashes: [], sel: null, drag: null, hover: null, cards: null, count, pulses: [], wx: [], wxKind: null, last: performance.now(), raf: 0, opp: o };
   for (const u of [...battle.units, ...battle.roster('p'), ...battle.roster('c')]) loadSprites(u.dex, u.gender);
+  renderWeather();
+  message(`Wetter: ${battle.weatherInfo().icon} ${battle.weatherInfo().name}${battle.weatherInfo().types.length ? ' – ' + battle.weatherInfo().types.join(' & ') + ' stärker' : ''}`);
   arena.ro = new ResizeObserver(() => layout());
   arena.ro.observe(canvas.parentElement);
   canvas.addEventListener('pointerdown', onFieldDown);
@@ -290,7 +298,21 @@ function draw(dt) {
     const [X, Y] = P(t);
     x.fillStyle = t.role === 'heiler' ? 'rgba(120,230,140,.10)' : t.role === 'anfeuerer' ? 'rgba(255,150,80,.10)' : 'rgba(150,170,255,.10)';
     x.beginPath(); x.arc(X, Y, R.radius * T, 0, 7); x.fill();
+    // Rand des Wirkungsbereichs (gestrichelt, in der Farbe der Fähigkeit)
+    x.save(); x.setLineDash([Math.max(3, T / 8), Math.max(3, T / 8)]); x.lineDashOffset = -now / 60;
+    x.strokeStyle = ROLE_COL[t.role]; x.globalAlpha = 0.55; x.lineWidth = 2;
+    x.beginPath(); x.arc(X, Y, R.radius * T, 0, 7); x.stroke(); x.restore();
   }
+  // Impuls, wenn ein Verteidiger seine Fähigkeit ausführt: Ring breitet sich bis zum Rand aus
+  A.pulses = A.pulses.filter((pl) => {
+    pl.age += dt;
+    if (pl.age > 0.8 || pl.f.hp <= 0) return false;
+    const [X, Y] = P(pl.f), k = pl.age / 0.8;
+    x.globalAlpha = 1 - k; x.strokeStyle = ROLE_COL[pl.role]; x.lineWidth = Math.max(2, T / 10);
+    x.beginPath(); x.arc(X, Y, pl.radius * T * (0.25 + 0.75 * k), 0, 7); x.stroke();
+    x.globalAlpha = 1;
+    return true;
+  });
   // Pokémon (nach Tiefe sortiert)
   const list = battle.units.slice().sort((a, b) => a.y - b.y);
   for (const u of list) drawUnit(x, u, P(u), T, now);
@@ -328,6 +350,7 @@ function draw(dt) {
     x.globalAlpha = 1;
     return true;
   });
+  drawWeather(x, dt, now);
   // schwebende Texte
   A.texts = A.texts.filter((t) => {
     t.t += dt;
@@ -361,6 +384,34 @@ function bodyHeight(e) {
   const hgt = bottom >= top ? bottom - top + 1 : a.fh;
   bodyCache.set(a, hgt);
   return hgt;
+}
+
+// ---------- Wetter-Effekte ----------
+function drawWeather(x, dt, now) {
+  const A = arena, w = battle.weather, W = A.w, H = A.h, T = A.tile;
+  if (A.wxKind !== w) { // Partikel für das neue Wetter
+    A.wxKind = w;
+    const n = { regen: 70, schnee: 55, wind: 34, sonne: 6, bewoelkt: 4, nacht: 18 }[w] || 0;
+    A.wx = Array.from({ length: n }, () => ({ x: Math.random() * W, y: Math.random() * H, v: 0.5 + Math.random() * 0.8, s: Math.random() }));
+  }
+  const tint = { sonne: 'rgba(255,200,80,.10)', regen: 'rgba(50,80,150,.13)', schnee: 'rgba(225,235,255,.16)', wind: 'rgba(230,240,220,.06)', nacht: 'rgba(15,25,70,.34)', bewoelkt: 'rgba(110,115,130,.16)' }[w];
+  if (tint) { x.fillStyle = tint; x.fillRect(0, 0, W, H); }
+  const px = Math.max(2, Math.round(T / 14));
+  for (const p of A.wx) {
+    if (w === 'regen') { p.y += H * 1.6 * p.v * dt; p.x += H * 0.25 * dt; x.fillStyle = 'rgba(200,220,255,.65)'; for (let k = 0; k < 4; k++) x.fillRect(p.x - k * px * 0.3, p.y - k * px, px * 0.7, px); }
+    else if (w === 'schnee') { p.y += H * 0.12 * p.v * dt; p.x += Math.sin(now / 700 + p.s * 9) * 12 * dt; x.fillStyle = '#ffffff'; x.fillRect(p.x, p.y, px, px); }
+    else if (w === 'wind') { p.x += W * 0.9 * p.v * dt; p.y += Math.sin(now / 300 + p.s * 7) * 8 * dt; x.fillStyle = p.s < 0.3 ? '#5fae3a' : 'rgba(255,255,255,.7)'; if (p.s < 0.3) x.fillRect(p.x, p.y, px * 2, px * 1.5); else x.fillRect(p.x, p.y, T * 1.1, Math.max(2, px * 0.7)); }
+    else if (w === 'sonne') { p.x += 6 * dt; x.fillStyle = 'rgba(255,240,170,.08)'; x.save(); x.translate(p.x, 0); x.rotate(0.35); x.fillRect(0, -H * 0.2, T * (0.5 + p.s), H * 1.6); x.restore(); }
+    else if (w === 'bewoelkt') { p.x += 10 * p.v * dt; x.fillStyle = 'rgba(40,40,60,.07)'; x.beginPath(); x.ellipse(p.x, p.y, T * 2.5, T * 1.2, 0, 0, 7); x.fill(); }
+    else if (w === 'nacht') { const a = 0.4 + 0.4 * Math.sin(now / 400 + p.s * 20); x.fillStyle = `rgba(255,250,170,${a})`; x.fillRect(p.x, p.y, px, px); } // Glühwürmchen
+    if (p.y > H + 10) { p.y = -10; p.x = Math.random() * W; }
+    if (p.x > W + T * 3) { p.x = -T * 3; p.y = Math.random() * H; }
+  }
+}
+function renderWeather() {
+  const wi = battle.weatherInfo(), el = arena.root.querySelector('.b-weather');
+  el.textContent = wi.icon;
+  el.title = wi.name + (wi.types.length ? ': ' + wi.types.join(' & ') + ' stärker' : '');
 }
 
 function drawUnit(x, u, [X, Y], T, now) {
@@ -407,6 +458,14 @@ function drawUnit(x, u, [X, Y], T, now) {
   x.lineWidth = 3; x.strokeStyle = 'rgba(40,25,20,.9)';
   const lv = tower ? `${B().towerRoles[u.role]?.icon || ''} ${u.level}` : String(u.level);
   x.strokeText(lv, bx - 2, by + bh); x.fillStyle = '#fff'; x.fillText(lv, bx - 2, by + bh);
+  if (!tower) { // Symbole aktiver Verteidiger-Boni rechts neben dem Balken
+    const au = battle.auraOf(u), marks = [];
+    if (au.atk > 1) marks.push(['▲', ROLE_COL.anfeuerer]);
+    if (au.def > 1) marks.push(['◆', ROLE_COL.beschuetzer]);
+    if (u.healFx && battle.t - u.healFx < 1) marks.push(['✚', ROLE_COL.heiler]);
+    x.textAlign = 'left';
+    marks.forEach(([ic, col], i) => { const mx = bx + bw + 2 + i * T * 0.24; x.strokeText(ic, mx, by + bh); x.fillStyle = col; x.fillText(ic, mx, by + bh); });
+  }
 }
 
 // ---------- Ereignisse -> Effekte ----------
@@ -417,7 +476,7 @@ function burst(u, color, n = 8, speed = 2.2, size = 5) {
   }
 }
 const say = (u, text, color, size, dur = 0.9, dy = -0.6) => arena.texts.push({ x: u.x, y: u.y + dy, text, color, size, dur, t: 0 });
-const nameOf = (u) => species(u.dex).name;
+const nameOf = (u) => u.nick || species(u.dex).name;
 function message(text) {
   const el = h('div', text);
   arena.msg.append(el);
@@ -448,7 +507,15 @@ function handleEvents() {
       burst(u, '#fff6c0', 18, 3, 6);
       message(`${u.side === 'p' ? '' : 'Gegnerisches '}${species(ev.from).name} hat sich zu ${species(ev.to).name} entwickelt!`);
       if (u.side === 'p') haptic('medium');
+    } else if (ev.type === 'pulse') {
+      arena.pulses.push({ f: u, role: ev.role, radius: ev.radius, age: 0 });
+      say(u, B().towerRoles[ev.role].icon, ROLE_COL[ev.role], 0.42, 0.8, -1.25);
+    } else if (ev.type === 'weather') {
+      const wi = battle.weatherInfo();
+      renderWeather();
+      message(`Wetter: ${wi.icon} ${wi.name}${wi.types.length ? ' – ' + wi.types.join(' & ') + ' stärker' : ''}`);
     } else if (ev.type === 'heal') {
+      u.healFx = battle.t;
       say(u, `+${ev.amt}`, '#7dff9a', 0.28, 0.8);
       for (let i = 0; i < 4; i++) arena.fx.push({ x: u.x + (Math.random() - 0.5) * 0.5, y: u.y, vx: 0, vy: -1.2, color: '#7dff9a', life: 0.6, size: 5 });
     } else if (ev.type === 'place') {
@@ -488,8 +555,8 @@ function renderHand() {
     c.el.replaceChildren(
       h('span.bcard-lv', `Lv ${f.level}`),
       h('img', { src: portraitUrl(f.dex), alt: '', draggable: false }),
-      h('b', sp.name),
-      h('small', h('i.tdot', { style: { background: typeColor(mv.type) } }), mv.name),
+      h('b', f.nick || sp.name),
+      h('small', h('i.tdot', { style: { background: typeColor(mv.type) } }), mv.name, h('span.rng', mv.range === 'nah' ? ' ✊' : ' ➶')),
       ...(st === 'cool' ? [h('span.bcard-cool', `${cool} s`)] : st === 'field' ? [h('span.bcard-cool.on', 'im Kampf')] : []));
   }
 }
@@ -631,12 +698,27 @@ function endBattle() {
       return { ok: true };
     }, true);
   }
+  // Siege zählen (Erfolge) und Kampf als Training: eingesetzte Pokémon und Verteidiger steigern Wettbewerbswerte
+  const trained = [];
+  app.act((s, t) => {
+    s.stats.battlesPlayed = (s.stats.battlesPlayed || 0) + 1;
+    if (won) { s.stats.battlesWon = (s.stats.battlesWon || 0) + 1; s.stats.beaten ||= {}; s.stats.beaten[battle.opponent.id] = true; }
+    const used = new Set();
+    for (const f of [...battle.sides.p.towers, ...battle.sides.p.bench]) if (f.uid != null && (f.tower || f.deployed) && !used.has(f.uid)) {
+      used.add(f.uid);
+      const p = s.pokemon.find((q) => q.uid === f.uid);
+      const g = p && trainContest(p, 'kampf', t);
+      if (g && Object.keys(g).length) trained.push(`${p.nick || species(p.dex).name}: ${gainLines(g).join(', ')}`);
+    }
+    return { ok: true };
+  }, true);
   const best = all.filter((f, i, a) => a.indexOf(f) === i && f.uid != null).sort((a, b) => b.level - a.level || b.kos - a.kos).slice(0, 3);
   const box = h('div.b-result' + (won ? '.won' : ''),
     h('h2', won ? 'Sieg!' : 'Niederlage'),
     h('p', won ? `Du hast alle Verteidiger von ${oppName(battle.opponent)} besiegt.` : battle.over.gaveUp ? 'Du hast aufgegeben.' : 'Alle deine Verteidiger wurden besiegt.'),
     best.length ? h('div.b-best', best.map((f) => h('div', h('img', { src: portraitUrl(f.dex), alt: '' }), h('small', `${species(f.dex).name} · Lv ${f.level}`)))) : null,
     B().stats.evsPersist && gains.length ? h('p.note', `${gains.length} Pokémon haben EVs gesammelt (bleiben erhalten).`) : null,
+    trained.length ? h('div.b-trained', trained.slice(0, 6).map((l) => h('div', '✦ ' + l)), trained.length > 6 ? h('div', `… und ${trained.length - 6} weitere`) : null) : null,
     h('p.note', 'Level und Entwicklungen aus dem Kampf verfallen jetzt wieder.'),
     h('button.btn.primary.big', { onclick: () => { closeArena(); battle = null; oppNames = {}; step = 'opponent'; renderBattleSetup(); } }, 'Weiter'));
   arena.root.append(box);

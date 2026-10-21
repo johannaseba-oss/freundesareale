@@ -26,6 +26,19 @@ const rand = (a, b) => a + Math.random() * (b - a);
 // Bereiche oben/unten, die von der schwebenden Oberfläche belegt sind (CSS-Pixel) – dort laufen keine Pokémon
 const SAFE = { top: 110, bottom: 110, side: 24 };
 
+// Pixel-Ei (8×10), einmal gezeichnet
+let eggCv = null;
+function eggCanvas() {
+  if (eggCv) return eggCv;
+  const rows = ['..1111..', '.122221.', '12232221', '12222221', '12222321', '13222221', '12223221', '12222221', '.122221.', '..1111..'];
+  const col = { 1: '#6b5444', 2: '#fff6e0', 3: '#8fcf6a' };
+  eggCv = document.createElement('canvas'); eggCv.width = 8; eggCv.height = 10;
+  const x = eggCv.getContext('2d');
+  rows.forEach((r, y) => [...r].forEach((ch, i) => { if (col[ch]) { x.fillStyle = col[ch]; x.fillRect(i, y, 1, 1); } }));
+  x.fillStyle = '#ffffff'; x.fillRect(2, 2, 1, 2);
+  return eggCv;
+}
+
 export class AreaScene {
   constructor(canvas, wrap, handlers) {
     this.canvas = canvas; this.wrap = wrap; this.ctx = canvas.getContext('2d');
@@ -40,10 +53,11 @@ export class AreaScene {
     new ResizeObserver(() => this.resize()).observe(wrap);
   }
 
-  setArea(area, residents, ground = []) {
+  setArea(area, residents, ground = [], eggs = []) {
     const changed = this.area?.id !== area.id;
     this.area = area;
     this.ground = ground;
+    this.eggs = eggs;
     this.bg = bgImage(area.image);
     if (changed) { this.actors.clear(); this.particles = []; this.social.reset(); }
     const ready = () => { if (changed || !this.k) this.resize(); this.sync(residents); };
@@ -153,6 +167,20 @@ export class AreaScene {
       ctx.drawImage(c, Math.round(pt.x - bw / 2), Math.round(pt.y - bw + bob), bw, bw);
       if (Math.sin(this.time * 3 + g.id * 7) > 0.92) { ctx.fillStyle = '#fff8c8'; ctx.fillRect(pt.x + 3 * s, pt.y - bw - 2 * s, 2 * s, 2 * s); }
       g.box = { x: pt.x - 9 * s, y: pt.y - 14 * s, w: 18 * s, h: 18 * s };
+    }
+    // Eier am Boden (wackeln, sobald sie schlüpfen können)
+    const nowMs = Date.now();
+    for (const e of this.eggs || []) {
+      const pt = this.groundPos(e), c = eggCanvas(), ew = 13 * s, eh = 16 * s;
+      const ready = nowMs >= e.hatchAt;
+      const rot = ready ? Math.sin(this.time * 9) * 0.25 * Math.max(0, Math.sin(this.time * 1.7)) : 0;
+      ctx.fillStyle = 'rgba(30,40,20,.25)';
+      ctx.beginPath(); ctx.ellipse(pt.x, pt.y + s, 5 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.translate(pt.x, pt.y + s); ctx.rotate(rot);
+      ctx.drawImage(c, Math.round(-ew / 2), Math.round(-eh), ew, eh);
+      ctx.restore();
+      if (ready && Math.sin(this.time * 4 + e.id) > 0.7) { ctx.fillStyle = '#fff8c8'; ctx.fillRect(pt.x + 4 * s, pt.y - eh - s, 2 * s, 2 * s); }
+      e.box = { x: pt.x - 10 * s, y: pt.y - 19 * s, w: 20 * s, h: 22 * s };
     }
     const list = [...this.actors.values()].sort((a, b) => (a.dragging - b.dragging) || a.y - b.y);
     for (const a of list) {
@@ -307,6 +335,9 @@ export class AreaScene {
   }
 
   tap(cx, cy) {
+    const ptI = this.toImage(cx, cy);
+    const egg = (this.eggs || []).find((g) => g.box && ptI.x >= g.box.x && ptI.x <= g.box.x + g.box.w && ptI.y >= g.box.y && ptI.y <= g.box.y + g.box.h);
+    if (egg) { const p = this.groundPos(egg); return this.h.onEgg?.(egg, this.toScreen(p.x, p.y - 10)); }
     const berry = this.berryAt(cx, cy);
     if (berry) { const p = this.groundPos(berry); return this.h.onBerry?.(berry, this.toScreen(p.x, p.y - 8)); }
     const hit = this.hitAt(cx, cy);

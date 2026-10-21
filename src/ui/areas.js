@@ -4,7 +4,8 @@ import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
-import { areaBonuses } from '../game/bonuses.js';
+import { areaBonuses, areaMood } from '../game/bonuses.js';
+import { fmtDuration, now } from '../time.js';
 import { habitatFit } from '../game/habitat.js';
 import { typeColor, typeChip, areaTypeChips } from '../game/types.js';
 import { collectWithFx } from './collect.js';
@@ -37,6 +38,14 @@ export function initAreas() {
     },
     onDrag: (dx) => { if (!switching) wrap.style.transform = `translateX(${dx * 0.6}px)`; },
     onSwipeEnd: (dir) => switchArea(dir),
+    onEgg: (egg, pos) => {
+      if (now() < egg.hatchAt) { toast(`Das Ei schlüpft in ${fmtDuration(egg.hatchAt - now())}.`); return; }
+      const r = app.act((s, t) => A.hatchEgg(s, egg.id, t), true);
+      if (!r.ok) return;
+      haptic('strong');
+      toast(`Ein ${species(r.pokemon.dex).name} ist geschlüpft! Es wartet im Beutel.`);
+      setTimeout(() => openSheet(r.pokemon), 400);
+    },
     onBerry: (g, pos) => {
       const area = CFG.areas[idx];
       const r = app.act((s) => A.pickGroundBerry(s, area.id, g.id));
@@ -169,14 +178,16 @@ function render(force = false) {
   if (!s.areas[CFG.areas[idx].id]?.unlocked) idx = owned()[0] ?? 0;
   const area = CFG.areas[idx], st = s.areas[area.id];
   const res = residents(s, area.id), cap = capacityOf(s, area.id);
-  scene.setArea(area, st.unlocked ? res : [], st.unlocked ? st.ground || [] : []);
+  scene.setArea(area, st.unlocked ? res : [], st.unlocked ? st.ground || [] : [], st.unlocked ? (s.eggs?.list || []).filter((e) => e.area === area.id) : []);
+  const am = st.unlocked ? areaMood(res) : null;
 
   const ownedList = owned();
-  const key = [area.id, s.coins, st.unlocked, st.level, res.length, ownedList.length, CFG.types ? 1 : 0].join('|');
+  const key = [area.id, s.coins, st.unlocked, st.level, res.length, ownedList.length, CFG.types ? 1 : 0, am ? Math.round(am.value) : '', am?.bonus].join('|');
   if (force || key !== lastKey) {
     lastKey = key;
     $('#area-name').textContent = area.name;
-    $('#area-cap').textContent = st.unlocked ? `${res.length} / ${cap} Pokémon` : '🔒';
+    // Arealstimmung: Durchschnitt der Bewohner, gute Stimmung = Münzbonus
+    $('#area-cap').replaceChildren(st.unlocked ? `${res.length} / ${cap} Pokémon` : '🔒', ...(am ? [' · ', h('span.area-mood' + (am.bonus > 0 ? '.good' : ''), { title: 'Arealstimmung' }, `♥ ${Math.round(am.value)} %${am.bonus > 0 ? ` · Münzen +${Math.round(am.bonus * 100)} %` : ''}`)] : []));
     $('#area-types').replaceChildren(...areaTypeChips(area));
     $('#area-dots').replaceChildren(...(ownedList.length > 1 ? ownedList.map((i) => h('i' + (i === idx ? '.on' : ''))) : []));
     for (const id of ['#area-prev', '#area-next']) $(id).classList.toggle('hidden', ownedList.length < 2);

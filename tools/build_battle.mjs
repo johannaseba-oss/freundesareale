@@ -144,8 +144,11 @@ for (const p of dexList) {
     evos: evos.get(p.dex) || [], move: moveKey,
   };
 }
+// Körperkontakt (offizielle Attacken-Eigenschaft) = Nahkampf, sonst Fernkampf
+const contact = new Set(csv('move_flag_map').filter((r) => +r.move_flag_id === 1).map((r) => +r.move_id));
+const moveIds = Object.fromEntries([...moves.entries()].map(([id, m]) => [m.key, id]));
 const moveTable = {};
-for (const m of moves.values()) if (usedMoves.has(m.key)) moveTable[m.key] = { name: m.name, type: m.type, power: m.power, acc: m.acc, cat: m.cls === 2 ? 'phys' : 'spez' };
+for (const m of moves.values()) if (usedMoves.has(m.key)) moveTable[m.key] = { name: m.name, type: m.type, power: m.power, acc: m.acc, cat: m.cls === 2 ? 'phys' : 'spez', range: contact.has(moveIds[m.key]) ? 'nah' : 'fern' };
 for (const k of usedMoves) if (!moveTable[k]) console.warn('unbekannte Attacke', k);
 
 fs.writeFileSync(path.join(ROOT, 'public/data/battle.json'), JSON.stringify({ growth, growthNames, stones, moves: moveTable, pokemon: out }));
@@ -159,4 +162,9 @@ const TRAINERS = ['d3gk6d4-c3f73330-a01a-4de8-91b3-87953d5f70b6.png', 'ddc6pww-9
 if (fs.existsSync(TRAINER_SRC)) {
   fs.mkdirSync(path.join(ROOT, 'public/art/trainer'), { recursive: true });
   TRAINERS.forEach((f, i) => fs.copyFileSync(path.join(TRAINER_SRC, f), path.join(ROOT, `public/art/trainer/${i + 1}.png`)));
+  // alle Trainer-Sprites zur Auswahl im Trainerprofil -> public/art/trainers/<n>.png
+  fs.mkdirSync(path.join(ROOT, 'public/art/trainers'), { recursive: true });
+  const all = fs.readdirSync(TRAINER_SRC).filter((f) => f.endsWith('.png')).sort();
+  all.forEach((f, i) => fs.copyFileSync(path.join(TRAINER_SRC, f), path.join(ROOT, `public/art/trainers/${i + 1}.png`)));
+  console.log('Trainer-Sprites:', all.length);
 }

@@ -71,7 +71,20 @@
       }
     ],
     "maxBatchesReady": 1,
-    "_stapel": "maxBatchesReady = wie viele fertige Münz-Takte ein Pokémon höchstens bereithält; danach pausiert es, bis man abholt (kein Stapeln über Nacht)."
+    "_stapel": "maxBatchesReady = wie viele fertige Münz-Takte ein Pokémon höchstens bereithält; danach pausiert es, bis man abholt (kein Stapeln über Nacht).",
+    "special": {
+      "52": {
+        "minutes": [
+          600,
+          780
+        ],
+        "coins": [
+          25,
+          50
+        ]
+      },
+      "_hinweis": "Pokémon mit eigener Münzproduktion (Pokédex-Nummer). minutes = Dauer eines Takts, coins = Münzen pro Takt. Mauzi: etwa zweimal täglich bis zu 50 Münzen."
+    }
   },
   "needs": {
     "hungerPerHour": 1.6,
@@ -208,5 +221,45 @@
     "_hinweis": "Seltene Beere beim Münzen-Einsammeln (Chance pro Pokémon mit fertigen Münzen).",
     "berry": "sinelbeere",
     "chance": 0.04
+  },
+  "areaMood": {
+    "_hinweis": "Arealstimmung = Durchschnitt der Stimmung aller Bewohner. Je höher, desto mehr Münzen (bonus 0.2 = +20 % Produktionstempo). Erste passende Stufe von oben zählt.",
+    "tiers": [
+      {
+        "min": 85,
+        "bonus": 0.25
+      },
+      {
+        "min": 70,
+        "bonus": 0.15
+      },
+      {
+        "min": 55,
+        "bonus": 0.05
+      },
+      {
+        "min": 0,
+        "bonus": 0
+      }
+    ]
+  },
+  "eggs": {
+    "_hinweis": "Eier: zwei Pokémon derselben Entwicklungsfamilie und desselben Geschlechts, die gemeinsam in einem Areal leben. Nach minDays gemeinsamen Tagen wird einmal pro weiterem Tag mit chancePerDay gewürfelt. Aus dem Ei schlüpft die Grundform der Familie.",
+    "minDays": 3,
+    "chancePerDay": 0.3,
+    "hatchHours": 12,
+    "maxPerArea": 2,
+    "ivFromBestParentChance": 0.5,
+    "_iv": "Je Wert: mit dieser Chance erbt das Junge den besseren IV der Eltern (+ivBonus), sonst wird neu ausgewürfelt.",
+    "ivBonus": [
+      0,
+      3
+    ],
+    "evChance": 0.35,
+    "evAmount": [
+      8,
+      32
+    ],
+    "_ev": "Mit evChance startet das Junge in einem zufälligen Wert mit evAmount EVs."
   }
 }

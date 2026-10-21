@@ -47,3 +47,13 @@ export function confirmDialog(text, okLabel = 'Ja') {
     });
   });
 }
+
+// Kurze, aufsteigende Wertanzeige (z. B. "Schönheit +3") – pos = Bildschirmposition, sonst Bildmitte
+export function gainPop(lines, pos = null) {
+  if (!lines?.length) return;
+  const el = h('div.gain-pop', lines.map((l) => h('div', '✦ ' + l)));
+  el.style.left = (pos ? pos.x : window.innerWidth / 2) + 'px';
+  el.style.top = (pos ? pos.y : window.innerHeight * 0.42) + 'px';
+  document.body.append(el);
+  setTimeout(() => el.remove(), 2200);
+}

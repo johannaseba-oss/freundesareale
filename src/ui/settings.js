@@ -1,6 +1,7 @@
 // Einstellungen: Konto, Abmelden, Passwort ändern, Sicherungen ansehen/wiederherstellen.
 import { app } from '../app.js';
 import { h, modal, toast, confirmDialog } from './dom.js';
+import { profileCard } from './profile.js';
 
 const REASON = { auto: 'Automatisch', taeglich: 'Täglich', manuell: 'Manuell', vor_wiederherstellung: 'Vor Wiederherstellung' };
 
@@ -22,6 +23,7 @@ export function openSettings({ onLogout, onRestored }) {
     const pw = h('input', { type: 'password', placeholder: 'Neues Passwort (mind. 8 Zeichen)', autocomplete: 'new-password', style: { flex: 1, padding: '8px', border: '3px solid var(--line)', borderRadius: '10px' } });
     el.append(
       h('h3', 'Einstellungen'),
+      profileCard(),
       h('p', 'Angemeldet als ', h('b', app.user.email)),
       h('p.effects', app.backend.kind === 'dev' ? '⚠ Entwicklungsmodus: Supabase ist noch nicht eingerichtet, gespeichert wird nur in diesem Browser.' : 'Dein Spielstand wird nach jeder Aktion in der Cloud gespeichert.'),
       h('hr'),

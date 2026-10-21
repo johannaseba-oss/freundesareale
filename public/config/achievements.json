@@ -1,0 +1,297 @@
+{
+  "_hinweis": "Erfolge. Typen: speciesCount (n verschiedene Arten), dexRange (alle Arten von..bis), set (alle genannten Arten), fullFamilies (n komplette Entwicklungsreihen), stat (Zähler aus dem Spielstand ≥ n), areasUnlocked (n Areale), contestLevel (eine Eigenschaft auf Stufe n), beat (Gegner-ID besiegt). Arten zählen nur einmal, egal wie viele Exemplare.",
+  "list": [
+    {
+      "id": "arten10",
+      "cat": "Sammlung",
+      "name": "Sammelanfänger",
+      "text": "10 verschiedene Pokémon-Arten gesammelt",
+      "type": "speciesCount",
+      "n": 10
+    },
+    {
+      "id": "arten50",
+      "cat": "Sammlung",
+      "name": "Sammelleidenschaft",
+      "text": "50 verschiedene Pokémon-Arten gesammelt",
+      "type": "speciesCount",
+      "n": 50
+    },
+    {
+      "id": "arten100",
+      "cat": "Sammlung",
+      "name": "Pokédex-Profi",
+      "text": "100 verschiedene Pokémon-Arten gesammelt",
+      "type": "speciesCount",
+      "n": 100
+    },
+    {
+      "id": "arten250",
+      "cat": "Sammlung",
+      "name": "Wandelnder Pokédex",
+      "text": "250 verschiedene Pokémon-Arten gesammelt",
+      "type": "speciesCount",
+      "n": 250
+    },
+    {
+      "id": "kanto",
+      "cat": "Sammlung",
+      "name": "Kanto komplett",
+      "text": "Alle ersten 150 Pokémon gesammelt",
+      "type": "dexRange",
+      "from": 1,
+      "to": 150
+    },
+    {
+      "id": "evoli",
+      "cat": "Entwicklungsreihen",
+      "name": "Evoli-Familie",
+      "text": "Evoli und alle seine Entwicklungen gesammelt",
+      "type": "set",
+      "dex": [
+        133,
+        134,
+        135,
+        136,
+        196,
+        197,
+        470,
+        471,
+        700
+      ]
+    },
+    {
+      "id": "reihe1",
+      "cat": "Entwicklungsreihen",
+      "name": "Ganze Familie",
+      "text": "Eine komplette Entwicklungsreihe gesammelt",
+      "type": "fullFamilies",
+      "n": 1
+    },
+    {
+      "id": "reihe10",
+      "cat": "Entwicklungsreihen",
+      "name": "Familienbande",
+      "text": "10 komplette Entwicklungsreihen gesammelt",
+      "type": "fullFamilies",
+      "n": 10
+    },
+    {
+      "id": "reihe25",
+      "cat": "Entwicklungsreihen",
+      "name": "Stammbaum-Experte",
+      "text": "25 komplette Entwicklungsreihen gesammelt",
+      "type": "fullFamilies",
+      "n": 25
+    },
+    {
+      "id": "starter_kanto",
+      "cat": "Entwicklungsreihen",
+      "name": "Kanto-Starter",
+      "text": "Bisasam, Glumanda und Schiggy samt Entwicklungen",
+      "type": "set",
+      "dex": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    {
+      "id": "duo_lati",
+      "cat": "Duos",
+      "name": "Ewige Gefährten",
+      "text": "Latias und Latios gesammelt",
+      "type": "set",
+      "dex": [
+        380,
+        381
+      ]
+    },
+    {
+      "id": "duo_plusle",
+      "cat": "Duos",
+      "name": "Plus und Minus",
+      "text": "Plusle und Minun gesammelt",
+      "type": "set",
+      "dex": [
+        311,
+        312
+      ]
+    },
+    {
+      "id": "duo_volbeat",
+      "cat": "Duos",
+      "name": "Glühwürmchen-Tanz",
+      "text": "Volbeat und Illumise gesammelt",
+      "type": "set",
+      "dex": [
+        313,
+        314
+      ]
+    },
+    {
+      "id": "duo_nidoran",
+      "cat": "Duos",
+      "name": "Nidoran-Pärchen",
+      "text": "Nidoran♀ und Nidoran♂ gesammelt",
+      "type": "set",
+      "dex": [
+        29,
+        32
+      ]
+    },
+    {
+      "id": "duo_kicklee",
+      "cat": "Duos",
+      "name": "Kampfbrüder",
+      "text": "Kicklee und Nockchan gesammelt",
+      "type": "set",
+      "dex": [
+        106,
+        107
+      ]
+    },
+    {
+      "id": "duo_sengo",
+      "cat": "Duos",
+      "name": "Ewige Rivalen",
+      "text": "Sengo und Vipitis gesammelt",
+      "type": "set",
+      "dex": [
+        335,
+        336
+      ]
+    },
+    {
+      "id": "duo_mond",
+      "cat": "Duos",
+      "name": "Sonne und Mond",
+      "text": "Lunastein und Sonnfel gesammelt",
+      "type": "set",
+      "dex": [
+        337,
+        338
+      ]
+    },
+    {
+      "id": "duo_tauros",
+      "cat": "Duos",
+      "name": "Weidegefährten",
+      "text": "Tauros und Miltank gesammelt",
+      "type": "set",
+      "dex": [
+        128,
+        241
+      ]
+    },
+    {
+      "id": "areale5",
+      "cat": "Freundesareale",
+      "name": "Gemütliches Zuhause",
+      "text": "5 Freundesareale freigeschaltet",
+      "type": "areasUnlocked",
+      "n": 5
+    },
+    {
+      "id": "areale12",
+      "cat": "Freundesareale",
+      "name": "Großgrundbesitz",
+      "text": "12 Freundesareale freigeschaltet",
+      "type": "areasUnlocked",
+      "n": 12
+    },
+    {
+      "id": "arealeAlle",
+      "cat": "Freundesareale",
+      "name": "Alle Areale",
+      "text": "Alle Freundesareale freigeschaltet",
+      "type": "areasUnlocked",
+      "n": "alle"
+    },
+    {
+      "id": "putzen1",
+      "cat": "Pflege",
+      "name": "Erste Fellpflege",
+      "text": "Ein Pokémon geputzt",
+      "type": "stat",
+      "stat": "grooms",
+      "n": 1
+    },
+    {
+      "id": "putzen25",
+      "cat": "Pflege",
+      "name": "Bürstenmeister",
+      "text": "25 Mal geputzt",
+      "type": "stat",
+      "stat": "grooms",
+      "n": 25
+    },
+    {
+      "id": "ei1",
+      "cat": "Pflege",
+      "name": "Kleines Wunder",
+      "text": "Ein Pokémon aus einem Ei geschlüpft",
+      "type": "stat",
+      "stat": "eggsHatched",
+      "n": 1
+    },
+    {
+      "id": "ei10",
+      "cat": "Pflege",
+      "name": "Kinderstube",
+      "text": "10 Pokémon aus Eiern geschlüpft",
+      "type": "stat",
+      "stat": "eggsHatched",
+      "n": 10
+    },
+    {
+      "id": "kampf1",
+      "cat": "Kampfmodus",
+      "name": "Erster Sieg",
+      "text": "Den ersten Kampf gewonnen",
+      "type": "stat",
+      "stat": "battlesWon",
+      "n": 1
+    },
+    {
+      "id": "kampf10",
+      "cat": "Kampfmodus",
+      "name": "Aufsteiger",
+      "text": "10 Kämpfe gewonnen",
+      "type": "stat",
+      "stat": "battlesWon",
+      "n": 10
+    },
+    {
+      "id": "kampf50",
+      "cat": "Kampfmodus",
+      "name": "Arenaveteran",
+      "text": "50 Kämpfe gewonnen",
+      "type": "stat",
+      "stat": "battlesWon",
+      "n": 50
+    },
+    {
+      "id": "champion",
+      "cat": "Kampfmodus",
+      "name": "Champion-Bezwinger",
+      "text": "Den Gegner „Sehr schwer“ besiegt",
+      "type": "beat",
+      "opponent": "silvan"
+    },
+    {
+      "id": "spezialist",
+      "cat": "Wettbewerb",
+      "name": "Spezialist",
+      "text": "Eine Wettbewerbseigenschaft eines Pokémon auf Stufe 4 gebracht",
+      "type": "contestLevel",
+      "n": 4
+    }
+  ]
+}

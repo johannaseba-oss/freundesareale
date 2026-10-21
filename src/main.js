@@ -20,6 +20,7 @@ import { initGacha } from './ui/gacha.js';
 import { initBattle, renderBattleSetup } from './ui/battle.js';
 import { closeSheet } from './ui/sheet.js';
 import { openSettings } from './ui/settings.js';
+import { checkAchievements } from './game/achievements.js';
 
 let screensReady = false;
 let recovery = false;
@@ -180,6 +181,9 @@ function feedAllBerries() {
 function tick() {
   if (!app.state) return;
   app.sync();
+  // Erfolge automatisch freischalten
+  const fresh = checkAchievements(app.state, now());
+  if (fresh.length) { for (const a of fresh) toast('🏆 Erfolg: ' + a.name); app.saver.markDirty(); }
   for (const p of app.state.pokemon) {
     if (p.levelUps) { toast(`${species(p.dex).name} ist jetzt Level ${p.level}!`); p.levelUps = 0; app.saver.markDirty(); }
   }
@@ -253,7 +257,7 @@ function bindChrome() {
     // Auf anderem Gerät weitergespielt? Dann Cloud-Stand übernehmen.
     try {
       const row = await app.backend.loadSave();
-      if (row && row.version !== app.saver.version && !app.saver.dirty) await reloadFromCloud('Spielstand von einem anderen Gerät geladen.');
+      if (row && row.version > app.saver.version && !app.saver.dirty && !app.saver.saving) await reloadFromCloud('Spielstand von einem anderen Gerät geladen.');
     } catch { /* offline */ }
     tick();
   });

@@ -4,7 +4,8 @@ import { openGrooming } from './groom.js';
 import { app } from '../app.js';
 import { now, fmtDuration } from '../time.js';
 import * as A from '../game/actions.js';
-import { capacityOf, residents, genderSymbol } from '../game/state.js';
+import { capacityOf, residents, genderSymbol, nameOf } from '../game/state.js';
+import { contestStats, contestLevel, gainLines } from '../game/contest.js';
 import { msToNextCoin, msToNextBerry, coinRange } from '../game/sim.js';
 import { modsFor, bonusTraits } from '../game/bonuses.js';
 import { habitatText, habitatFit, suitsArea } from '../game/habitat.js';
@@ -15,7 +16,7 @@ import { collectWithFx } from './collect.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconCanvas, iconImg, berryImg } from '../gfx/icons.js';
 import { ballCanvas } from '../gfx/balls.js';
-import { $, h, bar, toast } from './dom.js';
+import { $, h, bar, toast, gainPop, modal } from './dom.js';
 
 let current = null;
 
@@ -36,6 +37,18 @@ export function closeSheet() {
   $('#sheet').replaceChildren();
 }
 
+// Spitznamen festlegen (leer = Artname)
+function editNick(p, done) {
+  modal((el, close) => {
+    const inp = h('input.nick-input', { value: p.nick || '', maxLength: CFG.balance.nickMaxLength || 14, placeholder: species(p.dex).name });
+    const save = () => { app.act((s) => A.setNick(s, p, inp.value), true); close(); done(); };
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') save(); });
+    el.append(h('h3', 'Spitzname'), h('p.note', 'Leer lassen für den normalen Namen.'), inp,
+      h('div.row', h('button.btn', { onclick: close }, 'Abbrechen'), h('button.btn.primary', { onclick: save }, 'Speichern')));
+    setTimeout(() => inp.focus(), 50);
+  });
+}
+
 export function openSheet(p) {
   closeSheet();
   const sp = species(p.dex);
@@ -45,8 +58,12 @@ export function openSheet(p) {
 
   const portrait = h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p)), alt: '' });
   const sub = h('div.sub');
+  // Spitzname: Antippen des Namens (✎) öffnet die Eingabe
+  const title = h('h2.nick-title', { onclick: () => editNick(p, () => { title.firstChild.textContent = nameOf(p); species2.textContent = p.nick ? sp.name : ''; }) },
+    nameOf(p), h('span.gender.' + p.gender, genderSymbol(p)), h('span.nick-edit', '✎'));
+  const species2 = h('small.nick-species', p.nick ? sp.name : '');
   const head = h('div.sheet-head', portrait,
-    h('div', h('h2', sp.name, h('span.gender.' + p.gender, genderSymbol(p))), sub),
+    h('div', title, species2, sub),
     h('button.btn.small.close', { onclick: closeSheet }, '✕'));
 
   // ---- Bühne zum Streicheln / Füttern ----
@@ -105,7 +122,8 @@ export function openSheet(p) {
     rub.x = e.clientX; rub.y = e.clientY;
     if (rub.dist > 160) {
       rub.dist = 0;
-      app.act((s, t) => A.pet(s, p, t));
+      const pr = app.act((s, t) => A.pet(s, p, t));
+      if (pr.contest) gainPop(gainLines(pr.contest), { x: e.clientX, y: e.clientY - 40 });
       fx.hearts.push({ x: x - 10, y: y - 20, life: 1 });
       if (fx.anim !== 'Hop') play('Hop', 700);
       portrait.src = portraitUrl(p.dex, 'Joyous');
@@ -139,7 +157,7 @@ export function openSheet(p) {
   const berryBtns = CFG.balance.berries.map((b) => {
     const btn = h('button.btn.small', { title: b.name + ': ' + b.text, onclick: () => {
       const r = app.act((s2, t) => A.giveBerry(s2, p, b.id, t));
-      if (r.ok) { fx.bowl = performance.now() + 1800; play('Eat', 1800); portrait.src = portraitUrl(p.dex, 'Happy'); toast(`${sp.name} hat eine ${b.name} gegessen.`); }
+      if (r.ok) { fx.bowl = performance.now() + 1800; play('Eat', 1800); portrait.src = portraitUrl(p.dex, 'Happy'); toast(`${nameOf(p)} hat eine ${b.name} gegessen.`); if (r.contest) gainPop(gainLines(r.contest)); }
     } });
     btn.dataset.id = b.id;
     return btn;
@@ -148,12 +166,13 @@ export function openSheet(p) {
   const sel = h('select', { onchange: () => {
     if (!sel.value) return;
     const r = app.act((s2) => A.assign(s2, p, sel.value), true);
-    if (r.ok) { toast(`${sp.name} zieht in ${areaById(sel.value).name} ein.`); closeSheet(); }
+    if (r.ok) { toast(`${nameOf(p)} zieht in ${areaById(sel.value).name} ein.`); closeSheet(); }
   } });
   const moveRow = h('div.row');
 
   const update = () => {
     const st = app.state, t = now();
+    if (contestBox.dataset.k !== JSON.stringify(p.contest) + p.stamina) renderContest();
     if (!sub.dataset.done) { sub.dataset.done = '1'; sub.replaceChildren(h('div', `Lv. ${p.level} · `, h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity])), h('div.type-chips.left', ...sp.types.map((ty) => typeChip(ty)))); }
     else sub.firstChild.firstChild.textContent = `Lv. ${p.level} · `;
     const cr = coinRange(p);
@@ -181,7 +200,7 @@ export function openSheet(p) {
       if (rv) notes.push(h('div.note', `🔮 Psycho-Blick aktiv (noch ${fmtDuration(rv.until - t)})`));
       else if (canForesee(p, t)) notes.push(h('button.btn.small.psy', { onclick: () => {
         const r = app.act((s2, t2) => A.foresee(s2, p, t2), true);
-        if (r.ok) toast(`${sp.name} blickt in die Pokébälle – schau im Automaten nach!`);
+        if (r.ok) toast(`${nameOf(p)} blickt in die Pokébälle – schau im Automaten nach!`);
       } }, '🔮 Psycho-Blick: 5 Bälle im Automaten aufdecken'));
       else notes.push(h('div.note', `🔮 Ab ${CFG.balance.gacha.psychic.minMood} % Stimmung (und in einem Areal) kann es in den Automaten blicken.`));
     }
@@ -211,15 +230,31 @@ export function openSheet(p) {
     }
   };
 
+  // Wettbewerbswerte (Stufe 1–4 als Sterne, Punkte als Balken) und Ausdauer
+  const contestBox = h('details.contest', h('summary', 'Wettbewerb & Ausdauer'), h('div.contest-rows'));
+  const renderContest = () => {
+    const rows = contestStats().map((st) => {
+      const pts = p.contest?.[st.id] || 0, lv = contestLevel(pts);
+      return h('div.contest-row', h('span.k', st.name), h('span.stars', '★'.repeat(lv) + '☆'.repeat(4 - lv)), bar('contest', (pts / CFG.contest.maxPerStat) * 100), h('small', String(pts)));
+    });
+    const tot = Object.values(p.contest || {}).reduce((a, b) => a + b, 0);
+    contestBox.lastChild.replaceChildren(...rows,
+      h('div.note', `Punkte gesamt ${tot} / ${CFG.contest.totalCap} – nicht alles lässt sich maximieren.`),
+      h('div.contest-row', h('span.k', 'Ausdauer'), h('span.stars', '●'.repeat(p.stamina || 1) + '○'.repeat(5 - (p.stamina || 1)))));
+    contestBox.dataset.k = JSON.stringify(p.contest) + p.stamina;
+  };
+  renderContest();
+
   root.replaceChildren(h('div.sheet-inner.compact',
     head, stage,
     h('div.info', lSat.el, lHun.el, hairy ? lCln.el : null, lCoin.el, lFav.el), extra,
     h('div.row.actions', feedLabel, ...berryBtns),
     hairy ? h('div.row', h('button.btn.groom-btn', { onclick: () => {
-      if ((p.cleanliness ?? 0) >= 97) return toast(`${sp.name} ist schon ganz sauber.`);
+      if ((p.cleanliness ?? 0) >= 97) return toast(`${nameOf(p)} ist schon ganz sauber.`);
       closeSheet();
       openGrooming(p, () => openSheet(p));
     } }, '🧽 Fell putzen')) : null,
+    contestBox,
     moveRow));
 
   current = { update, raf: 0 };

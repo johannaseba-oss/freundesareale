@@ -33,8 +33,9 @@
     "cooldownClamp": [0.6, 1.8],
     "moveTilesPerSecond": 0.9,
     "moveSpeedExp": 0.3,
-    "rangePhys": 1.1,
-    "rangeSpez": 2.6,
+    "rangeNah": 1.1,
+    "rangeFern": 2.6,
+    "_range": "Reichweite hängt an der Attacke: Nahkampf = offizielle Attacken mit Körperkontakt, sonst Fernkampf. Unabhängig davon nutzt physisch Ang/Vert und speziell SpAng/SpVert.",
     "aggroRange": 3,
     "projectileSpeed": 7,
     "damageRandom": [0.85, 1],
@@ -55,8 +56,8 @@
   "towerRoles": {
     "_hinweis": "Fähigkeit der Verteidiger je nach Art: erster passender Typ des Pokémon entscheidet (überschreibbar in towerRoleOverrides). Alle Verteidiger greifen zusätzlich mit ihrer Attacke an.",
     "heiler": { "name": "Heiler", "icon": "✚", "text": "heilt verbündete Pokémon in der Nähe", "types": ["Fee", "Pflanze"], "radius": 3, "every": 4, "healPct": 0.12 },
-    "anfeuerer": { "name": "Anfeuerer", "icon": "▲", "text": "stärkt den Angriff verbündeter Pokémon in der Nähe", "types": ["Kampf", "Drache", "Feuer", "Elektro"], "radius": 3, "attackMult": 1.3 },
-    "beschuetzer": { "name": "Beschützer", "icon": "◆", "text": "stärkt die Verteidigung verbündeter Pokémon in der Nähe", "types": ["Stahl", "Gestein", "Boden"], "radius": 3, "defenseMult": 1.3 },
+    "anfeuerer": { "name": "Anfeuerer", "icon": "▲", "text": "stärkt den Angriff verbündeter Pokémon in der Nähe", "types": ["Kampf", "Drache", "Feuer", "Elektro"], "radius": 3, "attackMult": 1.3, "every": 3 },
+    "beschuetzer": { "name": "Beschützer", "icon": "◆", "text": "stärkt die Verteidigung verbündeter Pokémon in der Nähe", "types": ["Stahl", "Gestein", "Boden"], "radius": 3, "defenseMult": 1.3, "every": 3 },
     "fernkampf": { "name": "Fernkämpfer", "icon": "➶", "text": "greift aus größerer Entfernung an", "types": [], "extraRange": 0.75 }
   },
   "towerRoleOverrides": { "35": "heiler", "36": "heiler", "113": "heiler", "242": "heiler", "440": "heiler", "131": "heiler", "279": "heiler" },
@@ -69,34 +70,54 @@
     "_hinweis": "Entwicklungssteine im Kampf-Shop (Preis in Glücksmünzen, Platzhalter). Wirken nur bis zum Kampfende.",
     "price": 2500
   },
+  "weather": {
+    "_hinweis": "Wetter im Kampf: zu Beginn zufällig (nach Jahreszeit gewichtet), wechselt alle changeEverySeconds. boost = Schadens-Faktor für Pokémon mit einem passenden Typ (Platzhalter).",
+    "boost": 1.25,
+    "changeEverySeconds": [45, 90],
+    "kinds": {
+      "sonne": { "name": "Sonne", "icon": "☀", "types": ["Pflanze", "Feuer"] },
+      "regen": { "name": "Regen", "icon": "☂", "types": ["Wasser"] },
+      "schnee": { "name": "Schnee", "icon": "❄", "types": ["Eis"] },
+      "wind": { "name": "Wind", "icon": "༄", "types": ["Flug"] },
+      "nacht": { "name": "Nacht", "icon": "☾", "types": ["Unlicht"] },
+      "bewoelkt": { "name": "Bewölkt", "icon": "☁", "types": [] }
+    },
+    "seasons": {
+      "fruehling": { "months": [3, 4, 5], "weights": { "sonne": 3, "regen": 3, "schnee": 0.2, "wind": 1, "nacht": 1, "bewoelkt": 1.5 } },
+      "sommer": { "months": [6, 7, 8], "weights": { "sonne": 5, "regen": 1, "schnee": 0, "wind": 1, "nacht": 1, "bewoelkt": 1 } },
+      "herbst": { "months": [9, 10, 11], "weights": { "sonne": 1, "regen": 3, "schnee": 0.3, "wind": 3, "nacht": 1.5, "bewoelkt": 3 } },
+      "winter": { "months": [12, 1, 2], "weights": { "sonne": 0.5, "regen": 1, "schnee": 4, "wind": 1, "nacht": 2, "bewoelkt": 3 } }
+    }
+  },
   "names": ["Lukas", "Anna", "Jonas", "Lea", "Felix", "Marie", "Paul", "Sophie", "Leon", "Emma", "Finn", "Mia", "Elias", "Hannah", "Noah", "Lina", "Ben", "Clara", "Luis", "Ida", "Moritz", "Greta", "Jakob", "Frieda", "Theo", "Mila", "Henri", "Lotta", "Emil", "Johanna", "Anton", "Marlene"],
   "_names": "Computergegner bekommen bei jedem Kampf einen zufälligen Namen aus dieser Liste.",
   "sprite": { "_hinweis": "Größe der Pokémon auf dem Spielfeld: pixelsPerTile = so viele Sprite-Pixel ergeben eine Feldbreite (größer = kleinere Pokémon), maxHeight = sichtbare Figur höchstens so viele Felder hoch", "pixelsPerTile": 30, "maxHeight": 2 },
+  "_opponents": "think = Sekunden zwischen Entscheidungen, aggression = Angriffslust 0–1, wave = so viele Pokémon schickt der Gegner gemeinsam auf eine Spur",
   "opponents": [
     {
       "id": "timo", "level": "Leicht", "trainer": 1,
-      "towers": [74, 95, 111], "team": [16, 19, 10, 13, 21, 29, 32],
-      "ivs": [0, 15], "evs": 0, "think": 3.2, "aggression": 0.25
+      "towers": [74, 95, 111], "team": [17, 20, 10, 13, 22, 30, 33],
+      "ivs": [10, 26], "evs": 0, "think": 2.4, "aggression": 0.4, "wave": 2
     },
     {
       "id": "flora", "level": "Mittel", "trainer": 2,
       "towers": [182, 113, 45], "team": [1, 43, 69, 152, 187, 191, 270],
-      "ivs": [18, 31], "evs": 20, "think": 1.6, "aggression": 0.5
+      "ivs": [22, 31], "evs": 40, "think": 1.6, "aggression": 0.5, "wave": 2
     },
     {
       "id": "flamme", "level": "Mittel", "trainer": 3,
-      "towers": [324, 59, 126], "team": [4, 37, 58, 77, 155, 218, 228],
-      "ivs": [18, 31], "evs": 20, "think": 1.7, "aggression": 0.45
+      "towers": [324, 59, 126], "team": [5, 37, 58, 78, 156, 218, 228],
+      "ivs": [22, 31], "evs": 40, "think": 1.5, "aggression": 0.45, "wave": 2
     },
     {
       "id": "nils", "level": "Schwer", "trainer": 4,
       "towers": [131, 9, 130], "team": [7, 54, 60, 72, 86, 90, 98],
-      "ivs": [15, 31], "evs": 40, "think": 1.8, "aggression": 0.5
+      "ivs": [15, 31], "evs": 60, "think": 1.5, "aggression": 0.5, "wave": 3
     },
     {
       "id": "silvan", "level": "Sehr schwer", "trainer": 5,
       "towers": [248, 375, 242], "team": [5, 148, 93, 64, 67, 444, 123],
-      "ivs": [24, 31], "evs": 40, "think": 1.4, "aggression": 0.6
+      "ivs": [24, 31], "evs": 40, "think": 1.4, "aggression": 0.6, "wave": 3
     }
   ]
 }

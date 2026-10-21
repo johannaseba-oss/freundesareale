@@ -6,6 +6,8 @@ import { capacityOf, residents, rollGender, ensureBattleData, newUid } from './s
 import { modsFor } from './bonuses.js';
 import { coinRatePerHour, cycleCoins } from './sim.js';
 import { dispenseBall, canForesee, revealActive } from './gacha.js';
+import { trainContest } from './contest.js';
+import { inheritStats } from './eggs.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const fail = (msg) => ({ ok: false, msg });
@@ -30,7 +32,7 @@ export function pet(s, p, t) {
   const gain = Math.min(n.petAffection, Math.max(0, n.petAffectionPerDayMax - p.pet.amount));
   p.pet.amount += gain;
   p.affection = clamp(p.affection + gain);
-  return { ok: true, affectionGain: gain };
+  return { ok: true, affectionGain: gain, contest: trainContest(p, 'streicheln', t) };
 }
 
 export function collectCoins(s, list) {
@@ -71,7 +73,7 @@ export function giveBerry(s, p, berryId, t) {
     if (existing) existing.until += b.hours * 3600e3; // gleiche Beere verlängert die Dauer
     else p.effects.push({ type: 'produktion', berry: b.id, factor: b.factor, until: t + b.hours * 3600e3 });
   }
-  return { ok: true };
+  return { ok: true, contest: trainContest(p, 'fuettern_' + b.id, t) };
 }
 
 // Alle Beeren einer Sorte verteilen: immer an das gerade hungrigste Pokémon in einem Areal,
@@ -136,7 +138,39 @@ export function draw(s, t, key) {
   };
   ensureBattleData(p);
   s.pokemon.push(p);
+  if (!s.dexOwned.includes(p.dex)) s.dexOwned.push(p.dex);
   return { ok: true, pokemon: p, ball, free };
+}
+
+// Ei ausbrüten: neues Exemplar im Beutel, mit vererbten/verbesserten Werten
+export function hatchEgg(s, eggId, t) {
+  const i = s.eggs.list.findIndex((e) => e.id === eggId);
+  if (i < 0) return fail();
+  const egg = s.eggs.list[i];
+  if (t < egg.hatchAt) return fail('Das Ei braucht noch etwas Zeit.');
+  const { ivs, evs } = inheritStats(s, egg);
+  s.eggs.list.splice(i, 1);
+  const N = CFG.balance.newPokemon;
+  const p = {
+    uid: newUid(s, t), dex: egg.dex, ball: 'pokeball', fromEgg: true, caughtAt: t, area: null,
+    level: 1, xp: 0, fullness: N.fullness, satisfaction: N.satisfaction, affection: N.affection,
+    gender: rollGender(egg.dex), cleanliness: isHairy(egg.dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
+    ivs, evs,
+  };
+  ensureBattleData(p);
+  s.pokemon.push(p);
+  if (!s.dexOwned.includes(p.dex)) s.dexOwned.push(p.dex);
+  s.stats.eggsHatched = (s.stats.eggsHatched || 0) + 1;
+  return { ok: true, pokemon: p };
+}
+
+export function setNick(s, p, name) {
+  p.nick = String(name || '').trim().slice(0, CFG.balance.nickMaxLength || 14) || undefined;
+  return { ok: true };
+}
+export function setProfile(s, name, sprite) {
+  s.profile = { name: String(name || '').trim().slice(0, 16), sprite };
+  return { ok: true };
 }
 
 // Cloud-Stand nachladen, ohne lokal gezogene, noch nicht gespeicherte Pokémon zu verlieren
@@ -202,5 +236,6 @@ export function groomed(s, p, t, frac = 1) {
   p.shineUntil = t + (CFG.grooming.shineHours || 1) * 3600e3; // glänzt eine Stunde lang im Areal
   const cur = p.petBoost && p.petBoost.until > t ? p.petBoost.value : 0;
   p.petBoost = { value: Math.min(P.maxBoost, cur + R.mood), until: t + P.hours * 3600e3 };
-  return { ok: true };
+  s.stats.grooms = (s.stats.grooms || 0) + 1;
+  return { ok: true, contest: trainContest(p, 'putzen', t) };
 }

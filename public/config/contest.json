@@ -1,0 +1,94 @@
+{
+  "_hinweis": "Wettbewerbswerte (wie Diamant/Perl). Jedes Pokémon sammelt Punkte je Eigenschaft; die Stufe 1–4 ergibt sich aus levels (Punkte-Schwellen). totalCap begrenzt die Summe aller Punkte: nicht alles lässt sich maximieren, Spezialisierung lohnt sich.",
+  "stats": [
+    {
+      "id": "cool",
+      "name": "Coolness"
+    },
+    {
+      "id": "beauty",
+      "name": "Schönheit"
+    },
+    {
+      "id": "cute",
+      "name": "Anmut"
+    },
+    {
+      "id": "smart",
+      "name": "Klugheit"
+    },
+    {
+      "id": "tough",
+      "name": "Stärke"
+    }
+  ],
+  "levels": [
+    0,
+    30,
+    60,
+    90
+  ],
+  "maxPerStat": 100,
+  "totalCap": 200,
+  "appealExponent": 2,
+  "_appeal": "Für den späteren Wettbewerbsmodus: Wirkung einer Eigenschaft = (Punkte/maxPerStat)^appealExponent – ein hoher Einzelwert zählt mehr als viele mittlere.",
+  "activities": {
+    "_hinweis": "Welche Aktivität welche Eigenschaft steigert: [min, max] Punkte. perDay = nur einmal pro Tag und Pokémon.",
+    "putzen": {
+      "gains": {
+        "beauty": [
+          2,
+          4
+        ]
+      }
+    },
+    "streicheln": {
+      "gains": {
+        "cute": [
+          1,
+          2
+        ]
+      },
+      "perDay": true
+    },
+    "fuettern_sinelbeere": {
+      "gains": {
+        "smart": [
+          1,
+          2
+        ]
+      },
+      "perDay": true
+    },
+    "fuettern_tsitrubeere": {
+      "gains": {
+        "tough": [
+          1,
+          2
+        ]
+      },
+      "perDay": true
+    },
+    "kampf": {
+      "gains": {
+        "cool": [
+          1,
+          2
+        ],
+        "tough": [
+          0,
+          2
+        ]
+      }
+    }
+  },
+  "stamina": {
+    "_hinweis": "Ausdauer 1–5 je Art, aus den Basiswerten KP + Vert + SpVert (Anteil der Arten darunter). Wird NUR in Minispielen verwendet, die Ausdauer ausdrücklich berücksichtigen.",
+    "percentiles": [
+      0.2,
+      0.4,
+      0.6,
+      0.8
+    ]
+  }
+}

@@ -45,7 +45,7 @@ let nextId = 1;
 // src: { uid?, dex, gender, ivs, evs, moves }
 export function makeFighter(src, side) {
   const f = {
-    id: nextId++, side, uid: src.uid ?? null, dex: src.dex, origDex: src.dex, gender: src.gender ?? null,
+    id: nextId++, side, uid: src.uid ?? null, nick: src.nick || null, dex: src.dex, origDex: src.dex, gender: src.gender ?? null,
     ivs: src.ivs, evs: [...src.evs], evGain: [0, 0, 0, 0, 0, 0], extraMoves: src.moves || [],
     level: B().startLevel, tower: !!src.tower, state: 'deck', x: 0, y: 0, dir: side === 'p' ? 4 : 0, cd: 0, anim: null, kos: 0,
   };
@@ -124,6 +124,8 @@ export class Battle {
     this.events = [];
     this.over = null;
     this.paused = false;
+    this.weather = this.pickWeather(null);
+    this.weatherNext = this.nextWeatherTime();
     const G = B().grid;
     this.sides = {};
     for (const [side, def] of [['p', player], ['c', cpu]]) {
@@ -140,6 +142,19 @@ export class Battle {
     }
   }
 
+  // ---- Wetter (nach Jahreszeit gewichtet, wechselt während des Kampfs) ----
+  pickWeather(current) {
+    const W = B().weather, month = new Date().getMonth() + 1;
+    const season = Object.values(W.seasons).find((x) => x.months.includes(month)) || Object.values(W.seasons)[0];
+    const ids = Object.keys(W.kinds).filter((k) => k !== current && (season.weights[k] || 0) > 0);
+    let r = this.rnd() * ids.reduce((a, k) => a + season.weights[k], 0);
+    return ids.find((k) => (r -= season.weights[k]) < 0) || ids[0];
+  }
+  nextWeatherTime() { const [a, b] = B().weather.changeEverySeconds; return this.t + a + this.rnd() * (b - a); }
+  weatherInfo() { return B().weather.kinds[this.weather]; }
+  // Schaden-Faktor durch das Wetter für den Angreifer
+  weatherBoost(f) { const w = this.weatherInfo(); return w.types.some((t) => species(f.dex).types.includes(t)) ? B().weather.boost : 1; }
+
   // ---- Kartenleiste ----
   activeCount(side) { return this.units.filter((u) => u.side === side && !u.tower).length; }
   isReady(f) { return f.state === 'bench' && this.t >= (f.readyAt || 0); }
@@ -154,7 +169,7 @@ export class Battle {
   }
   place(side, f, col, row) {
     if (!f || f.side !== side || this.over || !this.isReady(f) || this.activeCount(side) >= B().maxActive || !this.canPlace(side, col, row)) return false;
-    f.state = 'field'; f.alive = true; f.x = col + 0.5; f.y = row + 0.5;
+    f.state = 'field'; f.alive = true; f.deployed = true; f.x = col + 0.5; f.y = row + 0.5;
     f.lane = this.laneOf(col); f.cd = 0.6; f.spawnT = this.t; f.dir = side === 'p' ? 4 : 0;
     this.units.push(f);
     this.events.push({ type: 'place', f });
@@ -172,7 +187,7 @@ export class Battle {
   aliveTowers(side) { return this.sides[side].towers.filter((t) => t.hp > 0); }
   rangeOf(f) {
     const mv = moveOf(movesOf(f)[0]);
-    let r = mv.cat === 'phys' ? C().rangePhys : C().rangeSpez;
+    let r = mv.range === 'nah' ? C().rangeNah : C().rangeFern; // Nahkampf = Attacke mit Körperkontakt
     if (f.tower) r += B().tower.extraRange + (B().towerRoles[f.role]?.extraRange || 0);
     return r;
   }
@@ -223,15 +238,18 @@ export class Battle {
   update(dt) {
     if (this.over || this.paused) return;
     this.t += dt;
+    if (this.t >= this.weatherNext) { this.weather = this.pickWeather(this.weather); this.weatherNext = this.nextWeatherTime(); this.events.push({ type: 'weather', weather: this.weather }); }
     const G = B().grid;
     // Heiler-Verteidiger
     for (const t of this.units) {
       if (!t.tower || t.hp <= 0) continue;
       const R = B().towerRoles[t.role];
-      if (!R?.healPct) continue;
+      if (!R?.radius) continue;
       t.healT += dt;
-      if (t.healT < R.every) continue;
+      if (t.healT < (R.every || 3)) continue;
       t.healT = 0;
+      this.events.push({ type: 'pulse', f: t, role: t.role, radius: R.radius }); // sichtbarer Impuls der Fähigkeit
+      if (!R.healPct) continue;
       for (const u of this.units) {
         if (u.side !== t.side || u.tower || u.hp <= 0 || u.state !== 'field' || dist(u, t) > R.radius || u.hp >= u.maxHp) continue;
         const amt = Math.max(1, Math.round(u.maxHp * R.healPct));
@@ -317,10 +335,10 @@ export class Battle {
     if (!choice) return;
     const [c0, c1] = C().cooldownClamp;
     f.cd = C().attackCooldown * Math.max(c0, Math.min(c1, Math.pow(refStat(f.level) / f.stats[5], C().cooldownSpeedExp)));
-    const phys = choice.m.cat === 'phys';
-    f.anim = { name: phys ? 'Attack' : 'Shoot', t0: this.t };
+    const melee = choice.m.range === 'nah';
+    f.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
     f.lastMove = choice.k;
-    if (phys) this.pending.push({ at: this.t + 0.25, from: f, to: target, move: choice.k });
+    if (melee) this.pending.push({ at: this.t + 0.25, from: f, to: target, move: choice.k });
     else this.projectiles.push({ x: f.x, y: f.y, from: f, to: target, move: choice.k, type: choice.m.type });
     this.events.push({ type: 'attack', f, target, move: choice.k });
   }
@@ -330,7 +348,7 @@ export class Battle {
     const mv = moveOf(moveKey);
     if (C().useAccuracy && this.rnd() * 100 >= mv.acc) { this.events.push({ type: 'miss', f: to }); return; }
     const a = this.auraOf(from), d = this.auraOf(to);
-    const { dmg, eff } = damageOf(from, to, mv, this.rnd, a.atk, d.def);
+    const { dmg, eff } = damageOf(from, to, mv, this.rnd, a.atk * this.weatherBoost(from), d.def);
     to.hp = Math.max(0, to.hp - dmg);
     to.hurtT = this.t;
     this.events.push({ type: 'hit', f: to, from, dmg, eff, move: moveKey });
@@ -411,13 +429,20 @@ export class Battle {
       return;
     }
     if (this.rnd() > o.aggression) return; // abwarten
+    // Angriffswellen: erst losschicken, wenn genug Pokémon bereit sind (wave), dann gemeinsam auf eine Spur
+    const wave = Math.min(o.wave || 1, B().maxActive - this.activeCount(side));
+    if (ready.length < wave) return;
     // Angriff: auf den schwächsten Verteidiger des Spielers
     const targets = this.aliveTowers(foeSide).sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
     if (!targets.length) return;
     const tgt = targets[0];
-    const f = pickFor(tgt);
-    const cell = this.nearestFree(side, G.lanes[tgt.lane] + 0.5 + (this.rnd() - 0.5) * 2, 0);
-    if (cell) this.place(side, f, cell[0], cell[1]);
+    for (let k = 0; k < Math.max(1, wave); k++) {
+      const pool = this.available(side);
+      if (!pool.length) break;
+      const f = pool.reduce((b, x) => (score(x, tgt) > score(b, tgt) ? x : b), pool[0]);
+      const cell = this.nearestFree(side, G.lanes[tgt.lane] + 0.5 + (k - (wave - 1) / 2), 0);
+      if (cell) this.place(side, f, cell[0], cell[1]);
+    }
   }
   nearestFree(side, x, y) {
     const G = B().grid;
@@ -438,7 +463,7 @@ function dirTo(dx, dy) {
 }
 
 // Kampfquelle aus einem gespeicherten Pokémon (keine Kopie des Fortschritts im Freundesareal)
-export const fromPokemon = (p) => ({ uid: p.uid, dex: p.dex, gender: p.gender, ivs: p.ivs, evs: p.evs, moves: p.moves });
+export const fromPokemon = (p) => ({ uid: p.uid, dex: p.dex, gender: p.gender, ivs: p.ivs, evs: p.evs, moves: p.moves, nick: p.nick });
 // Kampfquelle für einen Computergegner
 export function fromCpu(dex, o, i) {
   const S = CFG.battle.stats;

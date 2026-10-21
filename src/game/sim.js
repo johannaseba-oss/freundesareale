@@ -9,12 +9,14 @@ import { allMods, modsFor } from './bonuses.js';
 import { habitatFit, suitsArea } from './habitat.js';
 import { mood, socialClimate } from './mood.js';
 import { mulberry32, weightedPick } from '../rng.js';
+import { simulateEggs } from './eggs.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const tierFactor = (table, value) => (table.find((t) => value >= t.min) || table[table.length - 1]).factor;
 const levelFactor = (p) => 1 + CFG.balance.coins.levelSpeedupPerLevel * (p.level - 1);
 
-const coinTable = (p) => CFG.balance.coins.byRarity[species(p.dex)?.rarity] || CFG.balance.coins.byRarity.gewoehnlich;
+// eigene Produktion einzelner Arten (z. B. Mauzi: selten, aber viele Münzen), sonst nach Seltenheit
+const coinTable = (p) => CFG.balance.coins.special?.[p.dex] || CFG.balance.coins.byRarity[species(p.dex)?.rarity] || CFG.balance.coins.byRarity.gewoehnlich;
 const seeded = (p, tag) => hashString(`${p.uid}|${tag}|${p.coinCycles || 0}`) / 4294967296;
 // Dauer des aktuellen Takts (Minuten) und Münzen, die er bringt – festgelegt durch Pokémon + Taktnummer
 export function cycleMinutes(p) { const r = coinTable(p).minutes; return r[0] + seeded(p, 'd') * (r[1] - r[0]); }
@@ -108,6 +110,7 @@ export function simulate(s, nowMs) {
   const suits = new Map(living.map((p) => [p.uid, suitsArea(p.dex, p.area)]));
   const socials = new Map(living.map((p) => [p.uid, socialClimate(p, living.filter((q) => q.area === p.area))]));
   spawnGroundBerries(s, nowMs);
+  simulateEggs(s, nowMs, nowMs - t);
   while (t < nowMs) {
     const dt = Math.min(step, nowMs - t);
     t += dt;

@@ -1,6 +1,7 @@
 // Gruppenboni, Pärchen und Areal-Effekte legendärer Pokémon.
 // Alles hängt nur davon ab, wer gerade zusammen in einem Areal wohnt -> wird automatisch an- und abgeschaltet.
 import { CFG, species } from '../config.js';
+import { mood } from './mood.js';
 
 const neutral = () => ({ coin: 1, xp: 1, hunger: 1, sat: 1, berry: 1, sources: [] });
 const pct = (v) => Math.round(v * 100);
@@ -22,6 +23,14 @@ export function bonusTraits(dex) {
   const le = legendaryEffect(dex);
   if (le) out.push(`Areal-Fähigkeit: ${le.text}`);
   return out;
+}
+
+// Arealstimmung = Durchschnitt der Bewohner-Stimmung; Münzbonus nach balance.json areaMood
+export function areaMood(list, t = Date.now()) {
+  if (!list.length) return null;
+  const avg = list.reduce((a, p) => a + mood(p, t), 0) / list.length;
+  const tier = (CFG.balance.areaMood?.tiers || []).find((x) => avg >= x.min);
+  return { value: avg, bonus: tier?.bonus || 0 };
 }
 
 // -> { mods: Map(uid -> Faktoren), active: [{name, text, uids}] }
@@ -96,6 +105,8 @@ export function areaBonuses(list) {
     }
     active.push({ ...src, uids: list.map((q) => q.uid) });
   }
+  const am = areaMood(list);
+  if (am?.bonus > 0) addCoin(list.map((p) => p.uid), am.bonus, { name: 'Arealstimmung', text: `Gute Stimmung im Areal: Münzen +${pct(am.bonus)} %` });
   return { mods, active };
 }
 
