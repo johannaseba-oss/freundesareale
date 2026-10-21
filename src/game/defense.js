@@ -74,9 +74,15 @@ export class Defense {
   }
 
   // ---- Platzieren ----
+  // oberste freie Reihe: anfangs nur die untersten startRows, mit jeder Welle rowsPerWave mehr
+  minRow() {
+    const G = D().grid;
+    const open = (G.startRows || 99) + Math.max(0, this.wave + 1) * (G.rowsPerWave || 0);
+    return Math.max(G.placeRows[0], G.placeRows[1] - open + 1);
+  }
   canPlace(col, row) {
     const G = D().grid;
-    return col >= 0 && col < G.cols && row >= G.placeRows[0] && row <= G.placeRows[1] && !this.units.some((u) => u.col === col && u.row === row);
+    return col >= 0 && col < G.cols && row >= this.minRow() && row <= G.placeRows[1] && !this.units.some((u) => u.col === col && u.row === row);
   }
   cardReady(card) { return this.t >= card.readyAt && this.stars >= card.cost && !this.over; }
   place(card, col, row) {
@@ -120,11 +126,12 @@ export class Defense {
       this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * W.spread + this.rnd() * 3), dex, level, col: Math.floor(this.rnd() * D().grid.cols) });
     }
     this.queue.sort((a, b) => a.at - b.at);
-    this.events.push({ type: 'wave', wave: this.wave, final: !!W.final });
+    this.events.push({ type: 'wave', wave: this.wave, final: !!W.final, minRow: this.minRow() });
   }
   spawn(q) {
     const st = calcStats(q.dex, q.level, rollIvs('g' + this.nextId, [0, 31]), [0, 0, 0, 0, 0, 0]);
-    const e = { id: this.nextId++, dex: q.dex, x: q.col + 0.5, y: -0.4, col: q.col, stats: st, level: q.level, maxHp: st[0] * D().enemy.hpMult, cd: 0, slowUntil: 0 };
+    const v = D().enemy.speedVariation || [1, 1];
+    const e = { id: this.nextId++, dex: q.dex, x: q.col + 0.5, y: -0.4, col: q.col, stats: st, level: q.level, maxHp: st[0] * D().enemy.hpMult, cd: 0, slowUntil: 0, pace: v[0] + this.rnd() * (v[1] - v[0]) };
     e.hp = e.maxHp;
     this.enemies.push(e);
   }
@@ -227,7 +234,7 @@ export class Defense {
         continue;
       }
       e.eating = false;
-      const sp = E.tilesPerSecond * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (this.t < e.slowUntil ? D().iceSlow.factor : 1);
+      const sp = E.tilesPerSecond * (e.pace || 1) * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (this.t < e.slowUntil ? D().iceSlow.factor : 1);
       e.y += sp * dt;
       if (e.y >= G.rows) { this.over = { won: false, t: this.t, by: e }; return; }
     }

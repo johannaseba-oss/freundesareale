@@ -8,7 +8,10 @@
       3,
       8
     ],
-    "_placeRows": "Reihen, in denen eigene Pokémon stehen dürfen (0 = oben)"
+    "_placeRows": "Reihen, in denen eigene Pokémon stehen dürfen (0 = oben)",
+    "startRows": 3,
+    "rowsPerWave": 1,
+    "_rows": "Am Anfang sind nur die untersten startRows Reihen frei, mit jeder Welle rowsPerWave mehr (bis placeRows)."
   },
   "level": 25,
   "_level": "Kampfwerte aller Pokémon werden auf diesem Level berechnet (eigene mit ihren IVs/EVs)",
@@ -175,18 +178,23 @@
   },
   "defenderHpMult": 2,
   "enemy": {
-    "hpMult": 1.5,
+    "hpMult": 2,
     "tilesPerSecond": 0.2,
-    "speedExp": 0.35,
+    "speedExp": 0.9,
     "biteCooldown": 1.6,
-    "levelPerWave": 2
+    "levelPerWave": 2,
+    "speedVariation": [
+      0.75,
+      1.35
+    ],
+    "_speed": "Tempo = tilesPerSecond × (Initiative / Vergleichswert)^speedExp × Zufall aus speedVariation – Gegner sind unterschiedlich schnell."
   },
   "iceSlow": {
     "factor": 0.5,
     "seconds": 3,
     "_hinweis": "Eis-Attacken verlangsamen Gegner"
   },
-  "firstWaveDelay": 22,
+  "firstWaveDelay": 15,
   "waveGap": 10,
   "waves": [
     {

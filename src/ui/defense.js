@@ -78,7 +78,9 @@ function openField() {
   const waveEl = h('div.d-wave', h('span'), h('div.d-wavebar', h('i')));
   const msg = h('div.b-msg');
   const top = h('div.b-top', starsEl, waveEl, h('span.type-chips.inline', theme.map((t) => typeChip(t))), h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
-  const root = h('div.battle.defense', top, h('div.b-field', canvas), cards, msg);
+  // Vorbereitung ohne Zeitlimit: erst mit „Los!“ beginnen Sternenregen und Wellen
+  const go = h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message('Los! Sammle Sterne und verteidige deinen Trainer.'); haptic('medium'); } }, 'Los!');
+  const root = h('div.battle.defense', top, h('div.b-field', canvas, go), cards, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
   ui = { root, canvas, ctx: canvas.getContext('2d'), cards, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], cardEls: [], last: performance.now(), raf: 0, hover: null };
@@ -89,8 +91,7 @@ function openField() {
   canvas.addEventListener('pointermove', (e) => { ui.hover = ui.sel ? cellAt(e.clientX, e.clientY) : null; });
   buildCards();
   layout();
-  message('Bereit …');
-  setTimeout(() => { if (game) { message('Los! Sammle Sterne und setze deine Pokémon.'); game.started = true; } }, 1400);
+  message('Stell in Ruhe dein erstes Team auf – dann „Los!“');
   const loop = (t) => {
     if (!ui) return;
     const dt = Math.min(0.1, (t - ui.last) / 1000); ui.last = t;
@@ -211,6 +212,15 @@ function draw(dt) {
     x.fillStyle = (r + c) % 2 ? (own ? '#8fcd68' : '#7ab65a') : (own ? '#99d571' : '#84bf62');
     x.fillRect(U.ox + c * T, U.oy + r * T, T, T);
   }
+  // noch gesperrte Reihen des eigenen Bereichs
+  const minRow = game.minRow();
+  if (minRow > G.placeRows[0]) {
+    x.fillStyle = 'rgba(40,30,25,.22)';
+    x.fillRect(U.ox, U.oy + G.placeRows[0] * T, G.cols * T, (minRow - G.placeRows[0]) * T);
+    x.font = `600 ${Math.round(T * 0.26)}px 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; x.fillStyle = 'rgba(255,255,255,.75)';
+    x.fillText('🔒 wird mit den Wellen frei', U.ox + (G.cols * T) / 2, U.oy + (minRow - 0.45) * T);
+  }
+  x.fillStyle = 'rgba(255,255,255,.4)'; x.fillRect(U.ox, U.oy + minRow * T - 1, G.cols * T, 2);
   // Grenze zum eigenen Bereich + Ziellinie
   x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(U.ox, U.oy + G.placeRows[0] * T - 1, G.cols * T, 2);
   const goalY = U.oy + G.rows * T;
@@ -312,7 +322,7 @@ function handleEvents() {
       for (let i = 0; i < 5; i++) ui.fx.push({ x: o.x, y: o.y - 0.1, vx: (Math.random() - 0.5) * 2, vy: -Math.random() * 1.5, color: ev.move ? typeColor(ev.move.type) : '#ffb84a', life: 0.35 });
       if (!ev.mine) ui.texts.push({ x: o.x, y: o.y - 0.4, text: String(ev.dmg), color: ev.eff > 1 ? '#ffe066' : '#fff', t: 0 });
     } else if (ev.type === 'explode') { ui.booms.push({ u: ev.u, r: ev.radius, t: 0 }); haptic('strong'); }
-    else if (ev.type === 'wave') { message(ev.final ? '★ Letzte Welle! ★' : `Welle ${ev.wave + 1} kommt!`); haptic('medium'); }
+    else if (ev.type === 'wave') { message(ev.final ? '★ Letzte Welle! ★' : `Welle ${ev.wave + 1} kommt!`); if (ev.wave > 0 && ev.minRow >= D().grid.placeRows[0]) message('Eine weitere Reihe ist frei!'); haptic('medium'); }
     else if (ev.type === 'lost') ui.texts.push({ x: ev.u.x, y: ev.u.y - 0.4, text: 'K.O.', color: '#ffb0b0', t: 0 });
     else if (ev.type === 'place') { for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; ui.fx.push({ x: ev.u.x, y: ev.u.y + 0.2, vx: Math.cos(a) * 1.4, vy: Math.sin(a) * 0.6, color: '#efe3c0', life: 0.35 }); } }
   }

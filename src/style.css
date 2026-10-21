@@ -525,3 +525,6 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .d-card.sel { transform: translateY(-7px); box-shadow: 0 0 0 3px #fff, 0 6px 0 rgba(74, 59, 51, .35); }
 .d-card.poor img { filter: grayscale(.8); opacity: .7; }
 .d-card.poor .d-card-cost { color: #b3462f; }
+.d-go { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 3; font-size: 26px; padding: 12px 34px; animation: hint 1.6s ease-in-out infinite; }
+.d-go { top: 18%; animation: gopulse 1.4s ease-in-out infinite; opacity: 1; }
+@keyframes gopulse { 50% { transform: translate(-50%, -50%) scale(1.07); } }
