@@ -363,7 +363,7 @@ function draw(dt) {
     if (t.t > t.dur) return false;
     const X = A.ox + t.x * T, Y = A.oy + t.y * T - t.t * T * 0.7;
     x.globalAlpha = Math.min(1, (t.dur - t.t) / 0.3);
-    x.font = `600 ${Math.round(T * (t.size || 0.34))}px 'Pixelify Sans', sans-serif`;
+    x.font = `600 ${Math.round(T * (t.size || 0.34))}px 'Ziffern', 'Pixelify Sans', sans-serif`;
     x.textAlign = 'center';
     x.lineWidth = 3; x.strokeStyle = 'rgba(40,25,20,.9)';
     x.strokeText(t.text, X, Y);
@@ -433,7 +433,7 @@ function drawUnit(x, u, [X, Y], T, now) {
   x.fillStyle = '#5a4d45'; x.fillRect(bx, by, bw, bh);
   x.fillStyle = SIDE_COL[u.side]; x.fillRect(bx, by, Math.max(0, bw * u.hp / u.maxHp), bh);
   x.fillStyle = 'rgba(255,255,255,.35)'; x.fillRect(bx, by, Math.max(0, bw * u.hp / u.maxHp), Math.max(1, bh / 3));
-  x.font = `600 ${Math.round(T * 0.26)}px 'Pixelify Sans', sans-serif`;
+  x.font = `600 ${Math.round(T * 0.26)}px 'Ziffern', 'Pixelify Sans', sans-serif`;
   x.textAlign = 'right';
   x.lineWidth = 3; x.strokeStyle = 'rgba(40,25,20,.9)';
   const lv = tower ? `${B().towerRoles[u.role]?.icon || ''} ${u.level}` : String(u.level);

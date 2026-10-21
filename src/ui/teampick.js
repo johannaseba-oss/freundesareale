@@ -2,6 +2,7 @@
 // beim letzten Platz öffnet sich die Bestätigung. Karten werden nur aktualisiert, nicht neu gebaut (bleibt flüssig).
 import { species } from '../config.js';
 import { portraitUrl } from '../gfx/sprites.js';
+import { typeChip } from '../game/types.js';
 import { h, toast } from './dom.js';
 import { haptic } from '../haptics.js';
 
@@ -33,6 +34,7 @@ export function teamPicker({ mons, N, hint, onFull }) {
     h('span.bs-num'),
     h('img.bs-por', { src: portraitUrl(p.dex), alt: '', loading: 'lazy' }),
     h('b', p.nick || species(p.dex).name),
+    h('span.type-chips.mini', species(p.dex).types.map((ty) => typeChip(ty))),
     hint(p));
     cards.set(p.uid, el);
     return el;

@@ -1,5 +1,9 @@
 @import '@fontsource/pixelify-sans/400.css';
 @import '@fontsource/pixelify-sans/600.css';
+/* Ziffern aus „Jersey 10“ – in Pixelify sehen 2 und 5 fast gleich aus */
+@font-face { font-family: 'Ziffern'; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url('../node_modules/@fontsource/jersey-10/files/jersey-10-latin-400-normal.woff2') format('woff2');
+  unicode-range: U+0030-0039; size-adjust: 112%; }
 
 :root {
   --bg: #e9f3d6;
@@ -21,7 +25,7 @@
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overscroll-behavior: none; }
-body { font-family: 'Pixelify Sans', system-ui, sans-serif; font-size: 16px; user-select: none; -webkit-user-select: none; }
+body { font-family: 'Ziffern', 'Pixelify Sans', system-ui, sans-serif; font-size: 16px; user-select: none; -webkit-user-select: none; }
 button, input { font: inherit; color: inherit; }
 img, canvas { image-rendering: pixelated; }
 .hidden { display: none !important; }
@@ -573,3 +577,5 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .d-card-role { background: rgba(0,0,0,.35); border-radius: 999px; padding: 0 4px; }
 .d-card-role.r-produzent { background: #e0a21b; }
 .d-card.r-produzent { background: linear-gradient(180deg, var(--tc) 0 14px, #fff1c4 14px); box-shadow: 0 0 0 2px #f2b93b, 0 3px 0 rgba(74, 59, 51, .35); }
+.type-chips.mini { gap: 2px; margin: 1px 0; }
+.type-chips.mini .type-chip { font-size: 9px; padding: 1px 4px 2px; }

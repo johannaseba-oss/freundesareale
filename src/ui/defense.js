@@ -227,7 +227,7 @@ function draw(dt) {
   if (minRow > G.placeRows[0]) {
     x.fillStyle = 'rgba(40,30,25,.22)';
     x.fillRect(U.ox, U.oy + G.placeRows[0] * T, G.cols * T, (minRow - G.placeRows[0]) * T);
-    x.font = `600 ${Math.round(T * 0.26)}px 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; x.fillStyle = 'rgba(255,255,255,.75)';
+    x.font = `600 ${Math.round(T * 0.26)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; x.fillStyle = 'rgba(255,255,255,.75)';
     x.fillText('🔒 wird mit den Wellen frei', U.ox + (G.cols * T) / 2, U.oy + (minRow - 0.45) * T);
   }
   x.fillStyle = 'rgba(255,255,255,.4)'; x.fillRect(U.ox, U.oy + minRow * T - 1, G.cols * T, 2);
@@ -321,7 +321,7 @@ function draw(dt) {
     t.t += dt; if (t.t > t.dur) return false;
     const pop = t.t < 0.12 ? 1 + (1 - t.t / 0.12) * 0.8 : 1;
     x.globalAlpha = Math.min(1, (t.dur - t.t) / 0.3);
-    x.font = `600 ${Math.round(T * t.size * pop)}px 'Pixelify Sans', sans-serif`; x.textAlign = 'center';
+    x.font = `600 ${Math.round(T * t.size * pop)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center';
     x.lineWidth = Math.max(3, T / 12); x.strokeStyle = 'rgba(40,25,20,.95)';
     const X = U.ox + t.x * T, Y = U.oy + t.y * T - t.t * T * 0.7;
     x.strokeText(t.text, X, Y); x.fillStyle = t.color; x.fillText(t.text, X, Y);
