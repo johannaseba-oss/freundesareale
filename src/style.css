@@ -614,3 +614,19 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 .chaos-btn { align-self: center; background: #efe0ff; color: #5b2486; border-color: #7a46b0; }
 .d-cards.chaos .d-card { background: linear-gradient(180deg, var(--tc) 0 14px, #f3ecff 14px); }
+
+/* PokeDefense-Karten: Typ, Fähigkeit, Infozeile */
+.d-info { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 4px 10px; min-height: 30px; background: rgba(255, 251, 234, .95); border-top: 2px solid var(--line); font-size: 13px; }
+.d-info small { font-size: 12px; color: var(--ink-soft); flex-basis: 100%; }
+.d-info small:only-child { flex-basis: auto; }
+.d-card { padding: 0 2px 3px; background: var(--paper); }
+.d-card-types { display: flex; width: calc(100% + 4px); margin: 0 -2px 3px; }
+.d-card-types i { flex: 1; font-style: normal; font-size: 8px; font-weight: 600; color: #fff; text-shadow: 0 1px 0 rgba(0,0,0,.45); line-height: 1; padding: 2px 0 2px; text-align: center; overflow: hidden; white-space: nowrap; }
+.d-card img { width: 38px; height: 38px; }
+.d-card-ab { font-size: 9px; font-weight: 600; line-height: 1.05; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 3px; border-radius: 4px; color: #fff; margin: 2px 0 1px; }
+.d-card-ab.r-produzent { background: #e0a21b; } .d-card-ab.r-explosiv { background: #e0603a; } .d-card-ab.r-mauer { background: #8a7a6a; }
+.d-card-ab.r-nahkampf { background: #c2453f; } .d-card-ab.r-fernkampf { background: #4f86d6; }
+.d-card.r-produzent { background: #fff1c4; }
+.d-cards.chaos .d-card { background: #f3ecff; }
+.d-card-ab { white-space: normal; text-overflow: clip; font-size: 8.5px; text-align: center; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; word-break: break-word; hyphens: auto; }
+.d-card-ab { font-size: 7.5px; letter-spacing: -.3px; word-break: keep-all; overflow-wrap: normal; padding: 1px 2px; }

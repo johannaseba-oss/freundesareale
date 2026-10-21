@@ -432,7 +432,7 @@
   },
   "waveShape": {
     "base": 5,
-    "perWave": 1.4,
+    "perWave": 1.1,
     "finalMult": 1.35,
     "spread": 28,
     "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels; letzte Welle × finalMult"
@@ -446,13 +446,15 @@
     "strong": 1
   },
   "chaos": {
-    "_hinweis": "Chaos-Modus: statt Sternen fallen Pokébälle (alle dropEvery s, Sammler werfen auch welche). Jeder Ball = ein zufälliges Pokémon, einmal einsetzbar, kostenlos. handMax = so viele Karten gleichzeitig.",
+    "_hinweis": "Chaos-Modus: statt Sternen fallen Pokébälle (alle dropEvery s, Sammler werfen auch welche). Jeder Ball = ein zufälliges Pokémon, einmal einsetzbar, kostenlos. handMax = Karten gleichzeitig, countMult = mehr Gegner als im normalen Level.",
     "dropEvery": [
-      5,
-      8
+      10,
+      14
     ],
-    "startCards": 3,
+    "startCards": 2,
     "handMax": 6,
-    "waves": 7
-  }
+    "countMult": 1.3
+  },
+  "levelGap": 5,
+  "_levelGap": "Eigene Pokémon starten höchstens levelGap Level unter den Gegnern der ersten Welle (sonst level)"
 }

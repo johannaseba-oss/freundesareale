@@ -113,7 +113,8 @@ export class Defense {
     this.stars -= card.cost;
     card.readyAt = this.t + card.recharge;
     if (card.once) this.cards.splice(this.cards.indexOf(card), 1);
-    const src = card.src, L = D().level, R = D().roles;
+    const src = card.src, R = D().roles;
+    const L = Math.max(D().level, (this.level?.enemyLevel || 0) - (D().levelGap ?? 99)); // spätere Level: eigene Pokémon starten stärker
     const stats = calcStats(src.dex, L, src.ivs, src.evs);
     const ab = abilityOf(src.dex);
     const hpMult = D().defenderHpMult * (ab?.type === 'shield' ? ab.hpMult : card.role === 'mauer' ? R.mauer.hpMult : 1);

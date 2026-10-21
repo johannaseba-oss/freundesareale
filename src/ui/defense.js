@@ -2,7 +2,7 @@
 // dann das vertikale Spielfeld: Sterne einsammeln, Karten antippen und Pokémon auf das untere Feld setzen.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
-import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam } from '../game/defense.js';
+import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam, abilityOf } from '../game/defense.js';
 import { ballCanvas, ballSprite } from '../gfx/balls.js';
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
@@ -127,7 +127,7 @@ function offerLoaner(el, back) {
 function startChaos() {
   const L = levelsList(), max = Math.max(5, Math.min(L.length, cleared() + 1));
   const lv = L[Math.floor(Math.random() * max)];
-  chosen = { ...lv, waves: Math.min(lv.waves, D().chaos.waves) };
+  chosen = { ...lv, countMult: +(lv.countMult * D().chaos.countMult).toFixed(2) }; // Chaos: alle Wellen des Levels, mehr Gegner
   modal((m, close) => {
     m.append(h('h3', '🎲 Chaos-Modus'),
       h('p.note', 'Statt Sternen fallen Pokébälle! Jeder Ball enthält ein zufälliges Pokémon, das du genau einmal einsetzen kannst – danach kommen andere. Einsetzen kostet nichts.'),
@@ -148,10 +148,11 @@ function openField() {
   const top = h('div.b-top', starsEl, waveEl, h('span.b-weather.d-weather'), h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
   // Vorbereitung ohne Zeitlimit: erst mit „Los!“ beginnen Sternenregen und Wellen
   const go = h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message(game.chaos ? 'Los! Fang die Pokébälle und setz die Pokémon ein.' : 'Los! Sammle Sterne und verteidige deinen Trainer.'); haptic('medium'); } }, 'Los!');
-  const root = h('div.battle.defense', top, h('div.b-field', canvas, go), cards, msg);
+  const info = h('div.d-info');
+  const root = h('div.battle.defense', top, h('div.b-field', canvas, go), info, cards, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
-  ui = { root, canvas, ctx: canvas.getContext('2d'), cards, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], rings: [], slashes: [], beams: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
+  ui = { root, canvas, ctx: canvas.getContext('2d'), cards, info, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], rings: [], slashes: [], beams: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
   for (const c of game.cards) loadSprites(c.dex, c.src.gender);
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`; ui.trainer = tr;
   ui.ro = new ResizeObserver(() => layout()); ui.ro.observe(canvas.parentElement);
@@ -236,13 +237,17 @@ function buildCards() {
   ui.cards.classList.toggle('chaos', game.chaos);
   ui.cards.replaceChildren(...game.cards.map((c) => {
     loadSprites(c.dex, c.src.gender);
-    const el = h('button.d-card.r-' + c.role, { style: { '--tc': typeColor(species(c.dex).types[0]) } },
+    // Karte: Typen als farbige Leiste mit Namen, Porträt, Fähigkeit/Rolle als Wort, Kosten
+    const types = species(c.dex).types, ab = abilityOf(c.dex);
+    const el = h('button.d-card.r-' + c.role,
+      h('span.d-card-types', types.map((t) => h('i', { style: { background: typeColor(t) } }, t))),
       h('img', { src: portraitUrl(c.dex), alt: '', draggable: false }),
+      h('span.d-card-ab.r-' + c.role, ab ? ab.name : ROLE_SHORT[c.role]),
       h('span.d-card-cost', c.once ? '1×' : String(c.cost)),
-      h('span.d-card-role.r-' + c.role, D().roles[c.role].icon),
       h('i.d-card-cool'));
     el.addEventListener('click', () => {
       if (game.over) return;
+      ui.inspect = c; // Infozeile zeigt die Karte auch, wenn sie gerade nicht spielbar ist
       if (game.t < c.readyAt) { toast(`Lädt noch ${Math.ceil(c.readyAt - game.t)} s.`); return; }
       if (game.stars < c.cost) { toast(`Zu wenig Sterne (${c.cost} nötig).`); return; }
       ui.sel = ui.sel === c ? null : c; haptic('tick');
@@ -253,6 +258,14 @@ function buildCards() {
 }
 function updateCards() {
   if (ui.cardKey !== game.cards.map((c) => c.id ?? c.dex).join()) { if (ui.sel && !game.cards.includes(ui.sel)) ui.sel = null; buildCards(); }
+  // Infozeile: was das gewählte Pokémon kann
+  const shown = ui.sel || (ui.inspect && game.cards.includes(ui.inspect) ? ui.inspect : null);
+  const ik = shown ? shown.dex + '|' + (shown.id ?? '') : '';
+  if (ui.infoKey !== ik) {
+    ui.infoKey = ik;
+    const c = shown;
+    ui.info.replaceChildren(...(c ? [h('b', c.src.nick || species(c.dex).name), h('span.type-chips.inline', species(c.dex).types.map((t) => typeChip(t))), h('small', `${D().roles[c.role].icon} ${abilityText(c.dex)}`)] : [h('small', 'Tippe eine Karte an, dann ein Feld.')]));
+  }
   for (const { c, el } of ui.cardEls) {
     const left = Math.max(0, c.readyAt - game.t);
     el.classList.toggle('sel', ui.sel === c);

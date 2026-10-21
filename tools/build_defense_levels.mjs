@@ -22,13 +22,13 @@ for (let n = 1; n <= 50; n++) {
     do types = pick(TYPES, size); while (types.some((t) => lastTypes.includes(t)) && rnd() < 0.7);
   }
   lastTypes = types;
-  const waves = Math.min(10, 4 + Math.floor(n / 6) + (n % 10 === 0 ? 1 : 0));
+  const waves = Math.min(15, 6 + Math.floor(n / 5) + (n % 10 === 0 ? 1 : 0));
   levels.push({
     n,
     types,
     waves,
     enemyLevel: Math.round(6 + n * 0.56),
-    countMult: +(0.62 + n * 0.017).toFixed(2),
+    countMult: +(0.62 + n * 0.017 + Math.max(0, n - 20) * 0.014).toFixed(2),
     finalStage: n < 8 ? 2 : 3, // ab Level 8 kommen auch Endentwicklungen
   });
 }
