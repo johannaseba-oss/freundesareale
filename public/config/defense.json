@@ -437,5 +437,22 @@
     "spread": 28,
     "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels; letzte Welle × finalMult"
   },
-  "_waves": "Wellen und Gegner-Typen kommen aus public/config/defense_levels.json"
+  "_waves": "Wellen und Gegner-Typen kommen aus public/config/defense_levels.json",
+  "loaner": {
+    "_hinweis": "Leihteam, wenn man weniger als teamSize Pokémon hat: so viele schwache (Grundform, günstig), Sternensammler, mittlere und starke (Endentwicklung, keine Legendären)",
+    "weak": 2,
+    "producers": 2,
+    "medium": 1,
+    "strong": 1
+  },
+  "chaos": {
+    "_hinweis": "Chaos-Modus: statt Sternen fallen Pokébälle (alle dropEvery s, Sammler werfen auch welche). Jeder Ball = ein zufälliges Pokémon, einmal einsetzbar, kostenlos. handMax = so viele Karten gleichzeitig.",
+    "dropEvery": [
+      5,
+      8
+    ],
+    "startCards": 3,
+    "handMax": 6,
+    "waves": 7
+  }
 }

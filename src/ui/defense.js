@@ -2,7 +2,8 @@
 // dann das vertikale Spielfeld: Sterne einsammeln, Karten antippen und Pokémon auf das untere Feld setzen.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
-import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList } from '../game/defense.js';
+import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam } from '../game/defense.js';
+import { ballCanvas, ballSprite } from '../gfx/balls.js';
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
@@ -41,7 +42,8 @@ export function renderDefenseSetup(el, back) {
   if (!chosen) { renderRoadmap(el, back); return; }
   const s = app.state, theme = chosen.types;
   const mons = s.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => costOf(a.dex) - costOf(b.dex) || a.dex - b.dex);
-  const N = Math.min(D().teamSize, mons.length);
+  if (mons.length < D().teamSize) { renderRoadmap(el, back); offerLoaner(el, back); return; }
+  const N = D().teamSize;
   // Rolle als farbiges Etikett, Kosten als schlichte Zahl in der Ecke (kein Stern – sonst sieht alles nach Sternensammler aus)
   const hint = (p) => [roleTag(roleOf(p.dex)), h('span.d-price', String(costOf(p.dex)))];
   const picker = teamPicker({ mons, N, hint, onFull: (uids) => confirmTeam(uids, () => picker.clear()) });
@@ -75,6 +77,7 @@ function renderRoadmap(el, back) {
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
     h('p.note', 'Tippe auf das leuchtende Level. Die Punkte zeigen die Typen der Gegner.'),
+    h('button.btn.chaos-btn', { onclick: startChaos }, '🎲 Chaos-Modus – Pokébälle statt Sterne'),
     h('div.road-wrap', map)));
   // zum nächsten Level scrollen
   setTimeout(() => { const n = map.querySelector('.road-node.next'); if (n) n.scrollIntoView({ block: 'center' }); }, 50);
@@ -103,6 +106,37 @@ function start() {
   openField();
 }
 
+// Leihteam: zu wenige eigene Pokémon -> zufälliges Team (schwache, Sammler, mittlere, starke), jedes Mal neu
+function offerLoaner(el, back) {
+  let team = loanerTeam();
+  modal((m, close) => {
+    const list = h('div.confirm-list');
+    const render = () => list.replaceChildren(...team.map((src, i) => h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(src.dex), alt: '' }),
+      h('div', h('b', species(src.dex).name), h('small', `${D().roles[roleOf(src.dex)].icon} ${abilityText(src.dex)}`)), h('span.d-price.inline', String(costOf(src.dex))))));
+    render();
+    m.append(h('h3', `Leihteam für Level ${chosen.n}`),
+      h('p.note', `Du hast noch keine ${D().teamSize} Pokémon – für diese Runde bekommst du ein zufälliges Team geliehen.`),
+      h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t)))),
+      list,
+      h('div.row', h('button.btn', { onclick: () => { team = loanerTeam(); render(); haptic('tick'); } }, '🎲 Neu würfeln'),
+        h('button.btn.primary.big', { onclick: () => { close(); game = new Defense({ team, level: chosen }); openField(); } }, 'Los!')));
+  });
+}
+
+// Chaos-Modus: zufälliges freigeschaltetes Level, Pokébälle statt Sterne
+function startChaos() {
+  const L = levelsList(), max = Math.max(5, Math.min(L.length, cleared() + 1));
+  const lv = L[Math.floor(Math.random() * max)];
+  chosen = { ...lv, waves: Math.min(lv.waves, D().chaos.waves) };
+  modal((m, close) => {
+    m.append(h('h3', '🎲 Chaos-Modus'),
+      h('p.note', 'Statt Sternen fallen Pokébälle! Jeder Ball enthält ein zufälliges Pokémon, das du genau einmal einsetzen kannst – danach kommen andere. Einsetzen kostet nichts.'),
+      h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t))), h('small', ` · ${chosen.waves} Wellen`)),
+      h('div.row', h('button.btn', { onclick: () => { close(); chosen = null; } }, 'Abbrechen'),
+        h('button.btn.primary.big', { onclick: () => { close(); game = new Defense({ team: [], level: chosen, chaos: true }); openField(); } }, 'Los!')));
+  });
+}
+
 // ================= Spielfeld =================
 function openField() {
   closeField();
@@ -113,7 +147,7 @@ function openField() {
   const msg = h('div.b-msg');
   const top = h('div.b-top', starsEl, waveEl, h('span.b-weather.d-weather'), h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
   // Vorbereitung ohne Zeitlimit: erst mit „Los!“ beginnen Sternenregen und Wellen
-  const go = h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message('Los! Sammle Sterne und verteidige deinen Trainer.'); haptic('medium'); } }, 'Los!');
+  const go = h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message(game.chaos ? 'Los! Fang die Pokébälle und setz die Pokémon ein.' : 'Los! Sammle Sterne und verteidige deinen Trainer.'); haptic('medium'); } }, 'Los!');
   const root = h('div.battle.defense', top, h('div.b-field', canvas, go), cards, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
@@ -180,7 +214,7 @@ function onField(e) {
   // Sterne haben Vorrang
   const g = toGrid(e.clientX, e.clientY);
   const d = game.drops.find((x) => { const p = dropPos(x); return Math.hypot(p.x - g.x, p.y - g.y) < 0.65; });
-  if (d) { const p = dropPos(d); game.collect(d); flyStar(toScreen(p.x, p.y)); haptic('tick'); handleEvents(); return; }
+  if (d) { const p = dropPos(d); if (game.collect(d)) { flyStar(toScreen(p.x, p.y), d); haptic('tick'); } handleEvents(); return; }
   if (!ui.sel) return;
   const c = cellAt(e.clientX, e.clientY);
   if (!c) return;
@@ -188,19 +222,23 @@ function onField(e) {
   if (game.place(ui.sel, c[0], c[1])) { haptic('medium'); shake(ui.tile * 0.04); ui.sel = null; handleEvents(); }
 }
 
-function flyStar(from) {
-  const to = ui.starsEl.getBoundingClientRect();
-  const el = h('img.flyer', { src: starCanvas().toDataURL(), alt: '' });
+function flyStar(from, d) {
+  const to = d?.dex ? ui.cards.getBoundingClientRect() : ui.starsEl.getBoundingClientRect();
+  const el = h('img.flyer', { src: d?.dex ? portraitUrl(d.dex) : starCanvas().toDataURL(), alt: '' });
   document.body.append(el);
   el.animate([{ transform: `translate(${from.x - 14}px, ${from.y - 14}px) scale(1.4)` }, { transform: `translate(${to.left}px, ${to.top}px) scale(.8)` }], { duration: 450, easing: 'ease-in' }).onfinish = () => el.remove();
 }
 
 // ---------- Karten ----------
 function buildCards() {
+  ui.cardEls = [];
+  ui.cardKey = game.cards.map((c) => c.id ?? c.dex).join();
+  ui.cards.classList.toggle('chaos', game.chaos);
   ui.cards.replaceChildren(...game.cards.map((c) => {
+    loadSprites(c.dex, c.src.gender);
     const el = h('button.d-card.r-' + c.role, { style: { '--tc': typeColor(species(c.dex).types[0]) } },
       h('img', { src: portraitUrl(c.dex), alt: '', draggable: false }),
-      h('span.d-card-cost', String(c.cost)),
+      h('span.d-card-cost', c.once ? '1×' : String(c.cost)),
       h('span.d-card-role.r-' + c.role, D().roles[c.role].icon),
       h('i.d-card-cool'));
     el.addEventListener('click', () => {
@@ -214,6 +252,7 @@ function buildCards() {
   }));
 }
 function updateCards() {
+  if (ui.cardKey !== game.cards.map((c) => c.id ?? c.dex).join()) { if (ui.sel && !game.cards.includes(ui.sel)) ui.sel = null; buildCards(); }
   for (const { c, el } of ui.cardEls) {
     const left = Math.max(0, c.readyAt - game.t);
     el.classList.toggle('sel', ui.sel === c);
@@ -222,10 +261,11 @@ function updateCards() {
   }
 }
 function renderTop() {
-  const k = `${game.stars}|${game.wave}`;
+  const k = `${game.stars}|${game.wave}|${game.cards.length}`;
   if (ui.topKey === k) return;
   ui.topKey = k;
-  ui.starsEl.replaceChildren(starImg(), String(game.stars));
+  if (game.chaos) ui.starsEl.replaceChildren(ballCanvas('pokeball', 1), `${game.cards.length}/${D().chaos.handMax}`);
+  else ui.starsEl.replaceChildren(starImg(), String(game.stars));
   const w = game.waveProgress();
   ui.waveEl.firstChild.textContent = w.wave ? `Welle ${w.wave}/${w.total}` : 'Vorbereitung';
   ui.waveEl.lastChild.firstChild.style.width = (w.wave / w.total) * 100 + '%';
@@ -353,7 +393,8 @@ function draw(dt) {
     const glow = x.createRadialGradient(U.ox + p.x * T, U.oy + p.y * T, 0, U.ox + p.x * T, U.oy + p.y * T, ss * (0.8 + dark * 0.7) * pulse);
     glow.addColorStop(0, `rgba(255,240,150,${0.55 + dark * 0.35})`); glow.addColorStop(1, 'rgba(255,230,120,0)');
     x.fillStyle = glow; x.beginPath(); x.arc(U.ox + p.x * T, U.oy + p.y * T, ss * (0.8 + dark * 0.7) * pulse, 0, 7); x.fill();
-    x.drawImage(star, U.ox + p.x * T - (ss * pulse) / 2, U.oy + p.y * T - (ss * pulse) / 2, ss * pulse, ss * pulse);
+    const img = d.dex ? ballCanvas(ballSprite('pokeball', null, d.dex), 4) : star;
+    x.drawImage(img, U.ox + p.x * T - (ss * pulse) / 2, U.oy + p.y * T - (ss * pulse) / 2, ss * pulse, ss * pulse);
   }
 
   // schwebende Zahlen: springen auf, Volltreffer groß und golden
@@ -484,6 +525,8 @@ function handleEvents() {
     if (ev.type === 'level') { say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
     if (ev.type === 'evolve') { evolveFx(ev); continue; }
     if (ev.type === 'poison') { say(ev.e, String(ev.dmg), '#d48ae0', 0.24, 0.6, -0.3); burst(ev.e, 'Gift', 4, 0.6, 0.7); continue; }
+    if (ev.type === 'handFull') { toast(`Höchstens ${D().chaos.handMax} Karten – setz erst eins ein.`); continue; }
+    if (ev.type === 'collect' && ev.drop.dex) { const p = dropPos(ev.drop); say({ x: p.x, y: p.y }, species(ev.drop.dex).name + '!', '#ffffff', 0.28, 1); }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
     if (ev.type === 'heal') { ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
     if (ev.type === 'confuse') { say(ev.e, 'verwirrt!', '#f95587', 0.28, 1, -0.9); burst(ev.e, 'Psycho', 10, 1.2); sfx.attack('Psycho'); continue; }
@@ -546,12 +589,12 @@ function end() {
   const won = game.over.won;
   haptic(won ? 'medium' : 'strong');
   if (won) sfx.win(); else sfx.lose();
-  const lv = chosen, next = levelsList().find((x) => x.n === lv.n + 1);
-  if (won) app.act((s) => { s.defense ||= {}; s.defense.cleared = Math.max(s.defense.cleared || 0, lv.n); s.stats.defenseCleared = s.defense.cleared; return { ok: true }; }, true);
+  const lv = chosen, next = game.chaos ? null : levelsList().find((x) => x.n === lv.n + 1);
+  if (won && !game.chaos) app.act((s) => { s.defense ||= {}; s.defense.cleared = Math.max(s.defense.cleared || 0, lv.n); s.stats.defenseCleared = s.defense.cleared; return { ok: true }; }, true);
   const leave = (to) => { closeField(); game = null; pick = []; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
-    h('h2', won ? `Level ${lv.n} geschafft!` : 'Niederlage'),
+    h('h2', won ? (game.chaos ? 'Chaos überstanden!' : `Level ${lv.n} geschafft!`) : 'Niederlage'),
     h('p', won ? `Du hast alle ${game.waves.length} Wellen abgewehrt.` : game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`),
     h('div.row', h('button.btn', { onclick: () => leave(null) }, 'Roadmap'),
-      won && next ? h('button.btn.primary.big', { onclick: () => leave(next) }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => leave(lv) }, won ? 'Nochmal' : 'Nochmal versuchen'))));
+      game.chaos ? h('button.btn.primary.big', { onclick: () => { leave(null); startChaos(); } }, '🎲 Neue Chaos-Runde') : won && next ? h('button.btn.primary.big', { onclick: () => leave(next) }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => leave(lv) }, won ? 'Nochmal' : 'Nochmal versuchen'))));
 }

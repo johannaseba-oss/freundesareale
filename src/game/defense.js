@@ -3,7 +3,7 @@
 // Erreicht ein Gegner die untere Linie (Trainer), ist die Runde verloren; nach fünf abgewehrten Wellen gewonnen.
 import { CFG, species } from '../config.js';
 import { effectiveness } from './types.js';
-import { calcStats, bdata, moveOf, rollIvs, expForLevel, levelEvolution } from './battle.js';
+import { calcStats, bdata, moveOf, rollIvs, expForLevel, levelEvolution, fromCpu } from './battle.js';
 import { mulberry32 } from '../rng.js';
 import { pickWeather, nextWeatherIn, weatherBoost } from './weather.js';
 
@@ -60,8 +60,10 @@ const refSpeed = (level) => Math.floor(((2 * 80 + 15) * level) / 100) + 5;
 
 export class Defense {
   // team: [{uid, dex, gender, ivs, evs, nick}], level: Eintrag aus defense_levels.json
-  constructor({ team, level, seed = Date.now() }) {
+  // chaos = Chaos-Modus: keine Sterne, herabfallende Pokébälle bringen einmalige Zufalls-Pokémon
+  constructor({ team, level, seed = Date.now(), chaos = false }) {
     this.rnd = mulberry32(seed >>> 0);
+    this.chaos = chaos;
     this.t = 0;
     this.level = level;
     this.theme = level.types;
@@ -83,6 +85,14 @@ export class Defense {
     this.nextId = 1;
     this.weather = pickWeather(this.rnd);
     this.weatherNext = nextWeatherIn(this.rnd);
+    if (chaos) { this.stars = 0; for (let i = 0; i < D().chaos.startCards; i++) this.addChaosCard(randomDex(this.rnd)); }
+  }
+  // Chaos: einmalige Karte mit einem zufälligen Pokémon (kostenlos, verschwindet nach dem Einsetzen)
+  addChaosCard(dex) {
+    if (this.cards.length >= D().chaos.handMax) return false;
+    const src = fromCpu(dex, { id: 'chaos' + this.nextId, ivs: [0, 31], evs: 0 }, this.nextId++);
+    this.cards.push({ src, dex, role: roleOf(dex), cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++ });
+    return true;
   }
 
   // ---- Platzieren ----
@@ -102,6 +112,7 @@ export class Defense {
     if (!this.cardReady(card) || !this.canPlace(col, row)) return false;
     this.stars -= card.cost;
     card.readyAt = this.t + card.recharge;
+    if (card.once) this.cards.splice(this.cards.indexOf(card), 1);
     const src = card.src, L = D().level, R = D().roles;
     const stats = calcStats(src.dex, L, src.ivs, src.evs);
     const ab = abilityOf(src.dex);
@@ -120,12 +131,22 @@ export class Defense {
   // ---- Sterne ----
   collect(drop) {
     if (!this.drops.includes(drop)) return 0;
+    if (drop.dex) { // Chaos: Pokéball öffnen
+      if (!this.addChaosCard(drop.dex)) { this.events.push({ type: 'handFull' }); return 0; }
+      this.drops.splice(this.drops.indexOf(drop), 1);
+      this.events.push({ type: 'collect', drop });
+      return 1;
+    }
     this.drops.splice(this.drops.indexOf(drop), 1);
     this.stars += drop.value;
     this.events.push({ type: 'collect', drop });
     return drop.value;
   }
-  dropStar(x, y, fromY, value) { this.drops.push({ id: this.nextId++, x, y, fromY, value, born: this.t }); }
+  dropStar(x, y, fromY, value) {
+    // im Chaos-Modus fällt statt eines Sterns ein Pokéball mit einem zufälligen Pokémon
+    const dex = this.chaos ? randomDex(this.rnd) : null;
+    this.drops.push({ id: this.nextId++, x, y, fromY, value, born: this.t, dex });
+  }
 
   // ---- Wellen ----
   startWave() {
@@ -211,7 +232,7 @@ export class Defense {
     if (this.t >= this.weatherNext) { this.weather = pickWeather(this.rnd, this.weather); this.weatherNext = this.t + nextWeatherIn(this.rnd); this.events.push({ type: 'weather', weather: this.weather }); }
     // Sternenregen
     if (this.t >= this.nextSky) {
-      this.nextSky = this.t + this.between(S.skyEvery);
+      this.nextSky = this.t + this.between(this.chaos ? D().chaos.dropEvery : S.skyEvery);
       this.dropStar(0.5 + this.rnd() * (G.cols - 1), 2 + this.rnd() * (G.rows - 3), -0.5, S.skyValue);
     }
     this.drops = this.drops.filter((d) => this.t - d.born < S.lifetime + 1.5);
@@ -361,6 +382,33 @@ export function pickFamilies(level, rnd) {
   return out;
 }
 export const levelsList = () => CFG.defenseLevels.levels;
+
+// zufällige Art, gewichtet wie am Automaten (häufige öfter, Legendäre sehr selten)
+export function randomDex(rnd = Math.random, filter = () => true) {
+  const balls = CFG.balance.gacha.balls;
+  for (let k = 0; k < 20; k++) {
+    let r = rnd() * balls.reduce((a, b) => a + b.weight, 0);
+    const ball = balls.find((b) => (r -= b.weight) < 0) || balls[0];
+    const list = CFG.dex.filter((p) => p.rarity === ball.rarity && bdata(p.dex) && filter(p));
+    if (list.length) return list[Math.floor(rnd() * list.length)].dex;
+  }
+  const any = CFG.dex.filter((p) => bdata(p.dex) && filter(p));
+  return any[Math.floor(rnd() * any.length)].dex;
+}
+// Leihteam für Spieler mit zu wenigen Pokémon: schwache, Sammler, mittlere und starke gemischt
+export function loanerTeam(rnd = Math.random) {
+  const L = D().loaner, out = [];
+  const take = (n, test) => {
+    const pool = CFG.dex.filter((p) => bdata(p.dex) && p.rarity !== 'legendaer' && !out.includes(p.dex) && test(p));
+    for (let i = 0; i < n && pool.length; i++) out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0].dex);
+  };
+  const fighter = (p) => ['nahkampf', 'fernkampf'].includes(roleOf(p.dex));
+  take(L.producers, (p) => roleOf(p.dex) === 'produzent');
+  take(L.weak, (p) => fighter(p) && p.stage === 1 && costOf(p.dex) <= 50);
+  take(L.medium, (p) => fighter(p) && p.stage === 2);
+  take(L.strong, (p) => fighter(p) && p.stage >= 3);
+  return out.map((dex, i) => fromCpu(dex, { id: 'leih' + Math.floor(rnd() * 1e9), ivs: [5, 25], evs: 0 }, i));
+}
 
 // Angekündigte Gegner-Typen einer Runde
 export function rollTheme(rnd = Math.random) {

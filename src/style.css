@@ -611,3 +611,6 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 @keyframes roadpulse { 50% { box-shadow: 0 0 0 6px rgba(111, 191, 90, .35), 0 3px 0 rgba(74, 59, 51, .35); } }
 .road-types { display: flex; gap: 2px; }
 .road-types i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid rgba(0,0,0,.35); }
+
+.chaos-btn { align-self: center; background: #efe0ff; color: #5b2486; border-color: #7a46b0; }
+.d-cards.chaos .d-card { background: linear-gradient(180deg, var(--tc) 0 14px, #f3ecff 14px); }
