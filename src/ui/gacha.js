@@ -12,6 +12,7 @@ import { ballCanvas, ballSprite, ballName, BALL_PIXELS } from '../gfx/balls.js';
 import { iconCanvas, iconImg, drawCoin } from '../gfx/icons.js';
 import { loadSprites, frameOf } from '../gfx/sprites.js';
 import { haptic } from '../haptics.js';
+import { playFile, loopFile } from '../audio.js';
 import { $, h, toast } from './dom.js';
 
 const BASE = import.meta.env.BASE_URL;
@@ -63,6 +64,7 @@ function toImage(cx, cy) {
   return { x: (cx - ox) / k, y: (cy - oy) / k };
 }
 
+let mechSound = null;
 function bindKnob() {
   let grab = null;
   const K = () => meta.knob;
@@ -80,6 +82,8 @@ function bindKnob() {
     grab = { a: Math.atan2(p.y - K().y, p.x - K().x), moved: 0 };
     crank = { active: true, auto: false, angle: crank.angle, accum: 0, t: 0, ticks: 0, coin: A.freeDrawReady(s, t) ? 0 : 0.001 };
     haptic('tick');
+    if (crank.coin > 0) playFile('muenzeinwurf', 0.8); // Münze rein (nicht bei Gratis-Ziehung)
+    mechSound?.stop(); mechSound = loopFile('mechanik', 0.7); // Mechanik, solange gedreht wird
   });
   canvas.addEventListener('pointermove', (e) => {
     if (!grab || !crank.active) return;
@@ -97,7 +101,7 @@ function bindKnob() {
     const g = grab; grab = null;
     if (!crank.active) return;
     if (g.moved < 0.35) { crank.active = false; crank.auto = true; return; } // kurz angetippt -> automatisch drehen
-    if (crank.accum < TAU) { crank.active = false; crank.accum = 0; crank.coin = 0; } // nicht ganz gedreht -> abbrechen
+    if (crank.accum < TAU) { crank.active = false; crank.accum = 0; crank.coin = 0; mechSound?.stop(); mechSound = null; } // nicht ganz gedreht -> abbrechen
   };
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
@@ -122,11 +126,13 @@ function stepCrank(dt) {
 function exitPoint() { const G = meta.globe; return { x: G.cx, y: G.bottom - R }; }
 function finishCrank() {
   crank.active = false; crank.auto = false; crank.accum = 0; crank.coin = 0;
+  mechSound?.stop(); mechSound = null;
   const ex = exitPoint();
   const chosen = balls.reduce((best, b) => (!best || Math.hypot(b.x - ex.x, b.y - ex.y) < Math.hypot(best.x - ex.x, best.y - ex.y) ? b : best), null);
   if (!chosen) return;
   const r = app.act((st, t) => A.draw(st, t, chosen.key), true);
   if (!r.ok) return;
+  setTimeout(() => playFile('ballfall', 0.85), 450); // Ball rollt in den Ausgabeschacht
   anim = { phase: 'drop', t: 0, key: r.ball.key, ballId: ballSprite(r.ball.ball, r.ball.key, r.ball.dex), result: r, landed: false, from: { x: chosen.x, y: chosen.y } };
   renderInfo();
 }

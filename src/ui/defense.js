@@ -584,7 +584,8 @@ function handleEvents() {
       const o = ev.target, type = ev.move?.type || 'Normal';
       if (!ev.mine && ev.melee) sfx.attack(type);
       if (ev.crit && !ev.mine) sfx.crit();
-      if (ev.mine) { burst(o, 'Unlicht', 4, 0.7, 0.8); continue; } // eigenes Pokémon wird gebissen
+      if (ev.mine) { burst(o, 'Unlicht', 4, 0.7, 0.8); sfx.bite(); continue; } // eigenes Pokémon wird gebissen
+      sfx.hit();
       burst(o, type, ev.crit ? 18 : ev.eff > 1 ? 12 : 7, ev.crit ? 1.6 : 1, ev.crit ? 1.3 : 1);
       ring(o, typeColor(type), 0.15, ev.crit ? 1.1 : 0.6, ev.crit ? 0.4 : 0.25);
       if (ev.melee) ui.slashes.push({ x: o.x, y: o.y, color: typeColor(type), t: 0 });

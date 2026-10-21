@@ -154,6 +154,8 @@ let lastCoin = 0;
 export const sfx = {
   coin() { const t = performance.now(); if (t - lastCoin < 70) return; lastCoin = t; playFile('muenze', 0.6); }, // Münze landet im Zähler
   attack(type) { if (ready() && allow()) (TYPE_SFX[type] || TYPE_SFX.Normal)(); },
+  hit() { if (ready() && allow(12)) { noise('lowpass', 1100, 180, 0.07, 0.3); tone('sine', 200, 90, 0.06, 0.18); } }, // einfacher Treffer
+  bite() { if (ready() && allow(12)) { noise('bandpass', 1400, 600, 0.04, 0.3, 0, 1.5); noise('bandpass', 1300, 500, 0.04, 0.26, 0.07, 1.5); } }, // Gegner schnappt zu
   crit() { if (!ready()) return; noise('lowpass', 2000, 200, 0.25, 0.5); tone('square', 880, 1760, 0.12, 0.12, 0.02); },
   ko() { if (ready() && allow(14)) { tone('square', 660, 1320, 0.08, 0.1); tone('square', 990, 1980, 0.1, 0.08, 0.06); } },
   explosion() { if (!ready()) return; noise('lowpass', 1500, 60, 0.7, 0.8); tone('sine', 90, 30, 0.6, 0.5); },
