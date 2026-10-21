@@ -10,15 +10,21 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(audioSetting
 // Musik je Bereich (public/config/music.json): 'areas' (Playlist), 'menu', 'arena', 'chaos' oder ein Level-Stück 'track:<name>'.
 // Wechsel werden kurz übergeblendet; null = Stille (z. B. App im Hintergrund).
 import { CFG } from './config.js';
-let music = null, want = null, playing = null, unlocked = false, areaIdx = 0, fadeTimer = 0;
+let music = null, musicGain = null, want = null, playing = null, unlocked = false, areaIdx = 0, fadeTimer = 0;
 function player() {
   if (!music) {
     music = new Audio();
     music.preload = 'auto';
     music.addEventListener('ended', () => { if (playing === 'areas') { areaIdx++; start(want, true); } });
+    // über WebAudio leiten, damit die Lautstärke überall wirkt (Safari/iPhone ignoriert audio.volume)
+    if (ctx()) { musicGain = ac.createGain(); ac.createMediaElementSource(music).connect(musicGain); musicGain.connect(ac.destination); }
   }
   return music;
 }
+// Lautstärke der Musik setzen (über den Verstärker, sonst direkt am Element)
+function setVol(v) { if (musicGain) musicGain.gain.value = v; else if (music) music.volume = v; }
+const getVol = () => (musicGain ? musicGain.gain.value : music ? music.volume : 0);
+export const musicState = () => ({ routed: !!musicGain, level: getVol(), playing, paused: music?.paused ?? true }); // zum Prüfen
 // welche Datei zu einem Bereich gehört
 function fileFor(key) {
   const M = CFG.music;
@@ -35,15 +41,15 @@ function start(key, force = false) {
   const switchTo = () => {
     m.src = `${base}audio/${file}.mp3`;
     m.loop = key !== 'areas'; // Level- und Menü-Stücke laufen in Schleife, die Areale wechseln ab
-    m.volume = audioSettings.music;
+    setVol(audioSettings.music);
     playing = key;
     m.play().catch(() => {});
   };
   // kurz ausblenden, dann umschalten
   if (!m.paused && m.src) {
     fadeTimer = setInterval(() => {
-      m.volume = Math.max(0, m.volume - audioSettings.music / 8);
-      if (m.volume <= 0.001) { clearInterval(fadeTimer); switchTo(); }
+      setVol(Math.max(0, getVol() - audioSettings.music / 8));
+      if (getVol() <= 0.001) { clearInterval(fadeTimer); switchTo(); }
     }, 50);
   } else switchTo();
 }
@@ -58,10 +64,20 @@ export function setMusic(key) {
   start(want);
 }
 export const musicForLevel = (types) => (CFG.music?.byType[types?.[0]] ? 'track:' + CFG.music.byType[types[0]] : 'menu');
-export function setMusicVolume(v) { audioSettings.music = v; save(); if (music) music.volume = v; if (v > 0 && want && (!music || music.paused)) start(want, true); else if (v <= 0 && music) music.pause(); }
+export function setMusicVolume(v) {
+  audioSettings.music = v; save();
+  clearInterval(fadeTimer);
+  setVol(v);
+  if (v > 0 && want && unlocked && (!music || music.paused)) start(want, true);
+  else if (v <= 0 && music) { music.pause(); playing = null; }
+}
 export function setSfxVolume(v) { audioSettings.sfx = v; save(); }
 // erstes Antippen schaltet Ton frei
-window.addEventListener('pointerdown', () => { if (unlocked) return; unlocked = true; ctx(); setMusic(want); }, { capture: true });
+window.addEventListener('pointerdown', () => {
+  if (unlocked) return;
+  unlocked = true; ctx(); setMusic(want);
+  for (const n of ['muenze', 'muenzeinwurf', 'mechanik', 'ballfall', 'seife', 'wasser']) loadBuf(n); // vorladen
+}, { capture: true });
 
 // ---------- Soundeffekte ----------
 let ac = null, master = null, noiseBuf = null;
@@ -167,3 +183,4 @@ export const sfx = {
   lose() { if (ready()) [392, 330, 262].forEach((f, i) => tone('triangle', f, f * 0.98, 0.3, 0.14, i * 0.22)); },
   win() { if (ready()) [523, 659, 784, 1047].forEach((f, i) => tone('triangle', f, f, 0.25, 0.14, i * 0.14)); },
 };
+if (import.meta.env.DEV) window.__audio = { musicState, setMusicVolume }; // Testhaken

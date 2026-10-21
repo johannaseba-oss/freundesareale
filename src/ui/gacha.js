@@ -64,7 +64,7 @@ function toImage(cx, cy) {
   return { x: (cx - ox) / k, y: (cy - oy) / k };
 }
 
-let mechSound = null;
+let mechSound = null, mechTimer = 0;
 function bindKnob() {
   let grab = null;
   const K = () => meta.knob;
@@ -82,8 +82,11 @@ function bindKnob() {
     grab = { a: Math.atan2(p.y - K().y, p.x - K().x), moved: 0 };
     crank = { active: true, auto: false, angle: crank.angle, accum: 0, t: 0, ticks: 0, coin: A.freeDrawReady(s, t) ? 0 : 0.001 };
     haptic('tick');
-    if (crank.coin > 0) playFile('muenzeinwurf', 0.8); // Münze rein (nicht bei Gratis-Ziehung)
-    mechSound?.stop(); mechSound = loopFile('mechanik', 0.7); // Mechanik, solange gedreht wird
+    const paid = crank.coin > 0;
+    if (paid) playFile('muenzeinwurf', 1); // Münze rein (nicht bei Gratis-Ziehung)
+    // Mechanik, solange gedreht wird – nach dem Münzeinwurf etwas später, damit man die Münze hört
+    mechSound?.stop(); mechSound = null; clearTimeout(mechTimer);
+    mechTimer = setTimeout(() => { if (crank.active || crank.auto) mechSound = loopFile('mechanik', 0.45); }, paid ? 550 : 0);
   });
   canvas.addEventListener('pointermove', (e) => {
     if (!grab || !crank.active) return;
@@ -101,7 +104,7 @@ function bindKnob() {
     const g = grab; grab = null;
     if (!crank.active) return;
     if (g.moved < 0.35) { crank.active = false; crank.auto = true; return; } // kurz angetippt -> automatisch drehen
-    if (crank.accum < TAU) { crank.active = false; crank.accum = 0; crank.coin = 0; mechSound?.stop(); mechSound = null; } // nicht ganz gedreht -> abbrechen
+    if (crank.accum < TAU) { crank.active = false; crank.accum = 0; crank.coin = 0; mechSound?.stop(); mechSound = null; clearTimeout(mechTimer); } // nicht ganz gedreht -> abbrechen
   };
   canvas.addEventListener('pointerup', end);
   canvas.addEventListener('pointercancel', end);
@@ -126,7 +129,7 @@ function stepCrank(dt) {
 function exitPoint() { const G = meta.globe; return { x: G.cx, y: G.bottom - R }; }
 function finishCrank() {
   crank.active = false; crank.auto = false; crank.accum = 0; crank.coin = 0;
-  mechSound?.stop(); mechSound = null;
+  mechSound?.stop(); mechSound = null; clearTimeout(mechTimer);
   const ex = exitPoint();
   const chosen = balls.reduce((best, b) => (!best || Math.hypot(b.x - ex.x, b.y - ex.y) < Math.hypot(best.x - ex.x, best.y - ex.y) ? b : best), null);
   if (!chosen) return;
