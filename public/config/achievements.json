@@ -292,6 +292,33 @@
       "text": "Eine Wettbewerbseigenschaft eines Pokémon auf Stufe 4 gebracht",
       "type": "contestLevel",
       "n": 4
+    },
+    {
+      "id": "pd10",
+      "cat": "PokeDefense",
+      "name": "Verteidiger",
+      "text": "PokeDefense Level 10 geschafft",
+      "type": "stat",
+      "stat": "defenseCleared",
+      "n": 10
+    },
+    {
+      "id": "pd25",
+      "cat": "PokeDefense",
+      "name": "Sternenwächter",
+      "text": "PokeDefense Level 25 geschafft",
+      "type": "stat",
+      "stat": "defenseCleared",
+      "n": 25
+    },
+    {
+      "id": "pd50",
+      "cat": "PokeDefense",
+      "name": "Meister der Verteidigung",
+      "text": "Alle 50 PokeDefense-Level geschafft",
+      "type": "stat",
+      "stat": "defenseCleared",
+      "n": 50
     }
   ]
 }

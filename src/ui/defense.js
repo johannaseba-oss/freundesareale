@@ -2,7 +2,7 @@
 // dann das vertikale Spielfeld: Sterne einsammeln, Karten antippen und Pokémon auf das untere Feld setzen.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
-import { Defense, roleOf, costOf, rechargeOf, abilityText, rollTheme } from '../game/defense.js';
+import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList } from '../game/defense.js';
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
@@ -15,7 +15,8 @@ import { weatherInfo, weatherText } from '../game/weather.js';
 
 const D = () => CFG.defense;
 const base = import.meta.env.BASE_URL;
-let theme = null;
+let chosen = null; // gewähltes Level (defense_levels.json)
+const cleared = () => app.state?.defense?.cleared || 0;
 let pick = [];
 let game = null;
 let ui = null;
@@ -37,19 +38,46 @@ const starImg = () => { const i = h('img.star-ico', { src: starCanvas().toDataUR
 
 // ================= Vorbereitung =================
 export function renderDefenseSetup(el, back) {
-  const s = app.state;
-  theme ||= rollTheme();
+  if (!chosen) { renderRoadmap(el, back); return; }
+  const s = app.state, theme = chosen.types;
   const mons = s.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => costOf(a.dex) - costOf(b.dex) || a.dex - b.dex);
   const N = Math.min(D().teamSize, mons.length);
   // Rolle als farbiges Etikett, Kosten als schlichte Zahl in der Ecke (kein Stern – sonst sieht alles nach Sternensammler aus)
   const hint = (p) => [roleTag(roleOf(p.dex)), h('span.d-price', String(costOf(p.dex)))];
   const picker = teamPicker({ mons, N, hint, onFull: (uids) => confirmTeam(uids, () => picker.clear()) });
   el.replaceChildren(h('div.bs',
-    h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
-    h('div.bs-head', h('h2', '★ PokeDefense'), picker.count),
-    h('div.d-theme', h('b', 'Erwartete Gegner: '), h('span.type-chips.inline', theme.map((t) => typeChip(t)))),
+    h('button.btn.small.mode-back', { onclick: () => { chosen = null; renderDefenseSetup(el, back); } }, '‹ Roadmap'),
+    h('div.bs-head', h('h2', `★ Level ${chosen.n}`), picker.count),
+    h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', theme.map((t) => typeChip(t))), h('small', ` · ${chosen.waves} Wellen`)),
     h('p.note', `Tippe ${N} Pokémon an. Die Zahl in der Ecke sind die Sternenkosten. Nur ★ Sammler erzeugen Sterne.`),
     picker.grid));
+}
+
+// Roadmap: alle Level als Weg; geschaffte golden, das nächste leuchtet, spätere gesperrt
+function renderRoadmap(el, back) {
+  const L = levelsList(), done = cleared(), PER = 4, W = 340, RH = 74;
+  const pos = (i) => { const row = Math.floor(i / PER), k = i % PER, col = row % 2 ? PER - 1 - k : k; return { x: 45 + col * ((W - 90) / (PER - 1)), y: 40 + row * RH }; };
+  const H = 40 + Math.ceil(L.length / PER) * RH;
+  const pts = L.map((_, i) => pos(i));
+  const svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" class="road-svg"><polyline points="${pts.map((p) => p.x + ',' + p.y).join(' ')}" fill="none" stroke="#c9b28a" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/><polyline points="${pts.slice(0, done + 1).map((p) => p.x + ',' + p.y).join(' ')}" fill="none" stroke="#f2b93b" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  const map = h('div.road', { style: { width: W + 'px', height: H + 'px' } });
+  map.innerHTML = svg;
+  L.forEach((lv, i) => {
+    const st = lv.n <= done ? 'done' : lv.n === done + 1 ? 'next' : 'locked';
+    const p = pos(i);
+    map.append(h('button.road-node.' + st, { style: { left: p.x + 'px', top: p.y + 'px' }, onclick: () => {
+      if (st === 'locked') { toast(`Schaffe zuerst Level ${done + 1}.`); return; }
+      chosen = lv; haptic('tick'); renderDefenseSetup(el, back); el.scrollTop = 0;
+    } }, h('b', st === 'done' ? '✓' : String(lv.n)),
+    h('span.road-types', lv.types.map((t) => h('i', { style: { background: typeColor(t) }, title: t })))));
+  });
+  el.replaceChildren(h('div.bs',
+    h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
+    h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
+    h('p.note', 'Tippe auf das leuchtende Level. Die Punkte zeigen die Typen der Gegner.'),
+    h('div.road-wrap', map)));
+  // zum nächsten Level scrollen
+  setTimeout(() => { const n = map.querySelector('.road-node.next'); if (n) n.scrollIntoView({ block: 'center' }); }, 50);
 }
 
 // Bestätigung mit Rollen, Kosten und Fähigkeit – dann geht es aufs Feld
@@ -57,7 +85,7 @@ function confirmTeam(uids, reset) {
   pick = uids;
   modal((el, close) => {
     el.append(h('h3', 'Dein PokeDefense-Team'),
-      h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', theme.map((t) => typeChip(t)))),
+      h('div.d-theme', h('b', `Level ${chosen.n} · Gegner: `), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t)))),
       h('div.confirm-list', pick.map((u, i) => {
         const p = app.state.pokemon.find((q) => q.uid === u);
         return h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(p.dex), alt: '' }),
@@ -70,8 +98,8 @@ function confirmTeam(uids, reset) {
 
 function start() {
   const team = pick.map((u) => app.state.pokemon.find((p) => p.uid === u)).filter(Boolean);
-  app.act((s) => { s.defense = { team: [...pick] }; return { ok: true }; });
-  game = new Defense({ team: team.map(fromPokemon), theme });
+  app.act((s) => { s.defense = { ...(s.defense || {}), team: [...pick] }; return { ok: true }; });
+  game = new Defense({ team: team.map(fromPokemon), level: chosen });
   openField();
 }
 
@@ -313,16 +341,21 @@ function draw(dt) {
     return true;
   });
   x.globalAlpha = 1;
+  drawWeather(x, U, game.weather, U.w, U.h, T, dt, now);
   // Sterne (fallen herab, pulsieren, blinken kurz vor dem Verschwinden)
   const star = starCanvas(), ss = T * 0.62;
   for (const d of game.drops) {
     const p = dropPos(d), age = game.t - d.born, life = D().stars.lifetime;
     if (age > life - 2.5 && Math.floor(age * 6) % 2) continue;
     const pulse = 1 + Math.sin(now / 200 + d.id) * 0.08;
-    x.fillStyle = 'rgba(255,230,120,.35)'; x.beginPath(); x.arc(U.ox + p.x * T, U.oy + p.y * T, ss * 0.75 * pulse, 0, 7); x.fill();
+    // Leuchten: bei Nacht/Wolken/Regen deutlich stärker, damit die Sterne gut sichtbar bleiben
+    const dark = { nacht: 1, bewoelkt: 0.6, regen: 0.6, schnee: 0.4 }[game.weather] || 0;
+    const glow = x.createRadialGradient(U.ox + p.x * T, U.oy + p.y * T, 0, U.ox + p.x * T, U.oy + p.y * T, ss * (0.8 + dark * 0.7) * pulse);
+    glow.addColorStop(0, `rgba(255,240,150,${0.55 + dark * 0.35})`); glow.addColorStop(1, 'rgba(255,230,120,0)');
+    x.fillStyle = glow; x.beginPath(); x.arc(U.ox + p.x * T, U.oy + p.y * T, ss * (0.8 + dark * 0.7) * pulse, 0, 7); x.fill();
     x.drawImage(star, U.ox + p.x * T - (ss * pulse) / 2, U.oy + p.y * T - (ss * pulse) / 2, ss * pulse, ss * pulse);
   }
-  drawWeather(x, U, game.weather, U.w, U.h, T, dt, now);
+
   // schwebende Zahlen: springen auf, Volltreffer groß und golden
   U.texts = U.texts.filter((t) => {
     t.t += dt; if (t.t > t.dur) return false;
@@ -367,6 +400,7 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   }
   x.globalAlpha = 1;
   if (dead) return;
+  if (!mine && o.poison && game.t < o.poison.until && Math.random() < 0.15) ui.fx.push({ x: o.x + (Math.random() - 0.5) * 0.4, y: o.y - 0.2, vx: 0, vy: -0.8, g: -0.5, drag: 0, color: Math.random() < 0.5 ? '#a33ea1' : '#d79ae0', shape: 'ring', size: 0.6, life: 0.6 }); // Giftblasen
   if (confused) { // kreisende Sternchen über dem Kopf
     for (let i = 0; i < 3; i++) { const a = now / 180 + (i * Math.PI * 2) / 3; x.fillStyle = i % 2 ? '#f95587' : '#ffe066'; x.fillRect(X + Math.cos(a) * T * 0.28 - 2, Y - T * 0.62 + Math.sin(a) * T * 0.08 - 2, 4, 4); }
   }
@@ -449,6 +483,7 @@ function handleEvents() {
     if (ev.type === 'shoot') { if (!ev.melee) sfx.attack(ev.moveType); continue; }
     if (ev.type === 'level') { say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
     if (ev.type === 'evolve') { evolveFx(ev); continue; }
+    if (ev.type === 'poison') { say(ev.e, String(ev.dmg), '#d48ae0', 0.24, 0.6, -0.3); burst(ev.e, 'Gift', 4, 0.6, 0.7); continue; }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
     if (ev.type === 'heal') { ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
     if (ev.type === 'confuse') { say(ev.e, 'verwirrt!', '#f95587', 0.28, 1, -0.9); burst(ev.e, 'Psycho', 10, 1.2); sfx.attack('Psycho'); continue; }
@@ -511,8 +546,12 @@ function end() {
   const won = game.over.won;
   haptic(won ? 'medium' : 'strong');
   if (won) sfx.win(); else sfx.lose();
+  const lv = chosen, next = levelsList().find((x) => x.n === lv.n + 1);
+  if (won) app.act((s) => { s.defense ||= {}; s.defense.cleared = Math.max(s.defense.cleared || 0, lv.n); s.stats.defenseCleared = s.defense.cleared; return { ok: true }; }, true);
+  const leave = (to) => { closeField(); game = null; pick = []; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
-    h('h2', won ? 'Geschafft!' : 'Niederlage'),
-    h('p', won ? `Du hast alle ${D().waves.length} Wellen abgewehrt.` : game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`),
-    h('button.btn.primary.big', { onclick: () => { closeField(); game = null; theme = null; pick = []; app.refresh(); document.dispatchEvent(new Event('defense-closed')); } }, 'Weiter')));
+    h('h2', won ? `Level ${lv.n} geschafft!` : 'Niederlage'),
+    h('p', won ? `Du hast alle ${game.waves.length} Wellen abgewehrt.` : game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`),
+    h('div.row', h('button.btn', { onclick: () => leave(null) }, 'Roadmap'),
+      won && next ? h('button.btn.primary.big', { onclick: () => leave(next) }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => leave(lv) }, won ? 'Nochmal' : 'Nochmal versuchen'))));
 }

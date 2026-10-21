@@ -59,11 +59,14 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const refSpeed = (level) => Math.floor(((2 * 80 + 15) * level) / 100) + 5;
 
 export class Defense {
-  // team: [{uid, dex, gender, ivs, evs, nick}], theme: [Typen]
-  constructor({ team, theme, seed = Date.now() }) {
+  // team: [{uid, dex, gender, ivs, evs, nick}], level: Eintrag aus defense_levels.json
+  constructor({ team, level, seed = Date.now() }) {
     this.rnd = mulberry32(seed >>> 0);
     this.t = 0;
-    this.theme = theme;
+    this.level = level;
+    this.theme = level.types;
+    this.waves = buildWaves(level);
+    this.families = pickFamilies(level, mulberry32(level.n * 7919));
     this.stars = D().stars.start;
     this.cards = team.map((src) => ({ src, dex: src.dex, role: roleOf(src.dex), cost: costOf(src.dex), recharge: rechargeOf(src.dex), readyAt: 0 }));
     this.units = [];
@@ -86,7 +89,8 @@ export class Defense {
   // oberste freie Reihe: anfangs nur die untersten startRows, mit jeder Welle rowsPerWave mehr
   minRow() {
     const G = D().grid;
-    const open = (G.startRows || 99) + Math.floor(Math.max(0, this.wave + 1) * (G.rowsPerWave || 0));
+    const span = G.placeRows[1] - G.placeRows[0] + 1 - (G.startRows || 0);
+    const open = (G.startRows || 99) + Math.min(span, Math.floor(Math.max(0, this.wave + 1) * Math.max(G.rowsPerWave || 0, span / Math.max(1, this.waves.length * 0.6))));
     return Math.max(G.placeRows[0], G.placeRows[1] - open + 1);
   }
   canPlace(col, row) {
@@ -126,14 +130,16 @@ export class Defense {
   // ---- Wellen ----
   startWave() {
     this.wave++;
-    const W = D().waves[this.wave], th = D().themes;
-    const level = (D().enemy.baseLevel || D().level) + this.wave * D().enemy.levelPerWave;
+    const W = this.waves[this.wave];
+    const level = this.level.enemyLevel + this.wave * D().enemy.levelPerWave;
+    // Entwicklungsstufe steigt über die Wellen: erst Grundformen, gelegentlich Zweitentwicklungen, zum Schluss Endentwicklungen
+    const p = this.waves.length > 1 ? this.wave / (this.waves.length - 1) : 1;
+    const weights = [Math.max(0.05, 1 - p * 0.9), 0.12 + p * 0.9, this.level.finalStage >= 3 ? Math.max(0, (p - 0.4) * 1.6) : 0];
     for (let i = 0; i < W.count; i++) {
-      const stage = W.stages[Math.floor(this.rnd() * W.stages.length)];
-      const useTheme = this.rnd() < th.share;
-      let pool = CFG.dex.filter((p) => bdata(p.dex) && p.rarity !== 'legendaer' && Math.min(3, p.stage) === stage && (!useTheme || p.types.some((t) => this.theme.includes(t))));
-      if (!pool.length) pool = CFG.dex.filter((p) => bdata(p.dex) && p.rarity !== 'legendaer' && p.stage <= stage);
-      const dex = pool[Math.floor(this.rnd() * pool.length)].dex;
+      let r = this.rnd() * weights.reduce((a, b) => a + b, 0), stage = 1;
+      for (let k = 0; k < 3; k++) { if ((r -= weights[k]) < 0) { stage = k + 1; break; } }
+      const fam = this.families[Math.floor(this.rnd() * this.families.length)];
+      const dex = fam[Math.min(stage, fam.length) - 1];
       this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * W.spread + this.rnd() * 3), dex, level, col: Math.floor(this.rnd() * D().grid.cols) });
     }
     this.queue.sort((a, b) => a.at - b.at);
@@ -163,6 +169,7 @@ export class Defense {
     e.hp -= dmg; e.hurtT = this.t;
     if (mv?.type === 'Eis') { e.slowUntil = this.t + D().iceSlow.seconds; e.slowFactor = D().iceSlow.factor; }
     else if (mv?.type === 'Elektro' && !(this.t < e.slowUntil && e.slowFactor < D().elecSlow.factor)) { e.slowUntil = this.t + D().elecSlow.seconds; e.slowFactor = D().elecSlow.factor; }
+    if (mv?.type === 'Gift' && from?.dex && e.hp > 0) e.poison = { until: this.t + D().poison.seconds, dps: e.maxHp * D().poison.pctPerSecond, from, tick: 0 };
     const ab = from?.dex ? abilityOf(from.dex) : null;
     if (ab?.type === 'confuse' && e.hp > 0 && this.rnd() < ab.chance) { e.confusedUntil = this.t + ab.seconds; this.events.push({ type: 'confuse', e }); }
     this.events.push({ type: 'hit', target: e, dmg, eff, move: mv, crit, melee: from?.role === 'nahkampf' });
@@ -209,9 +216,9 @@ export class Defense {
     }
     this.drops = this.drops.filter((d) => this.t - d.born < S.lifetime + 1.5);
     // Wellen
-    if (this.wave < D().waves.length - 1 && this.t >= this.nextWaveAt && !this.queue.length) {
+    if (this.wave < this.waves.length - 1 && this.t >= this.nextWaveAt && !this.queue.length) {
       this.startWave();
-      const W = D().waves[this.wave];
+      const W = this.waves[this.wave];
       this.nextWaveAt = this.t + W.spread + D().waveGap;
     }
     while (this.queue.length && this.queue[0].at <= this.t) this.spawn(this.queue.shift());
@@ -275,6 +282,13 @@ export class Defense {
     const E = D().enemy;
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
+      // Gift: Schaden über Zeit, Anzeige alle 0,5 s
+      if (e.poison && this.t < e.poison.until) {
+        const d = e.poison.dps * dt;
+        e.hp -= d; e.poison.tick += d;
+        if (e.poison.tick >= Math.max(1, e.poison.dps * 0.5)) { this.events.push({ type: 'poison', e, dmg: Math.round(e.poison.tick) }); e.poison.tick = 0; }
+        if (e.hp <= 0) { e.hurtT = this.t; this.events.push({ type: 'defeat', e }); if (e.poison.from.hp > 0) this.reward(e.poison.from, e); continue; }
+      }
       // verwirrt: dreht um, greift Gegner hinter sich an oder trifft sich selbst
       if (this.t < (e.confusedUntil || 0)) {
         e.cd -= dt; e.eating = false;
@@ -308,7 +322,7 @@ export class Defense {
     this.enemies = this.enemies.filter((e) => e.hp > 0 || this.t - (e.hurtT || 0) < 0.5);
     this.units = this.units.filter((u) => u.hp > 0 || this.t - (u.hurtT || u.placedAt) < 0.5);
     // Sieg: alle Wellen vorbei, nichts mehr unterwegs
-    if (this.wave === D().waves.length - 1 && !this.queue.length && !this.enemies.some((e) => e.hp > 0)) this.over = { won: true, t: this.t };
+    if (this.wave === this.waves.length - 1 && !this.queue.length && !this.enemies.some((e) => e.hp > 0)) this.over = { won: true, t: this.t };
   }
   // Knochenbumerang: hin bis range, dann zurück; durchschlägt je Richtung pierce Gegner (zurück schwächer)
   flyBoomerang(p, dt) {
@@ -323,8 +337,30 @@ export class Defense {
     }
     return p.out || p.y < p.startY;
   }
-  waveProgress() { return { wave: Math.max(0, this.wave + 1), total: D().waves.length }; }
+  waveProgress() { return { wave: Math.max(0, this.wave + 1), total: this.waves.length }; }
 }
+
+// Wellen eines Levels: Gegneranzahl steigt, die letzte Welle ist besonders groß
+export function buildWaves(level) {
+  const S = D().waveShape;
+  return Array.from({ length: level.waves }, (_, i) => {
+    const final = i === level.waves - 1;
+    return { count: Math.round((S.base + i * S.perWave) * level.countMult * (final ? S.finalMult : 1)), spread: S.spread + i, final };
+  });
+}
+// Gegner-Familien eines Levels: Entwicklungsreihen (Grundform, Zweit-, Endentwicklung), deren Arten zu den Level-Typen passen
+export function pickFamilies(level, rnd) {
+  const byFam = new Map();
+  for (const p of CFG.dex) if (bdata(p.dex) && p.rarity !== 'legendaer') (byFam.get(p.family) || byFam.set(p.family, []).get(p.family)).push(p);
+  const fams = [...byFam.values()].map((l) => l.sort((a, b) => a.stage - b.stage || a.dex - b.dex))
+    .filter((l) => l.some((p) => p.types.some((t) => level.types.includes(t))))
+    .map((l) => l.filter((p, i, a) => a.findIndex((q) => q.stage === p.stage) === i).map((p) => p.dex)); // je Stufe eine Art
+  const withEvo = fams.filter((l) => l.length > 1), pool = withEvo.length >= 4 ? withEvo : fams;
+  const out = [];
+  while (out.length < Math.min(D().families.count, pool.length)) { const f = pool.splice(Math.floor(rnd() * pool.length), 1)[0]; out.push(f); }
+  return out;
+}
+export const levelsList = () => CFG.defenseLevels.levels;
 
 // Angekündigte Gegner-Typen einer Runde
 export function rollTheme(rnd = Math.random) {

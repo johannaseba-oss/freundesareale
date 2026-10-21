@@ -6,7 +6,7 @@
 // Balancetest (nur Entwicklung): ein Bot spielt PokeDefense mit zufälligen Sammlungen.
 // Aufruf im Dev-Server: http://localhost:5190/tools/defense_test.html?n=60   (&cfg={"enemy.hpMult":2} überschreibt Werte)
 import { loadConfig, CFG } from '/src/config.js';
-import { Defense, roleOf, costOf, rollTheme } from '/src/game/defense.js';
+import { Defense, roleOf, costOf, levelsList } from '/src/game/defense.js';
 import { canBattle, fromCpu, bdata, moveOf } from '/src/game/battle.js';
 import { effectiveness } from '/src/game/types.js';
 import { mulberry32 } from '/src/rng.js';
@@ -51,13 +51,15 @@ function bot(g) {
   for (const f of fighters) { if (attackers(weakest) < 3 && tryAt(f, weakest, f.role === 'nahkampf' ? [5, 4, 6] : [7, 6, 5, 4])) return; }
 }
 const out = [];
-for (const [label, prods] of [['mit Sternensammlern', true], ['ohne Sternensammler', false]]) {
+const LV = (qs.get('levels') || '1,5,10,20,30,40,50').split(',').map(Number);
+for (const ln of LV) {
+  const level = levelsList().find((x) => x.n === ln), label = 'Level ' + ln + ' (' + level.types.join('/') + ', ' + level.waves + ' W.)', prods = true;
   let won = 0, waves = 0, time = 0, starsLeft = 0, evos = 0, maxLv = 0;
   for (let k = 0; k < N; k++) {
-    const theme = rollTheme(rnd);
+    const theme = level.types;
     const coll = Array.from({ length: 25 }, randomDex);
     const team = pickTeam(coll, theme, prods).map((d, i) => fromCpu(d, { id: 'bot' + k, ivs: [0, 31], evs: 0 }, i));
-    const g = new Defense({ team, theme, seed: 100 + k });
+    const g = new Defense({ team, level, seed: 100 + k });
     g.started = true;
     let i = 0;
     while (!g.over && g.t < 1500) { if (i++ % 10 === 0) bot(g); g.update(0.05); for (const ev of g.events) { if (ev.type === 'evolve') evos++; if (ev.type === 'level') maxLv = Math.max(maxLv, ev.level); } g.events.length = 0; }
@@ -65,7 +67,7 @@ for (const [label, prods] of [['mit Sternensammlern', true], ['ohne Sternensamml
     waves += g.wave + 1; time += g.t; starsLeft += g.stars;
     if (k % 10 === 9) { document.getElementById('out').textContent = `${label} ${k + 1}/${N} …`; await new Promise((r) => setTimeout(r)); }
   }
-  out.push(`${label.padEnd(22)} Siege ${Math.round((100 * won) / N)} % · Ø erreichte Welle ${(waves / N).toFixed(1)} · Ø Dauer ${(time / N / 60).toFixed(1)} min · Ø übrige Sterne ${Math.round(starsLeft / N)} · Entwicklungen Ø ${(evos / N).toFixed(1)} · höchstes Level ${maxLv}`);
+  out.push(`${label.padEnd(34)} Siege ${Math.round((100 * won) / N)} % · Ø erreichte Welle ${(waves / N).toFixed(1)} · Ø Dauer ${(time / N / 60).toFixed(1)} min · Ø übrige Sterne ${Math.round(starsLeft / N)} · Entwicklungen Ø ${(evos / N).toFixed(1)} · höchstes Level ${maxLv}`);
 }
 document.getElementById('out').textContent = out.join('\n');
 window.done = out;

@@ -1,0 +1,549 @@
+{
+ "_hinweis": "PokeDefense-Level. types = Gegner-Typen, waves = Anzahl Wellen, enemyLevel = Level der Gegner in Welle 1 (+levelPerWave je Welle), countMult = Gegneranzahl-Faktor, finalStage = höchste Entwicklungsstufe in späten Wellen. Neu erzeugen: node tools/build_defense_levels.mjs",
+ "levels": [
+  {
+   "n": 1,
+   "types": [
+    "Normal",
+    "Käfer"
+   ],
+   "waves": 4,
+   "enemyLevel": 7,
+   "countMult": 0.64,
+   "finalStage": 2
+  },
+  {
+   "n": 2,
+   "types": [
+    "Pflanze"
+   ],
+   "waves": 4,
+   "enemyLevel": 7,
+   "countMult": 0.65,
+   "finalStage": 2
+  },
+  {
+   "n": 3,
+   "types": [
+    "Wasser",
+    "Normal"
+   ],
+   "waves": 4,
+   "enemyLevel": 8,
+   "countMult": 0.67,
+   "finalStage": 2
+  },
+  {
+   "n": 4,
+   "types": [
+    "Feuer",
+    "Pflanze"
+   ],
+   "waves": 4,
+   "enemyLevel": 8,
+   "countMult": 0.69,
+   "finalStage": 2
+  },
+  {
+   "n": 5,
+   "types": [
+    "Elektro"
+   ],
+   "waves": 4,
+   "enemyLevel": 9,
+   "countMult": 0.7,
+   "finalStage": 2
+  },
+  {
+   "n": 6,
+   "types": [
+    "Normal",
+    "Stahl"
+   ],
+   "waves": 5,
+   "enemyLevel": 9,
+   "countMult": 0.72,
+   "finalStage": 2
+  },
+  {
+   "n": 7,
+   "types": [
+    "Wasser",
+    "Flug"
+   ],
+   "waves": 5,
+   "enemyLevel": 10,
+   "countMult": 0.74,
+   "finalStage": 2
+  },
+  {
+   "n": 8,
+   "types": [
+    "Kampf",
+    "Käfer"
+   ],
+   "waves": 5,
+   "enemyLevel": 10,
+   "countMult": 0.76,
+   "finalStage": 3
+  },
+  {
+   "n": 9,
+   "types": [
+    "Wasser",
+    "Drache"
+   ],
+   "waves": 5,
+   "enemyLevel": 11,
+   "countMult": 0.77,
+   "finalStage": 3
+  },
+  {
+   "n": 10,
+   "types": [
+    "Käfer"
+   ],
+   "waves": 6,
+   "enemyLevel": 12,
+   "countMult": 0.79,
+   "finalStage": 3
+  },
+  {
+   "n": 11,
+   "types": [
+    "Fee",
+    "Feuer"
+   ],
+   "waves": 5,
+   "enemyLevel": 12,
+   "countMult": 0.81,
+   "finalStage": 3
+  },
+  {
+   "n": 12,
+   "types": [
+    "Drache",
+    "Flug"
+   ],
+   "waves": 6,
+   "enemyLevel": 13,
+   "countMult": 0.82,
+   "finalStage": 3
+  },
+  {
+   "n": 13,
+   "types": [
+    "Psycho",
+    "Eis"
+   ],
+   "waves": 6,
+   "enemyLevel": 13,
+   "countMult": 0.84,
+   "finalStage": 3
+  },
+  {
+   "n": 14,
+   "types": [
+    "Geist",
+    "Eis"
+   ],
+   "waves": 6,
+   "enemyLevel": 14,
+   "countMult": 0.86,
+   "finalStage": 3
+  },
+  {
+   "n": 15,
+   "types": [
+    "Boden"
+   ],
+   "waves": 6,
+   "enemyLevel": 14,
+   "countMult": 0.88,
+   "finalStage": 3
+  },
+  {
+   "n": 16,
+   "types": [
+    "Gift",
+    "Gestein"
+   ],
+   "waves": 6,
+   "enemyLevel": 15,
+   "countMult": 0.89,
+   "finalStage": 3
+  },
+  {
+   "n": 17,
+   "types": [
+    "Kampf",
+    "Fee"
+   ],
+   "waves": 6,
+   "enemyLevel": 16,
+   "countMult": 0.91,
+   "finalStage": 3
+  },
+  {
+   "n": 18,
+   "types": [
+    "Elektro",
+    "Unlicht"
+   ],
+   "waves": 7,
+   "enemyLevel": 16,
+   "countMult": 0.93,
+   "finalStage": 3
+  },
+  {
+   "n": 19,
+   "types": [
+    "Stahl",
+    "Feuer"
+   ],
+   "waves": 7,
+   "enemyLevel": 17,
+   "countMult": 0.94,
+   "finalStage": 3
+  },
+  {
+   "n": 20,
+   "types": [
+    "Gestein"
+   ],
+   "waves": 8,
+   "enemyLevel": 17,
+   "countMult": 0.96,
+   "finalStage": 3
+  },
+  {
+   "n": 21,
+   "types": [
+    "Gift",
+    "Normal"
+   ],
+   "waves": 7,
+   "enemyLevel": 18,
+   "countMult": 0.98,
+   "finalStage": 3
+  },
+  {
+   "n": 22,
+   "types": [
+    "Wasser",
+    "Normal"
+   ],
+   "waves": 7,
+   "enemyLevel": 18,
+   "countMult": 0.99,
+   "finalStage": 3
+  },
+  {
+   "n": 23,
+   "types": [
+    "Flug",
+    "Drache"
+   ],
+   "waves": 7,
+   "enemyLevel": 19,
+   "countMult": 1.01,
+   "finalStage": 3
+  },
+  {
+   "n": 24,
+   "types": [
+    "Kampf",
+    "Wasser"
+   ],
+   "waves": 8,
+   "enemyLevel": 19,
+   "countMult": 1.03,
+   "finalStage": 3
+  },
+  {
+   "n": 25,
+   "types": [
+    "Feuer"
+   ],
+   "waves": 8,
+   "enemyLevel": 20,
+   "countMult": 1.04,
+   "finalStage": 3
+  },
+  {
+   "n": 26,
+   "types": [
+    "Stahl",
+    "Unlicht"
+   ],
+   "waves": 8,
+   "enemyLevel": 21,
+   "countMult": 1.06,
+   "finalStage": 3
+  },
+  {
+   "n": 27,
+   "types": [
+    "Kampf",
+    "Fee"
+   ],
+   "waves": 8,
+   "enemyLevel": 21,
+   "countMult": 1.08,
+   "finalStage": 3
+  },
+  {
+   "n": 28,
+   "types": [
+    "Elektro",
+    "Boden"
+   ],
+   "waves": 8,
+   "enemyLevel": 22,
+   "countMult": 1.1,
+   "finalStage": 3
+  },
+  {
+   "n": 29,
+   "types": [
+    "Stahl",
+    "Psycho"
+   ],
+   "waves": 8,
+   "enemyLevel": 22,
+   "countMult": 1.11,
+   "finalStage": 3
+  },
+  {
+   "n": 30,
+   "types": [
+    "Feuer"
+   ],
+   "waves": 10,
+   "enemyLevel": 23,
+   "countMult": 1.13,
+   "finalStage": 3
+  },
+  {
+   "n": 31,
+   "types": [
+    "Stahl",
+    "Gestein"
+   ],
+   "waves": 9,
+   "enemyLevel": 23,
+   "countMult": 1.15,
+   "finalStage": 3
+  },
+  {
+   "n": 32,
+   "types": [
+    "Fee",
+    "Normal"
+   ],
+   "waves": 9,
+   "enemyLevel": 24,
+   "countMult": 1.16,
+   "finalStage": 3
+  },
+  {
+   "n": 33,
+   "types": [
+    "Käfer",
+    "Geist",
+    "Eis"
+   ],
+   "waves": 9,
+   "enemyLevel": 24,
+   "countMult": 1.18,
+   "finalStage": 3
+  },
+  {
+   "n": 34,
+   "types": [
+    "Unlicht",
+    "Gestein"
+   ],
+   "waves": 9,
+   "enemyLevel": 25,
+   "countMult": 1.2,
+   "finalStage": 3
+  },
+  {
+   "n": 35,
+   "types": [
+    "Stahl"
+   ],
+   "waves": 9,
+   "enemyLevel": 26,
+   "countMult": 1.22,
+   "finalStage": 3
+  },
+  {
+   "n": 36,
+   "types": [
+    "Normal",
+    "Geist",
+    "Gestein"
+   ],
+   "waves": 10,
+   "enemyLevel": 26,
+   "countMult": 1.23,
+   "finalStage": 3
+  },
+  {
+   "n": 37,
+   "types": [
+    "Elektro",
+    "Fee"
+   ],
+   "waves": 10,
+   "enemyLevel": 27,
+   "countMult": 1.25,
+   "finalStage": 3
+  },
+  {
+   "n": 38,
+   "types": [
+    "Wasser",
+    "Boden"
+   ],
+   "waves": 10,
+   "enemyLevel": 27,
+   "countMult": 1.27,
+   "finalStage": 3
+  },
+  {
+   "n": 39,
+   "types": [
+    "Fee",
+    "Feuer",
+    "Gift"
+   ],
+   "waves": 10,
+   "enemyLevel": 28,
+   "countMult": 1.28,
+   "finalStage": 3
+  },
+  {
+   "n": 40,
+   "types": [
+    "Eis"
+   ],
+   "waves": 10,
+   "enemyLevel": 28,
+   "countMult": 1.3,
+   "finalStage": 3
+  },
+  {
+   "n": 41,
+   "types": [
+    "Gift",
+    "Pflanze"
+   ],
+   "waves": 10,
+   "enemyLevel": 29,
+   "countMult": 1.32,
+   "finalStage": 3
+  },
+  {
+   "n": 42,
+   "types": [
+    "Stahl",
+    "Flug",
+    "Gift"
+   ],
+   "waves": 10,
+   "enemyLevel": 30,
+   "countMult": 1.33,
+   "finalStage": 3
+  },
+  {
+   "n": 43,
+   "types": [
+    "Fee",
+    "Geist"
+   ],
+   "waves": 10,
+   "enemyLevel": 30,
+   "countMult": 1.35,
+   "finalStage": 3
+  },
+  {
+   "n": 44,
+   "types": [
+    "Gestein",
+    "Eis"
+   ],
+   "waves": 10,
+   "enemyLevel": 31,
+   "countMult": 1.37,
+   "finalStage": 3
+  },
+  {
+   "n": 45,
+   "types": [
+    "Boden"
+   ],
+   "waves": 10,
+   "enemyLevel": 31,
+   "countMult": 1.39,
+   "finalStage": 3
+  },
+  {
+   "n": 46,
+   "types": [
+    "Stahl",
+    "Gestein"
+   ],
+   "waves": 10,
+   "enemyLevel": 32,
+   "countMult": 1.4,
+   "finalStage": 3
+  },
+  {
+   "n": 47,
+   "types": [
+    "Normal",
+    "Pflanze"
+   ],
+   "waves": 10,
+   "enemyLevel": 32,
+   "countMult": 1.42,
+   "finalStage": 3
+  },
+  {
+   "n": 48,
+   "types": [
+    "Elektro",
+    "Psycho",
+    "Feuer"
+   ],
+   "waves": 10,
+   "enemyLevel": 33,
+   "countMult": 1.44,
+   "finalStage": 3
+  },
+  {
+   "n": 49,
+   "types": [
+    "Flug",
+    "Geist"
+   ],
+   "waves": 10,
+   "enemyLevel": 33,
+   "countMult": 1.45,
+   "finalStage": 3
+  },
+  {
+   "n": 50,
+   "types": [
+    "Wasser"
+   ],
+   "waves": 10,
+   "enemyLevel": 34,
+   "countMult": 1.47,
+   "finalStage": 3
+  }
+ ]
+}

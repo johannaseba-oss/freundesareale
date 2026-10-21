@@ -197,84 +197,6 @@
   },
   "firstWaveDelay": 15,
   "waveGap": 8,
-  "waves": [
-    {
-      "count": 6,
-      "stages": [
-        1
-      ],
-      "spread": 30
-    },
-    {
-      "count": 8,
-      "stages": [
-        1
-      ],
-      "spread": 30
-    },
-    {
-      "count": 9,
-      "stages": [
-        1
-      ],
-      "spread": 32
-    },
-    {
-      "count": 10,
-      "stages": [
-        1,
-        2
-      ],
-      "spread": 32
-    },
-    {
-      "count": 11,
-      "stages": [
-        1,
-        2
-      ],
-      "spread": 34
-    },
-    {
-      "count": 12,
-      "stages": [
-        2
-      ],
-      "spread": 34
-    },
-    {
-      "count": 13,
-      "stages": [
-        2
-      ],
-      "spread": 34
-    },
-    {
-      "count": 14,
-      "stages": [
-        2,
-        3
-      ],
-      "spread": 34
-    },
-    {
-      "count": 15,
-      "stages": [
-        2,
-        3
-      ],
-      "spread": 32
-    },
-    {
-      "count": 20,
-      "stages": [
-        2,
-        3
-      ],
-      "spread": 30,
-      "final": true
-    }
-  ],
   "themes": {
     "_hinweis": "Pro Runde werden so viele Gegner-Typen angekündigt; Wellen bestehen überwiegend (share) aus diesen Typen.",
     "count": 2,
@@ -498,5 +420,22 @@
     "factor": 0.8,
     "seconds": 1.5,
     "_hinweis": "Elektro-Attacken verlangsamen Gegner ein wenig"
-  }
+  },
+  "poison": {
+    "seconds": 5,
+    "pctPerSecond": 0.02,
+    "_hinweis": "Gift-Attacken vergiften: Gegner verliert seconds lang pctPerSecond seiner max. KP pro Sekunde"
+  },
+  "families": {
+    "count": 8,
+    "_hinweis": "So viele Entwicklungsfamilien (passend zu den Level-Typen) bilden die Gegner einer Runde – frühe Wellen Grundformen, später deren Entwicklungen"
+  },
+  "waveShape": {
+    "base": 5,
+    "perWave": 1.4,
+    "finalMult": 1.35,
+    "spread": 28,
+    "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels; letzte Welle × finalMult"
+  },
+  "_waves": "Wellen und Gegner-Typen kommen aus public/config/defense_levels.json"
 }
