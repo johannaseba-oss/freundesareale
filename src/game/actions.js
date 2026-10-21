@@ -74,6 +74,23 @@ export function giveBerry(s, p, berryId, t) {
   return { ok: true };
 }
 
+// Alle Beeren einer Sorte verteilen: immer an das gerade hungrigste Pokémon in einem Areal,
+// bis keine Beeren mehr da sind oder alle satt sind
+export function feedAll(s, t, berryId = 'sinelbeere') {
+  const name = berryById(berryId).name;
+  if (!(s.berries[berryId] > 0)) return fail(`Keine ${name} im Beutel.`);
+  let used = 0;
+  const who = new Set();
+  while (s.berries[berryId] > 0) {
+    const p = s.pokemon.filter((q) => q.area && q.fullness < 99).sort((a, b) => a.fullness - b.fullness)[0];
+    if (!p || !giveBerry(s, p, berryId, t).ok) break;
+    used++;
+    who.add(p.uid);
+  }
+  if (!used) return fail('Alle Pokémon in deinen Arealen sind satt.');
+  return { ok: true, used, pokemon: who.size, left: s.berries[berryId] || 0 };
+}
+
 export function assign(s, p, areaId) {
   if (areaId) {
     if (!s.areas[areaId]?.unlocked) return fail('Dieses Areal ist noch nicht freigeschaltet.');

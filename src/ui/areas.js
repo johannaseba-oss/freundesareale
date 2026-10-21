@@ -66,6 +66,10 @@ export function initAreas() {
   });
 }
 
+// Bildschirmposition eines Pokémon im gerade gezeigten Areal (null, wenn es dort nicht zu sehen ist)
+export const scenePosOf = (uid) => scene?.screenPosOf(uid) || null;
+export const sceneReact = (uid, kind) => scene?.react(uid, kind);
+
 // Indizes der freigeschalteten Areale (nur durch diese wird gewischt)
 const owned = () => CFG.areas.map((_, i) => i).filter((i) => app.state?.areas[CFG.areas[i].id]?.unlocked);
 

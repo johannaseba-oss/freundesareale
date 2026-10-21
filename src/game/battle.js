@@ -203,15 +203,19 @@ export class Battle {
 
   // ---- Wegfindung: über eine Brücke, wenn das Ziel auf der anderen Flussseite liegt ----
   bankOf(y) { const R = B().grid.riverRow; return y < R ? 'top' : y >= R + 1 ? 'bottom' : 'river'; }
+  nearestLaneX(x) { return B().grid.lanes.map((l) => l + 0.5).reduce((b, l) => (Math.abs(x - l) < Math.abs(x - b) ? l : b)); }
+  // Bereich rund um eine Brücke: dort stellen sich Pokémon hintereinander an statt sich seitlich wegzuschieben
+  onBridge(u) { const R = B().grid.riverRow; return u.y > R - 1.2 && u.y < R + 2.2 && Math.abs(u.x - this.nearestLaneX(u.x)) < 0.6; }
   waypoint(f, tx, ty) {
     const R = B().grid.riverRow;
     const fb = this.bankOf(f.y), tb = this.bankOf(ty);
     if (fb === tb || tb === 'river') return { x: tx, y: ty };
     const lanes = B().grid.lanes.map((x) => x + 0.5);
-    if (fb === 'river') return { x: f.x, y: tb === 'top' ? R - 0.4 : R + 1.4 };
+    if (fb === 'river') return { x: this.nearestLaneX(f.x), y: tb === 'top' ? R - 0.4 : R + 1.4 }; // auf der Brücke mittig bleiben
     const bx = lanes.reduce((b, x) => (Math.abs(f.x - x) + Math.abs(tx - x) < Math.abs(f.x - b) + Math.abs(tx - b) ? x : b), lanes[0]);
     const entryY = fb === 'bottom' ? R + 1.2 : R - 0.2;
-    if (Math.abs(f.x - bx) > 0.12) return { x: bx, y: entryY };
+    // grob ausgerichtet reicht – die Bewegung zum Brückenende zieht das Pokémon von selbst in die Mitte
+    if (Math.abs(f.x - bx) > 0.35) return { x: bx, y: entryY };
     return { x: bx, y: tb === 'top' ? R - 0.4 : R + 1.4 };
   }
 
@@ -245,7 +249,11 @@ export class Battle {
       for (const b of fighters) {
         if (a === b || b.tower || a.side !== b.side) continue;
         const d = dist(a, b);
-        if (d > 0.001 && d < 0.55) { const k = ((0.55 - d) / d) * 0.5 * Math.min(1, dt * 8); a.x += (a.x - b.x) * k; a.y += (a.y - b.y) * k; }
+        if (d > 0.001 && d < 0.55) {
+          const k = ((0.55 - d) / d) * 0.5 * Math.min(1, dt * 8);
+          if (this.onBridge(a) && this.onBridge(b)) a.y += (Math.abs(a.y - b.y) > 0.01 ? a.y - b.y : a.id < b.id ? 0.05 : -0.05) * k; // auf der Brücke nur hintereinander
+          else { a.x += (a.x - b.x) * k; a.y += (a.y - b.y) * k; }
+        }
       }
       a.x = Math.max(0.3, Math.min(G.cols - 0.3, a.x));
       a.y = Math.max(0.3, Math.min(G.rows - 0.3, a.y));
@@ -278,7 +286,8 @@ export class Battle {
     const foes = fighters.filter((u) => u.side !== f.side);
     let target = null, best = Infinity;
     if (f.tower) {
-      for (const u of foes) { const d = this.reach(f, u); if (!u.tower && d <= range && d < best) { best = d; target = u; } }
+      // Verteidiger greifen nur Gegner auf ihrer eigenen Spur an
+      for (const u of foes) { const d = this.reach(f, u); if (!u.tower && this.laneOf(Math.floor(u.x)) === f.lane && d <= range && d < best) { best = d; target = u; } }
     } else {
       // Gegner in der Nähe zuerst bekämpfen, sonst zum Verteidiger der eigenen Spur
       for (const u of foes) { const d = this.reach(f, u); if (d <= Math.max(C().aggroRange, range) && d < best) { best = d; target = u; } }

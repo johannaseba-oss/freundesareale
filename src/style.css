@@ -425,3 +425,21 @@ body.in-battle #app { visibility: hidden; }
 .bcard-cool.on { background: rgba(63, 138, 58, .9); font-size: 11px; }
 .b-count { font-size: 12px; font-weight: 600; background: var(--paper2); border: 2px solid var(--line); border-radius: 999px; padding: 2px 8px; white-space: nowrap; }
 .b-count.full { background: #ffe0e0; }
+
+/* Kopfzeile: Alle einsammeln / Alle füttern */
+.hud-act { cursor: pointer; font-size: 15px; padding: 4px 9px 4px 5px; }
+.hud-act.dim { opacity: .55; }
+#hud-feed { background: #ffe9f0; animation: psy 2s ease-in-out infinite; }
+#hud-feed { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(66px + var(--safe-b)); z-index: 6; white-space: nowrap; border-radius: 999px; padding: 6px 14px 6px 8px; }
+body.in-battle #hud-feed { display: none; }
+#hud-collect { padding: 4px 8px 4px 6px; gap: 3px; }
+@media (max-width: 440px) {
+  #hud { gap: 5px; padding-left: 8px; padding-right: 8px; }
+  #hud .pill { font-size: 15px; padding: 3px 8px 3px 4px; gap: 4px; }
+  #hud .pill .ico { transform: scale(.85); margin: -2px; }
+  #hud .icon-btn { width: 34px; height: 34px; font-size: 17px; }
+}
+@media (max-width: 440px) {
+  #hud .pill.coins { font-size: 18px; padding: 3px 10px 3px 4px; }
+  #hud .save-state { margin-left: auto; padding: 2px; }
+}

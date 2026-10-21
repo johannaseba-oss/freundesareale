@@ -2,16 +2,18 @@ import './style.css';
 import { loadConfig, species, CFG } from './config.js';
 import { createBackend } from './backend/index.js';
 import { app } from './app.js';
-import { now, setServerTime } from './time.js';
+import { now, setServerTime, dayKey } from './time.js';
+import { hashString } from './rng.js';
 import { newGame, migrate } from './game/state.js';
 import { SaveManager } from './save.js';
+import { haptic } from './haptics.js';
 import * as A from './game/actions.js';
 import { showAuth, hideAuth } from './ui/auth.js';
 import { $, h, toast, confirmDialog } from './ui/dom.js';
 import { iconImg, berryImg } from './gfx/icons.js';
 import { pending, setOnLand } from './ui/fly.js';
-import { openInventory } from './ui/collect.js';
-import { initAreas } from './ui/areas.js';
+import { openInventory, collectWithFx } from './ui/collect.js';
+import { initAreas, scenePosOf, sceneReact } from './ui/areas.js';
 import { initCollection, render as renderCollection, setFilter } from './ui/collection.js';
 import { ballCanvas, loadBallSprites } from './gfx/balls.js';
 import { initGacha } from './ui/gacha.js';
@@ -86,6 +88,13 @@ async function startGame(user) {
     app.saver.on(updateSaveState);
     app.sync();
     if (!row || recovered) app.saver.markDirty(true);
+    // einmalige Korrektur: 5000 fälschlich erhaltene Glücksmünzen wieder abziehen (nur dieses Konto)
+    if (hashString(user.email || '') === 1224656477 && !state.fixes?.minus5000) {
+      state.coins = Math.max(0, state.coins - 5000);
+      state.fixes = { ...(state.fixes || {}), minus5000: true };
+      app.saver.markDirty(true);
+    }
+    checkDailyFeed();
     if (recovered) toast('Nicht gespeicherter Fortschritt wurde hochgeladen.');
 
     if (!screensReady) { initAreas(); initCollection(); await initGacha(); initBattle(); bindChrome(); screensReady = true; }
@@ -139,6 +148,35 @@ function stopGame() {
   showAuth(app.backend, 'login');
 }
 
+// "Alle füttern" gibt es nur beim ersten Öffnen der App an einem Tag
+function checkDailyFeed() {
+  const d = dayKey(now());
+  if (!app.state || app.state.feedAllDay === d) return;
+  app.state.feedAllDay = d;
+  app.feedOffer = true;
+  app.saver.markDirty();
+  lastHud = '';
+}
+
+function hudPos(sel) { const r = $(sel).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+
+function collectAll() {
+  const list = app.state.pokemon.filter((p) => p.area && (p.coinsReady > 0 || Object.values(p.berriesReady || {}).some((n) => n > 0)));
+  if (!list.length) { toast('Gerade hat niemand Münzen bereit.'); return; }
+  const r = collectWithFx(list, (p) => scenePosOf(p.uid) || hudPos('#hud-collect'));
+  if (r.ok) { for (const p of list) sceneReact(p.uid, 'coin'); haptic('medium'); }
+}
+
+function feedAllBerries() {
+  const r = app.act((s, t) => A.feedAll(s, t, 'sinelbeere'), true);
+  if (r.ok === false) return;
+  app.feedOffer = false;
+  lastHud = '';
+  haptic('medium');
+  toast(`${r.used} Sinelbeeren an ${r.pokemon} Pokémon verteilt${r.left ? ` – ${r.left} übrig, alle sind satt` : ''}.`);
+  renderHud();
+}
+
 function tick() {
   if (!app.state) return;
   app.sync();
@@ -154,13 +192,19 @@ function renderHud() {
   const shown = Math.max(0, app.state.coins - pending.coins); // fliegende Münzen zählen erst beim Ankommen
   const berries = Math.max(0, Object.values(app.state.berries || {}).reduce((a, b) => a + b, 0) - pending.berries);
   const free = app.state.pokemon.filter((p) => !p.area).length;
-  const key = shown + '|' + berries + '|' + free;
+  const ready = app.state.pokemon.reduce((n, p) => n + (p.area ? p.coinsReady : 0), 0);
+  const sinel = app.state.berries.sinelbeere || 0;
+  const key = shown + '|' + berries + '|' + free + '|' + ready + '|' + app.feedOffer + '|' + sinel;
   if (key === lastHud) return;
   lastHud = key;
   $('#hud-coins').replaceChildren(iconImg('coin', 3), String(shown));
   $('#hud-bag').replaceChildren(berryImg('sinelbeere', 2), String(berries));
   const ball = ballCanvas('pokeball', 1); ball.className = 'ico';
   $('#hud-box').replaceChildren(ball, String(free));
+  $('#hud-collect').replaceChildren(iconImg('coin', 2), ready ? `+${ready}` : '');
+  $('#hud-collect').classList.toggle('dim', !ready);
+  $('#hud-feed').classList.toggle('hidden', !app.feedOffer || !sinel);
+  $('#hud-feed').replaceChildren(berryImg('sinelbeere', 2), `Alle füttern`);
 }
 
 function updateSaveState(status, err) {
@@ -188,6 +232,8 @@ function bindChrome() {
   app.views.add(renderHud);
   setOnLand(renderHud);
   $('#hud-bag').onclick = openInventory;
+  $('#hud-collect').onclick = collectAll;
+  $('#hud-feed').onclick = feedAllBerries;
   $('#hud-box').onclick = () => { setFilter('frei'); switchTab('collection'); };
   $('#hud-settings').onclick = () => openSettings({
     onLogout: async () => {
@@ -203,6 +249,7 @@ function bindChrome() {
   document.addEventListener('visibilitychange', async () => {
     if (document.hidden || !app.state) return;
     try { await syncServerTime(); } catch { /* offline: Gerätezeit + letzter Offset */ }
+    checkDailyFeed();
     // Auf anderem Gerät weitergespielt? Dann Cloud-Stand übernehmen.
     try {
       const row = await app.backend.loadSave();
