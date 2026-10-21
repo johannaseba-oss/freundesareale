@@ -223,11 +223,20 @@ function onField(e) {
   const g = toGrid(e.clientX, e.clientY);
   const d = game.drops.find((x) => { const p = dropPos(x); return Math.hypot(p.x - g.x, p.y - g.y) < 0.65; });
   if (d) { const p = dropPos(d); if (game.collect(d)) { flyStar(toScreen(p.x, p.y), d); haptic('tick'); } handleEvents(); return; }
-  if (!ui.sel) return;
   const c = cellAt(e.clientX, e.clientY);
   if (!c) return;
+  // eigenes Pokémon antippen (ohne gewählte Karte): nach Bestätigung vom Feld nehmen
+  const own = !ui.sel && game.units.find((u) => u.col === c[0] && u.row === c[1] && u.hp > 0);
+  if (own) { askRemove(own); return; }
+  if (!ui.sel) return;
   if (!game.canPlace(c[0], c[1])) { toast('Hier kannst du nichts hinsetzen.'); return; }
   if (game.place(ui.sel, c[0], c[1])) { haptic('medium'); shake(ui.tile * 0.04); ui.sel = null; handleEvents(); }
+}
+
+async function askRemove(u) {
+  const name = u.nick || species(u.dex).name;
+  if (!(await confirmDialog(`${name} vom Feld nehmen? Es ist dann für diese Runde weg.`, 'Entfernen'))) return;
+  if (game && !game.over && game.removeUnit(u)) { haptic('medium'); handleEvents(); }
 }
 
 function flyStar(from, d) {
@@ -589,6 +598,7 @@ function handleEvents() {
     if (ev.type === 'collect' && ev.drop.dex) { const p = dropPos(ev.drop); say({ x: p.x, y: p.y }, species(ev.drop.dex).name + '!', '#ffffff', 0.28, 1); }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
     if (ev.type === 'heal') { ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
+    if (ev.type === 'remove') { burst(ev.u, species(ev.u.dex).types[0], 10, 0.8); continue; }
     if (ev.type === 'boss') { banner('BOSS!', true); shake(T() * 0.08); haptic('strong'); sfx.wave(true); continue; }
     if (ev.type === 'sleep') { say(ev.e, 'schläft ein!', '#cfe0ff', 0.26, 1, -0.9); burst(ev.e, 'Fee', 8, 0.8); continue; }
     if (ev.type === 'confuse') { say(ev.e, 'verwirrt!', '#f95587', 0.28, 1, -0.9); burst(ev.e, 'Psycho', 10, 1.2); sfx.attack('Psycho'); continue; }

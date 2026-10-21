@@ -134,6 +134,14 @@ export class Defense {
     this.events.push({ type: 'place', u });
     return true;
   }
+  // eigenes Pokémon vom Feld nehmen (Platz wird frei)
+  removeUnit(u) {
+    const i = this.units.indexOf(u);
+    if (i < 0 || u.hp <= 0) return false;
+    this.units.splice(i, 1);
+    this.events.push({ type: 'remove', u });
+    return true;
+  }
   between([a, b]) { return a + this.rnd() * (b - a); }
 
   // ---- Sterne ----
