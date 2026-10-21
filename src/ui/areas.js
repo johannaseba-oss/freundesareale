@@ -21,6 +21,7 @@ let scene;
 let lastKey = '';
 let menu = null; // offenes Areal-Menü {el, close}
 let switching = false;
+let lastCollect = -1e9; // Zeitpunkt des letzten Einsammelns (Antipp-Sperre für die Einzelansicht)
 
 export function initAreas() {
   const wrap = $('#scene-wrap');
@@ -28,7 +29,9 @@ export function initAreas() {
     // Antippen: hat das Pokémon Münzen/Beeren, werden nur diese eingesammelt – sonst öffnet sich die Einzelansicht
     onTap: (p, pos) => {
       const hasLoot = p.coinsReady > 0 || Object.values(p.berriesReady || {}).some((n) => n > 0);
-      if (!hasLoot) return openSheet(p);
+      // kurz nach dem Einsammeln keine Einzelansicht öffnen, damit schnelles Sammeln nicht unterbrochen wird
+      if (!hasLoot) { if (performance.now() - lastCollect > 500) openSheet(p); return; }
+      lastCollect = performance.now();
       const r = collectWithFx([p], () => pos);
       if (r.ok) { scene.react(p.uid, r.total ? 'coin' : 'heart'); haptic('tick'); }
     },
