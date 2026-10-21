@@ -125,13 +125,12 @@ function offerLoaner(el, back) {
 
 // Chaos-Modus: zufälliges freigeschaltetes Level, Pokébälle statt Sterne
 function startChaos() {
-  const L = levelsList(), max = Math.max(5, Math.min(L.length, cleared() + 1));
-  const lv = L[Math.floor(Math.random() * max)];
-  chosen = { ...lv, countMult: +(lv.countMult * D().chaos.countMult).toFixed(2) }; // Chaos: alle Wellen des Levels, mehr Gegner
+  // Chaos: Gegner aller Typen, endlose Wellen
+  chosen = { n: 0, chaos: true, types: [...D().themes.types], enemyLevel: D().chaos.endless.baseLevel, countMult: D().chaos.countMult, finalStage: 3, waves: 0 };
   modal((m, close) => {
     m.append(h('h3', '🎲 Chaos-Modus'),
       h('p.note', 'Statt Sternen fallen Pokébälle! Jeder Ball enthält ein zufälliges Pokémon, das du genau einmal einsetzen kannst – danach kommen andere. Einsetzen kostet nichts.'),
-      h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t))), h('small', ` · ${chosen.waves} Wellen`)),
+      h('p.note', `Gegner aller Typen in endlosen Wellen – wie weit kommst du?${app.state.defense?.chaosBest ? ` Bisheriger Rekord: Welle ${app.state.defense.chaosBest}.` : ''}`),
       h('div.row', h('button.btn', { onclick: () => { close(); chosen = null; } }, 'Abbrechen'),
         h('button.btn.primary.big', { onclick: () => { close(); game = new Defense({ team: [], level: chosen, chaos: true }); openField(); } }, 'Los!')));
   });
@@ -155,6 +154,10 @@ function openField() {
   ui = { root, canvas, ctx: canvas.getContext('2d'), cards, info, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], rings: [], slashes: [], beams: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
   for (const c of game.cards) loadSprites(c.dex, c.src.gender);
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`; ui.trainer = tr;
+  // Feld-Thema: passend zu den Gegner-Typen (Chaos: zufällig)
+  const TH = CFG.defenseThemes, ids = Object.keys(TH.themes);
+  ui.themeId = game.chaos ? ids[Math.floor(Math.random() * ids.length)] : TH.byType[game.theme[0]] || 'wald';
+  const ti = new Image(); ti.src = `${base}art/defense/${ui.themeId}.png`; ti.onload = () => { ui.bg = null; }; ui.tiles = ti;
   ui.ro = new ResizeObserver(() => layout()); ui.ro.observe(canvas.parentElement);
   canvas.addEventListener('pointerdown', onField);
   canvas.addEventListener('pointermove', (e) => { ui.hover = ui.sel ? cellAt(e.clientX, e.clientY) : null; });
@@ -186,8 +189,9 @@ function layout() {
   const dpr = Math.min(3, window.devicePixelRatio || 1), G = D().grid;
   canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
   canvas.style.width = r.width + 'px'; canvas.style.height = r.height + 'px';
-  const tile = Math.floor(Math.min(r.width / G.cols, r.height / (G.rows + 1.1)));
+  const tile = Math.floor(Math.min(r.width / (G.cols + 0.8), r.height / (G.rows + 1.1))); // etwas Rand links/rechts für Bäume & Co.
   Object.assign(ui, { dpr, w: r.width, h: r.height, tile, ox: Math.floor((r.width - tile * G.cols) / 2), oy: Math.max(0, Math.floor((r.height - tile * (G.rows + 1.1)) / 2)) });
+  ui.bg = null; // Hintergrund neu aufbauen
 }
 
 function frame(dt) {
@@ -280,8 +284,8 @@ function renderTop() {
   if (game.chaos) ui.starsEl.replaceChildren(ballCanvas('pokeball', 1), `${game.cards.length}/${D().chaos.handMax}`);
   else ui.starsEl.replaceChildren(starImg(), String(game.stars));
   const w = game.waveProgress();
-  ui.waveEl.firstChild.textContent = w.wave ? `Welle ${w.wave}/${w.total}` : 'Vorbereitung';
-  ui.waveEl.lastChild.firstChild.style.width = (w.wave / w.total) * 100 + '%';
+  ui.waveEl.firstChild.textContent = !w.wave ? 'Vorbereitung' : w.total ? `Welle ${w.wave}/${w.total}` : `Welle ${w.wave} · Chaos`;
+  ui.waveEl.lastChild.firstChild.style.width = (w.total ? w.wave / w.total : (w.wave % 5) / 5) * 100 + '%';
 }
 function message(text) {
   const el = h('div', text);
@@ -297,25 +301,22 @@ function draw(dt) {
   x.setTransform(U.dpr, 0, 0, U.dpr, U.dpr * sx, U.dpr * sy);
   x.imageSmoothingEnabled = false;
   x.fillStyle = '#5e9a46'; x.fillRect(-20, -20, U.w + 40, U.h + 40);
-  // Rasen in Streifen (wie PvZ), Gegner-Bereich oben etwas dunkler
-  for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) {
-    const own = r >= G.placeRows[0];
-    x.fillStyle = (r + c) % 2 ? (own ? '#8fcd68' : '#7ab65a') : (own ? '#99d571' : '#84bf62');
-    x.fillRect(U.ox + c * T, U.oy + r * T, T, T);
-  }
+  // Hintergrund aus Tileset-Kacheln (Rand: Bäume/Felsen/Kristalle, Feld: Boden), einmal je Größe aufgebaut
+  if (!U.bg && U.tiles.complete && U.tiles.naturalWidth) U.bg = buildBackground();
+  if (U.bg) x.drawImage(U.bg, 0, 0, U.w, U.h);
+  else for (let r = 0; r < G.rows; r++) for (let c = 0; c < G.cols; c++) { x.fillStyle = (r + c) % 2 ? '#8fcd68' : '#99d571'; x.fillRect(U.ox + c * T, U.oy + r * T, T, T); }
+  x.fillStyle = 'rgba(20,15,30,.14)'; x.fillRect(U.ox, U.oy, G.cols * T, G.placeRows[0] * T); // Gegner-Bereich etwas dunkler
   // noch gesperrte Reihen des eigenen Bereichs
   const minRow = game.minRow();
   if (minRow > G.placeRows[0]) {
     x.fillStyle = 'rgba(40,30,25,.22)';
     x.fillRect(U.ox, U.oy + G.placeRows[0] * T, G.cols * T, (minRow - G.placeRows[0]) * T);
-    x.font = `600 ${Math.round(T * 0.26)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; x.fillStyle = 'rgba(255,255,255,.75)';
-    x.fillText('🔒 wird mit den Wellen frei', U.ox + (G.cols * T) / 2, U.oy + (minRow - 0.45) * T);
   }
   x.fillStyle = 'rgba(255,255,255,.4)'; x.fillRect(U.ox, U.oy + minRow * T - 1, G.cols * T, 2);
   // Grenze zum eigenen Bereich + Ziellinie
   x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(U.ox, U.oy + G.placeRows[0] * T - 1, G.cols * T, 2);
   const goalY = U.oy + G.rows * T;
-  x.fillStyle = '#d9c08a'; x.fillRect(U.ox, goalY, G.cols * T, T * 1.1);
+  x.fillStyle = 'rgba(40,25,15,.35)'; x.fillRect(U.ox, goalY, G.cols * T, T * 1.1);
   x.fillStyle = '#e0606a';
   for (let i = 0; i < G.cols * 4; i++) if (i % 2 === 0) x.fillRect(U.ox + i * T / 4, goalY, T / 4, Math.max(2, T / 14));
   // Trainer (von hinten, schaut nach oben)
@@ -504,6 +505,30 @@ function drawBone(x, [X, Y], T, spin) {
   x.restore();
 }
 
+// Hintergrund-Bild für das aktuelle Thema: überall Rand-Kacheln, im Feld Boden-Kacheln, feine Rasterlinien
+function buildBackground() {
+  const U = ui, T = U.tile, G = D().grid, th = CFG.defenseThemes.themes[U.themeId], S = 24;
+  const c = document.createElement('canvas');
+  c.width = Math.round(U.w * U.dpr); c.height = Math.round(U.h * U.dpr);
+  const x = c.getContext('2d');
+  x.imageSmoothingEnabled = false;
+  x.scale(U.dpr, U.dpr);
+  const hash = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 997;
+  const tile = (i, X, Y) => x.drawImage(U.tiles, i * S, 0, S, S, Math.floor(X), Math.floor(Y), Math.ceil(T) + 1, Math.ceil(T) + 1);
+  const c0 = Math.floor(-U.ox / T) - 1, r0 = Math.floor(-U.oy / T) - 1;
+  for (let r = r0; r * T + U.oy < U.h; r++) for (let col = c0; col * T + U.ox < U.w; col++) {
+    const inField = col >= 0 && col < G.cols && r >= 0 && r < G.rows + 2;
+    const i = inField ? th.wall + (hash(col + 3, r + 7) % th.floor) : hash(col, r) % th.wall;
+    tile(i, U.ox + col * T, U.oy + r * T);
+  }
+  x.fillStyle = 'rgba(0,0,0,.08)';
+  for (let col = 1; col < G.cols; col++) x.fillRect(U.ox + col * T, U.oy, 1, G.rows * T);
+  for (let r = 1; r < G.rows; r++) x.fillRect(U.ox, U.oy + r * T, G.cols * T, 1);
+  // weiche Schatten am Feldrand
+  x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(U.ox - 2, U.oy, 2, (G.rows + 1.1) * T); x.fillRect(U.ox + G.cols * T, U.oy, 2, (G.rows + 1.1) * T);
+  return c;
+}
+
 // ---------- Effekte ----------
 const FX = {
   Feuer: { c: ['#ffe066', '#ffb84a', '#ff6a3a'], g: -2.5, shape: 'sq' }, Wasser: { c: ['#bfe3ff', '#6fb7ff', '#3d7be0'], g: 6, shape: 'sq' },
@@ -603,11 +628,13 @@ function end() {
   haptic(won ? 'medium' : 'strong');
   if (won) sfx.win(); else sfx.lose();
   const lv = chosen, next = game.chaos ? null : levelsList().find((x) => x.n === lv.n + 1);
+  const reached = game.wave + 1, best = app.state.defense?.chaosBest || 0;
+  if (game.chaos && reached > best) app.act((s) => { s.defense ||= {}; s.defense.chaosBest = reached; return { ok: true }; }, true);
   if (won && !game.chaos) app.act((s) => { s.defense ||= {}; s.defense.cleared = Math.max(s.defense.cleared || 0, lv.n); s.stats.defenseCleared = s.defense.cleared; return { ok: true }; }, true);
   const leave = (to) => { closeField(); game = null; pick = []; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
-    h('h2', won ? (game.chaos ? 'Chaos überstanden!' : `Level ${lv.n} geschafft!`) : 'Niederlage'),
-    h('p', won ? `Du hast alle ${game.waves.length} Wellen abgewehrt.` : game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`),
+    h('h2', game.chaos ? `Welle ${reached}` : won ? `Level ${lv.n} geschafft!` : 'Niederlage'),
+    h('p', game.chaos ? `Du hast bis Welle ${reached} durchgehalten${reached > best ? ' – neuer Rekord!' : ` (Rekord: Welle ${best})`}.` : won ? `Du hast alle ${game.waves.length} Wellen abgewehrt.` : game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`),
     h('div.row', h('button.btn', { onclick: () => leave(null) }, 'Roadmap'),
       game.chaos ? h('button.btn.primary.big', { onclick: () => { leave(null); startChaos(); } }, '🎲 Neue Chaos-Runde') : won && next ? h('button.btn.primary.big', { onclick: () => leave(next) }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => leave(lv) }, won ? 'Nochmal' : 'Nochmal versuchen'))));
 }

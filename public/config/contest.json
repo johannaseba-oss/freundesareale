@@ -33,24 +33,7 @@
   "appealExponent": 2,
   "_appeal": "Für den späteren Wettbewerbsmodus: Wirkung einer Eigenschaft = (Punkte/maxPerStat)^appealExponent – ein hoher Einzelwert zählt mehr als viele mittlere.",
   "activities": {
-    "_hinweis": "Welche Aktivität welche Eigenschaft steigert: [min, max] Punkte. perDay = nur einmal pro Tag und Pokémon. Beeren und Kämpfe verändern die Wettbewerbswerte nicht.",
-    "putzen": {
-      "gains": {
-        "beauty": [
-          2,
-          4
-        ]
-      }
-    },
-    "streicheln": {
-      "gains": {
-        "cute": [
-          1,
-          2
-        ]
-      },
-      "perDay": true
-    }
+    "_hinweis": "Aktivitäten, die Wettbewerbswerte steigern: [min, max] Punkte. Aktuell keine – Streicheln, Beeren und Putzen verändern die Werte nicht. Später z. B. für Training/Minispiele ergänzen."
   },
   "stamina": {
     "_hinweis": "Ausdauer 1–5 je Art, aus den Basiswerten KP + Vert + SpVert (Anteil der Arten darunter). Wird NUR in Minispielen verwendet, die Ausdauer ausdrücklich berücksichtigen.",

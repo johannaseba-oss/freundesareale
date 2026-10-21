@@ -67,8 +67,9 @@ export class Defense {
     this.t = 0;
     this.level = level;
     this.theme = level.types;
-    this.waves = buildWaves(level);
-    this.families = pickFamilies(level, mulberry32(level.n * 7919));
+    this.endless = chaos; // Chaos: endlose Wellen, Gegner aller Typen
+    this.waves = chaos ? [] : buildWaves(level);
+    this.families = pickFamilies(level, mulberry32(chaos ? seed : level.n * 7919));
     this.stars = D().stars.start;
     this.cards = team.map((src) => ({ src, dex: src.dex, role: roleOf(src.dex), cost: costOf(src.dex), recharge: rechargeOf(src.dex), readyAt: 0 }));
     this.units = [];
@@ -91,7 +92,10 @@ export class Defense {
   addChaosCard(dex) {
     if (this.cards.length >= D().chaos.handMax) return false;
     const src = fromCpu(dex, { id: 'chaos' + this.nextId, ivs: [0, 31], evs: 0 }, this.nextId++);
-    this.cards.push({ src, dex, role: roleOf(dex), cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++ });
+    // im Chaos-Modus gibt es keine Sterne – Sammler kämpfen dort ganz normal
+    let role = roleOf(dex);
+    if (role === 'produzent') role = moveOf(bdata(dex).move)?.range === 'nah' ? 'nahkampf' : 'fernkampf';
+    this.cards.push({ src, dex, role, cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++ });
     return true;
   }
 
@@ -100,7 +104,8 @@ export class Defense {
   minRow() {
     const G = D().grid;
     const span = G.placeRows[1] - G.placeRows[0] + 1 - (G.startRows || 0);
-    const open = (G.startRows || 99) + Math.min(span, Math.floor(Math.max(0, this.wave + 1) * Math.max(G.rowsPerWave || 0, span / Math.max(1, this.waves.length * 0.6))));
+    const total = this.endless ? 6 : this.waves.length;
+    const open = (G.startRows || 99) + Math.min(span, Math.floor(Math.max(0, this.wave + 1) * Math.max(G.rowsPerWave || 0, span / Math.max(1, total * 0.6))));
     return Math.max(G.placeRows[0], G.placeRows[1] - open + 1);
   }
   canPlace(col, row) {
@@ -152,10 +157,19 @@ export class Defense {
   // ---- Wellen ----
   startWave() {
     this.wave++;
+    let level, p;
+    if (this.endless) { // Chaos: nächste Welle erzeugen, alle paar Wellen neue Familien
+      const E = D().chaos.endless;
+      this.waves.push({ count: Math.round((E.base + this.wave * E.perWave) * (D().chaos.countMult || 1)), spread: 28, final: false });
+      if (this.wave > 0 && this.wave % E.familyRefresh === 0) this.families = pickFamilies(this.level, this.rnd);
+      level = E.baseLevel + this.wave * E.levelPerWave;
+      p = Math.min(1, this.wave / 10);
+    } else {
+      level = this.level.enemyLevel + this.wave * D().enemy.levelPerWave;
+      // Entwicklungsstufe steigt über die Wellen: erst Grundformen, gelegentlich Zweitentwicklungen, zum Schluss Endentwicklungen
+      p = this.waves.length > 1 ? this.wave / (this.waves.length - 1) : 1;
+    }
     const W = this.waves[this.wave];
-    const level = this.level.enemyLevel + this.wave * D().enemy.levelPerWave;
-    // Entwicklungsstufe steigt über die Wellen: erst Grundformen, gelegentlich Zweitentwicklungen, zum Schluss Endentwicklungen
-    const p = this.waves.length > 1 ? this.wave / (this.waves.length - 1) : 1;
     const weights = [Math.max(0.05, 1 - p * 0.9), 0.12 + p * 0.9, this.level.finalStage >= 3 ? Math.max(0, (p - 0.4) * 1.6) : 0];
     for (let i = 0; i < W.count; i++) {
       let r = this.rnd() * weights.reduce((a, b) => a + b, 0), stage = 1;
@@ -238,7 +252,7 @@ export class Defense {
     }
     this.drops = this.drops.filter((d) => this.t - d.born < S.lifetime + 1.5);
     // Wellen
-    if (this.wave < this.waves.length - 1 && this.t >= this.nextWaveAt && !this.queue.length) {
+    if ((this.endless || this.wave < this.waves.length - 1) && this.t >= this.nextWaveAt && !this.queue.length) {
       this.startWave();
       const W = this.waves[this.wave];
       this.nextWaveAt = this.t + W.spread + D().waveGap;
@@ -344,7 +358,7 @@ export class Defense {
     this.enemies = this.enemies.filter((e) => e.hp > 0 || this.t - (e.hurtT || 0) < 0.5);
     this.units = this.units.filter((u) => u.hp > 0 || this.t - (u.hurtT || u.placedAt) < 0.5);
     // Sieg: alle Wellen vorbei, nichts mehr unterwegs
-    if (this.wave === this.waves.length - 1 && !this.queue.length && !this.enemies.some((e) => e.hp > 0)) this.over = { won: true, t: this.t };
+    if (!this.endless && this.wave === this.waves.length - 1 && !this.queue.length && !this.enemies.some((e) => e.hp > 0)) this.over = { won: true, t: this.t };
   }
   // Knochenbumerang: hin bis range, dann zurück; durchschlägt je Richtung pierce Gegner (zurück schwächer)
   flyBoomerang(p, dt) {
@@ -359,7 +373,7 @@ export class Defense {
     }
     return p.out || p.y < p.startY;
   }
-  waveProgress() { return { wave: Math.max(0, this.wave + 1), total: this.waves.length }; }
+  waveProgress() { return { wave: Math.max(0, this.wave + 1), total: this.endless ? null : this.waves.length }; }
 }
 
 // Wellen eines Levels: Gegneranzahl steigt, die letzte Welle ist besonders groß

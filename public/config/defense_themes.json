@@ -1,0 +1,60 @@
+{
+ "_hinweis": "Feld-Grafik je Thema (Bau: node tools/build_defense_tiles.mjs). byType = welches Thema zu den Gegner-Typen eines Levels passt.",
+ "themes": {
+  "wald": {
+   "name": "Wald",
+   "wall": 7,
+   "floor": 6
+  },
+  "herbst": {
+   "name": "Herbstwald",
+   "wall": 7,
+   "floor": 6
+  },
+  "eis": {
+   "name": "Eishöhle",
+   "wall": 7,
+   "floor": 3
+  },
+  "nachtwald": {
+   "name": "Dunkler Wald",
+   "wall": 7,
+   "floor": 6
+  },
+  "garten": {
+   "name": "Blumengarten",
+   "wall": 7,
+   "floor": 6
+  },
+  "hoehle": {
+   "name": "Felshöhle",
+   "wall": 7,
+   "floor": 6
+  },
+  "kristall": {
+   "name": "Kristallhöhle",
+   "wall": 7,
+   "floor": 6
+  }
+ },
+ "byType": {
+  "Eis": "eis",
+  "Geist": "nachtwald",
+  "Unlicht": "nachtwald",
+  "Psycho": "kristall",
+  "Drache": "kristall",
+  "Gestein": "hoehle",
+  "Boden": "hoehle",
+  "Stahl": "hoehle",
+  "Kampf": "hoehle",
+  "Fee": "garten",
+  "Pflanze": "garten",
+  "Feuer": "herbst",
+  "Käfer": "wald",
+  "Normal": "wald",
+  "Flug": "herbst",
+  "Gift": "nachtwald",
+  "Elektro": "kristall",
+  "Wasser": "wald"
+ }
+}
