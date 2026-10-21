@@ -2,7 +2,7 @@
 // Der Aufrufer (main.js) speichert danach automatisch in der Cloud.
 import { CFG, areaById, berryById, isHairy } from '../config.js';
 import { dayKey } from '../time.js';
-import { capacityOf, residents, rollGender, ensureBattleData } from './state.js';
+import { capacityOf, residents, rollGender, ensureBattleData, newUid } from './state.js';
 import { modsFor } from './bonuses.js';
 import { coinRatePerHour, cycleCoins } from './sim.js';
 import { dispenseBall, canForesee, revealActive } from './gacha.js';
@@ -113,13 +113,33 @@ export function draw(s, t, key) {
   else s.coins -= cost;
   s.stats.draws++;
   const p = {
-    uid: s.nextUid++, dex: ball.dex, ball: ball.ball, caughtAt: t, area: null,
+    uid: newUid(s, t), dex: ball.dex, ball: ball.ball, drawKey: ball.key, paid: free ? 0 : cost, caughtAt: t, area: null,
     level: 1, xp: 0, fullness: CFG.balance.newPokemon.fullness, satisfaction: CFG.balance.newPokemon.satisfaction, affection: CFG.balance.newPokemon.affection,
     gender: rollGender(ball.dex), cleanliness: isHairy(ball.dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
   };
   ensureBattleData(p);
   s.pokemon.push(p);
   return { ok: true, pokemon: p, ball, free };
+}
+
+// Cloud-Stand nachladen, ohne lokal gezogene, noch nicht gespeicherte Pokémon zu verlieren
+// (z. B. wenn auf einem zweiten Gerät gleichzeitig gespeichert wurde). Erkennung über Art + Fangzeitpunkt.
+export function mergeUnsavedPokemon(local, cloud) {
+  const id = (p) => `${p.dex}|${p.caughtAt}`;
+  const have = new Set(cloud.pokemon.map(id));
+  let n = 0;
+  for (const p of local.pokemon) {
+    if (have.has(id(p))) continue;
+    const q = JSON.parse(JSON.stringify(p));
+    if (cloud.pokemon.some((c) => c.uid === q.uid)) q.uid = newUid(cloud, q.caughtAt);
+    cloud.pokemon.push(q);
+    if (q.drawKey != null && cloud.gacha?.machine?.some((b) => b.key === q.drawKey)) dispenseBall(cloud, q.drawKey);
+    if (q.paid) cloud.coins = Math.max(0, cloud.coins - q.paid);
+    else cloud.freeDrawAt = Math.max(cloud.freeDrawAt || 0, local.freeDrawAt || 0);
+    cloud.stats.draws = Math.max(cloud.stats.draws || 0, local.stats?.draws || 0);
+    n++;
+  }
+  return n;
 }
 
 // Gratis-Ziehung: steht alle paar Stunden (balance.json gacha.freeDrawEveryHours) wieder bereit

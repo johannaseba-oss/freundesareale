@@ -40,6 +40,12 @@ export function migrate(s) {
   s.stats ||= { draws: 0, coinsEarned: 0 };
   s.berries ||= {};
   s.battle ||= { team: [], towers: [] };
+  // jedes Exemplar braucht eine eigene ID – doppelte (aus älteren Ständen) bekommen eine neue
+  const seen = new Set();
+  for (const p of s.pokemon) {
+    if (p.uid == null || seen.has(p.uid)) p.uid = newUid(s, p.caughtAt || Date.now());
+    seen.add(p.uid);
+  }
   for (const p of s.pokemon) {
     p.effects ||= [];
     p.pet ||= { day: '', amount: 0 };
@@ -53,6 +59,7 @@ export function migrate(s) {
     if (isHairy(p.dex) && p.cleanliness == null) p.cleanliness = CFG.grooming.startCleanliness;
     if (p.gender === undefined) p.gender = rollGender(p.dex, hashString('g' + p.uid) / 4294967296);
     ensureBattleData(p);
+    if (p.levelMs == null) p.levelMs = Math.max(0, (p.level || 1) - 1) * 24 * 3600e3; // bisherigen Stand übernehmen
     if (p.area && !areaById(p.area)) p.area = null; // Areal wurde aus der Konfiguration entfernt
   }
   return s;
@@ -64,6 +71,15 @@ export function ensureBattleData(p) {
   p.evs ||= [0, 0, 0, 0, 0, 0];
   p.moves ||= [];
   return p;
+}
+
+// Eindeutige ID eines Exemplars (Zeitstempel + Zufall) – unabhängig von Pokédex-Nummer und Gerät,
+// damit zwei Geräte nie dieselbe ID vergeben
+export function newUid(s, t) {
+  const used = new Set(s.pokemon.map((p) => p.uid));
+  let u;
+  do u = Math.floor(t) * 1000 + Math.floor(Math.random() * 1000); while (used.has(u));
+  return u;
 }
 
 export const capacityOf = (s, areaId) => {

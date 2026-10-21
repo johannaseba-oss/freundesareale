@@ -13,8 +13,14 @@ export function bestAgainst(dexA, dexB) {
   if (!a?.types.length || !b?.types.length) return 1;
   return Math.max(...a.types.map((t) => effectiveness(t, b.types)));
 }
-// A ist B deutlich überlegen: trifft sehr effektiv, wird selbst aber nicht so gut getroffen
+// Mindestens ein gemeinsamer Typ = typkompatibel (dann keine typbedingten Konflikte, egal was die übrigen Typen sagen)
+export function sharesType(dexA, dexB) {
+  const a = species(dexA), b = species(dexB);
+  return !!a && !!b && a.types.some((t) => b.types.includes(t));
+}
+// A ist B deutlich überlegen: trifft sehr effektiv, wird selbst aber nicht so gut getroffen (nur ohne gemeinsamen Typ)
 export function dominates(dexA, dexB) {
+  if (sharesType(dexA, dexB)) return false;
   const ab = bestAgainst(dexA, dexB), ba = bestAgainst(dexB, dexA);
   return ab >= 2 && ab > ba;
 }

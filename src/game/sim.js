@@ -6,7 +6,7 @@ import { CFG, isHairy, species } from '../config.js';
 import { HOUR } from '../time.js';
 import { hashString } from '../rng.js';
 import { allMods, modsFor } from './bonuses.js';
-import { habitatFit } from './habitat.js';
+import { habitatFit, suitsArea } from './habitat.js';
 import { mood, socialClimate } from './mood.js';
 import { mulberry32, weightedPick } from '../rng.js';
 
@@ -44,7 +44,7 @@ function pickBerry(p) {
   return ids[0];
 }
 
-function stepPokemon(p, t, dtH, m, fit, social) {
+function stepPokemon(p, t, dtH, m, fit, social, suits) {
   const b = CFG.balance, n = b.needs, L = b.level;
   p.fullness = clamp(p.fullness - n.hungerPerHour * m.hunger * dtH);
   const decay = p.fullness < n.hungryBelow ? n.satisfactionDecayHungryPerHour : n.satisfactionDecayPerHour;
@@ -56,6 +56,7 @@ function stepPokemon(p, t, dtH, m, fit, social) {
     p.cleanliness = clamp(p.cleanliness - G.cleanPerHour * dtH);
     p.satisfaction = clamp(p.satisfaction + G.effectPerHour * ((p.cleanliness - 50) / 50) * dtH);
   }
+  if (suits) { p.levelMs = (p.levelMs || 0) + dtH * HOUR; updateLevel(p); }
   if (n.affectionDecayPerDay) p.affection = clamp(p.affection - (n.affectionDecayPerDay / 24) * dtH);
 
 
@@ -89,15 +90,14 @@ function stepPokemon(p, t, dtH, m, fit, social) {
 }
 
 // Nur Pokémon, die in einem Areal leben, verändern sich. Pokémon in der Sammlung (ohne Areal) ruhen.
-// Level: ein Level pro vollem Tag, den man das Pokémon besitzt
-export function updateLevel(p, t) {
-  const target = Math.min(CFG.balance.level.max, 1 + Math.floor(Math.max(0, t - (p.caughtAt || t)) / (24 * HOUR)));
+// Level: ein Level pro vollem Tag, den das Pokémon in einem für seinen Typ geeigneten Areal verbracht hat
+export function updateLevel(p) {
+  const target = Math.min(CFG.balance.level.max, 1 + Math.floor((p.levelMs || 0) / (24 * HOUR)));
   if (target > p.level) p.levelUps = (p.levelUps || 0) + (target - p.level);
   p.level = target;
 }
 
 export function simulate(s, nowMs) {
-  for (const p of s.pokemon) updateLevel(p, nowMs);
   const sim = CFG.balance.simulation;
   let t = Math.max(s.lastSim, nowMs - sim.maxOfflineDays * 24 * HOUR);
   if (nowMs <= t) return false;
@@ -105,12 +105,13 @@ export function simulate(s, nowMs) {
   const living = s.pokemon.filter((p) => p.area);
   const mods = allMods(s);
   const fits = new Map(living.map((p) => [p.uid, habitatFit(p.dex, p.area).fit]));
+  const suits = new Map(living.map((p) => [p.uid, suitsArea(p.dex, p.area)]));
   const socials = new Map(living.map((p) => [p.uid, socialClimate(p, living.filter((q) => q.area === p.area))]));
   spawnGroundBerries(s, nowMs);
   while (t < nowMs) {
     const dt = Math.min(step, nowMs - t);
     t += dt;
-    for (const p of living) stepPokemon(p, t, dt / HOUR, mods.get(p.uid), fits.get(p.uid), socials.get(p.uid));
+    for (const p of living) stepPokemon(p, t, dt / HOUR, mods.get(p.uid), fits.get(p.uid), socials.get(p.uid), suits.get(p.uid));
   }
   s.lastSim = nowMs;
   return true;

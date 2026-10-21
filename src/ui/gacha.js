@@ -8,14 +8,14 @@ import { portraitUrl } from '../gfx/sprites.js';
 import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
 import { habitatFit } from '../game/habitat.js';
-import { ballCanvas, BALL_PIXELS } from '../gfx/balls.js';
+import { ballCanvas, ballSprite, BALL_PIXELS } from '../gfx/balls.js';
 import { iconCanvas, iconImg, drawCoin } from '../gfx/icons.js';
 import { loadSprites, frameOf } from '../gfx/sprites.js';
 import { haptic } from '../haptics.js';
 import { $, h, toast } from './dom.js';
 
 const BASE = import.meta.env.BASE_URL;
-const PX = 7; // Pixelgröße der Bälle in der Kugel (Automatenbild ist ~8x vergrößerte Pixel-Art)
+const PX = 4; // Pixelgröße der Bälle in der Kugel
 const R = (BALL_PIXELS * PX) / 2;
 const TAU = Math.PI * 2;
 let meta, machine, knob, ctx, canvas, plateColor = '#9ea3b5';
@@ -127,7 +127,7 @@ function finishCrank() {
   if (!chosen) return;
   const r = app.act((st, t) => A.draw(st, t, chosen.key), true);
   if (!r.ok) return;
-  anim = { phase: 'drop', t: 0, key: r.ball.key, ballId: r.ball.ball, result: r, landed: false, from: { x: chosen.x, y: chosen.y } };
+  anim = { phase: 'drop', t: 0, key: r.ball.key, ballId: ballSprite(r.ball.ball, r.ball.key), result: r, landed: false, from: { x: chosen.x, y: chosen.y } };
   renderInfo();
 }
 
@@ -145,7 +145,7 @@ function syncBalls() {
   for (const b of g.machine) {
     if (have.has(b.key)) continue;
     const saved = b.x != null && b.y != null;
-    balls.push({ key: b.key, id: b.ball, dex: b.dex,
+    balls.push({ key: b.key, id: ballSprite(b.ball, b.key), dex: b.dex,
       x: saved ? b.x : G.cx + (Math.random() - 0.5) * G.r * 0.8,
       y: saved ? b.y : G.top + R - drop++ * 2 * R, vx: 0, vy: 0,
       a: b.a ?? ((b.key % 360) * Math.PI) / 180 }); // eigene Drehung je Ball (gespeichert oder aus dem Schlüssel)
@@ -305,7 +305,7 @@ function renderInfo() {
   lastInfo = key;
   $('#gacha-info').replaceChildren(
     h('div', ...(empty || free ? [line1] : ['Ziehung ', iconImg('coin', 2), ` ${cfg.drawCost} ${line1}`])),
-    h('small', line2), line3 ? h('small.psy-line', line3) : null);
+    h('small', line2), ...(line3 ? [h('small.psy-line', line3)] : []));
   $('#gacha-info').classList.toggle('free', !!free);
   $('#gacha-hint').classList.toggle('hidden', !!anim || empty);
   const btn = $('#gacha-psychic');
@@ -352,7 +352,7 @@ function reveal(r) {
       c.restore();
     }
     if (t < openAt) {
-      const big = ballCanvas(ball.id, 12);
+      const big = ballCanvas(ballSprite(ball.id, r.ball.key), 7);
       const wob = t < wobbleEnd ? Math.sin(t * 9) * Math.max(0, Math.sin((t / wobbleEnd) * Math.PI * 3)) * 0.35 : 0;
       c.save(); c.translate(cx, cy + 40); c.rotate(wob); c.drawImage(big, -big.width / 2, -big.height); c.restore();
       if (t > wobbleEnd) { c.fillStyle = `rgba(255,255,255,${(t - wobbleEnd) / (openAt - wobbleEnd)})`; c.fillRect(0, 0, 380, 380); }
@@ -360,7 +360,7 @@ function reveal(r) {
       if (!opened) { opened = true; haptic('strong'); }
       const k = t - openAt;
       if (k < 0.4) { c.fillStyle = `rgba(255,255,255,${1 - k / 0.4})`; c.fillRect(0, 0, 380, 380); }
-      const open = ballCanvas(ball.id, 6, true);
+      const open = ballCanvas(ballSprite(ball.id, r.ball.key), 4, true);
       c.drawImage(open, cx - open.width / 2, 290 - open.height / 2);
       if (sprites.ready) {
         const f = frameOf(sprites, k < 0.8 ? 'Hop' : 'Idle', 0, k * 1000);

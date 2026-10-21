@@ -29,7 +29,7 @@ export function render(force = false) {
     h('div.coll-head', chip('alle', 'Alle'), chip('frei', 'Ohne Areal'), chip('wohnt', 'In Arealen')),
     list.length ? h('div.grid', list.map((p) => {
       const sp = species(p.dex);
-      const mark = ballCanvas(p.ball, 2); mark.className = 'ballmark';
+      const mark = ballCanvas(p.ball, 1); mark.className = 'ballmark';
       return h('div.card.r-' + sp.rarity, { onclick: () => openSheet(p) },
         mark, h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p)), alt: '', loading: 'lazy' }),
         h('div.nm', sp.name, h('span.gender.' + p.gender, genderSymbol(p))), h('div.sub', `Lv. ${p.level} · ${p.area ? areaById(p.area).name : 'Sammlung'}`));

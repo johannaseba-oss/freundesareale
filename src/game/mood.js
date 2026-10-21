@@ -18,8 +18,10 @@ export function affinity(dexA, dexB) {
   let v = 0;
   if (dexA === dexB) v += w.sameSpecies;
   if (a.family === b.family) v += w.sameFamily;
-  if (a.types.some((t) => b.types.includes(t))) v += w.sharedType;
-  for (const [x, y] of S.typeConflicts) {
+  const shared = a.types.some((t) => b.types.includes(t));
+  if (shared) v += w.sharedType;
+  // Typ-Streit nur ohne gemeinsamen Typ
+  if (!shared) for (const [x, y] of S.typeConflicts) {
     if ((a.types.includes(x) && b.types.includes(y)) || (a.types.includes(y) && b.types.includes(x))) { v += w.typeConflict; break; }
   }
   if (Math.abs(a.stage - b.stage) >= 2) v += w.bigStageGap;

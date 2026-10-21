@@ -5,6 +5,7 @@ import { app } from './app.js';
 import { now, setServerTime } from './time.js';
 import { newGame, migrate } from './game/state.js';
 import { SaveManager } from './save.js';
+import * as A from './game/actions.js';
 import { showAuth, hideAuth } from './ui/auth.js';
 import { $, h, toast, confirmDialog } from './ui/dom.js';
 import { iconImg, berryImg } from './gfx/icons.js';
@@ -12,7 +13,7 @@ import { pending, setOnLand } from './ui/fly.js';
 import { openInventory } from './ui/collect.js';
 import { initAreas } from './ui/areas.js';
 import { initCollection, render as renderCollection, setFilter } from './ui/collection.js';
-import { ballCanvas } from './gfx/balls.js';
+import { ballCanvas, loadBallSprites } from './gfx/balls.js';
 import { initGacha } from './ui/gacha.js';
 import { initBattle, renderBattleSetup } from './ui/battle.js';
 import { closeSheet } from './ui/sheet.js';
@@ -35,6 +36,7 @@ async function syncServerTime() {
 async function main() {
   try {
     await loadConfig();
+    await loadBallSprites();
     app.backend = await createBackend();
   } catch (e) {
     bootMsg('Start fehlgeschlagen: ' + e.message);
@@ -107,12 +109,17 @@ async function startGame(user) {
   }
 }
 
-async function reloadFromCloud(msg) {
+// merge = lokal gezogene, noch nicht gespeicherte Pokémon behalten (nicht bei bewusstem Wiederherstellen einer Sicherung)
+async function reloadFromCloud(msg, merge = true) {
   const row = await app.backend.loadSave();
   if (!row) return;
-  app.state = migrate(row.data);
+  const local = app.state;
+  const cloud = migrate(row.data);
+  const kept = merge && local ? A.mergeUnsavedPokemon(local, cloud) : 0;
+  app.state = cloud;
   app.saver.version = row.version;
   app.saver.dirty = false;
+  if (kept) app.saver.markDirty(true);
   app.saver.setStatus('ok');
   closeSheet();
   app.sync();
@@ -152,7 +159,7 @@ function renderHud() {
   lastHud = key;
   $('#hud-coins').replaceChildren(iconImg('coin', 3), String(shown));
   $('#hud-bag').replaceChildren(berryImg('sinelbeere', 2), String(berries));
-  const ball = ballCanvas('pokeball', 2); ball.className = 'ico';
+  const ball = ballCanvas('pokeball', 1); ball.className = 'ico';
   $('#hud-box').replaceChildren(ball, String(free));
 }
 
@@ -191,7 +198,7 @@ function bindChrome() {
       await app.backend.signOut();
       stopGame();
     },
-    onRestored: async () => reloadFromCloud(),
+    onRestored: async () => reloadFromCloud(null, false),
   });
   document.addEventListener('visibilitychange', async () => {
     if (document.hidden || !app.state) return;

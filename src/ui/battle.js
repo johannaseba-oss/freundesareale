@@ -18,6 +18,12 @@ let sel = [];
 let towers = [];
 let battle = null;
 let arena = null; // DOM + Zeichenzustand während eines Kampfs
+let oppNames = {}; // zufällige Namen der Computergegner (neu nach jedem Kampf)
+const oppName = (o) => (oppNames[o.id] ||= pickName());
+function pickName() {
+  const used = new Set(Object.values(oppNames)), list = B().names.filter((n) => !used.has(n));
+  return list[Math.floor(Math.random() * list.length)] || B().names[0];
+}
 
 // ================= Vorbereitung =================
 export function initBattle() {
@@ -93,7 +99,7 @@ export function renderBattleSetup() {
     h('p.note', 'Wähle deinen Gegner.'),
     h('div.bs-list', B().opponents.map((o) => h('button.bs-row.opp', { onclick: () => startBattle(o) },
       trainerCanvas(o.trainer, 1),
-      h('div.bs-row-text', h('b', o.name), h('small', o.level),
+      h('div.bs-row-text', h('b', oppName(o)), h('small', o.level),
         h('div.bs-mini', o.towers.map((d) => h('img', { src: portraitUrl(d), alt: species(d)?.name || '' })))),
       h('span.bs-go', '⚔')))),
     h('div.bs-bar', h('button.btn', { onclick: () => { step = 'towers'; renderBattleSetup(); } }, 'Zurück'))));
@@ -140,7 +146,7 @@ function openArena(o) {
   const stoneBtn = h('button.b-btn', { onclick: openStoneShop }, '💎 Steine');
   const top = h('div.b-top',
     trainerCanvas(o.trainer, 0.85),
-    h('div.b-name', h('b', o.name), h('small', o.level)),
+    h('div.b-name', h('b', oppName(o)), h('small', o.level)),
     stoneBtn,
     h('button.b-btn', { onclick: giveUp }, 'Aufgeben'));
   const root = h('div.battle', top, h('div.b-field', canvas), hand, ghost, msg);
@@ -356,8 +362,10 @@ function drawUnit(x, u, [X, Y], T, now) {
     else if (u.anim && (bt - u.anim.t0) * 1000 < (e.anims[u.anim.name]?.total || 0) * (1000 / 60)) { name = u.anim.name; ms = (bt - u.anim.t0) * 1000; once = true; }
     else if (u.hurtT != null && bt - u.hurtT < 0.25) { name = 'Hurt'; ms = (bt - u.hurtT) * 1000; once = true; }
     const f = frameOf(e, name, u.dir ?? 0, ms, once);
-    let s = (T / 24) * (tower ? B().tower.scale : 1);
-    if (f.fh * s > T * 2.4) s = (T * 2.4) / f.fh;
+    const SP = B().sprite, idle = e.anims.Idle;
+    let s = T / SP.pixelsPerTile;
+    if (idle.fh * s > T * SP.maxHeight) s = (T * SP.maxHeight) / idle.fh; // sehr große Pokémon begrenzen
+    if (tower) s *= B().tower.scale;
     if (down) x.globalAlpha = Math.max(0, 1 - (battle.t - u.faintT) / 0.7);
     if (u.spawnT != null && battle.t - u.spawnT < 0.3) x.globalAlpha = (battle.t - u.spawnT) / 0.3;
     x.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(X - (f.fw * s) / 2), Math.round(Y - T * 0.12 - (f.fh * s) / 2), Math.round(f.fw * s), Math.round(f.fh * s));
@@ -572,10 +580,10 @@ function endBattle() {
   const best = all.filter((f, i, a) => a.indexOf(f) === i && f.uid != null).sort((a, b) => b.level - a.level || b.kos - a.kos).slice(0, 3);
   const box = h('div.b-result' + (won ? '.won' : ''),
     h('h2', won ? 'Sieg!' : 'Niederlage'),
-    h('p', won ? `Du hast alle Verteidiger von ${battle.opponent.name} besiegt.` : battle.over.gaveUp ? 'Du hast aufgegeben.' : 'Alle deine Verteidiger wurden besiegt.'),
+    h('p', won ? `Du hast alle Verteidiger von ${oppName(battle.opponent)} besiegt.` : battle.over.gaveUp ? 'Du hast aufgegeben.' : 'Alle deine Verteidiger wurden besiegt.'),
     best.length ? h('div.b-best', best.map((f) => h('div', h('img', { src: portraitUrl(f.dex), alt: '' }), h('small', `${species(f.dex).name} · Lv ${f.level}`)))) : null,
     B().stats.evsPersist && gains.length ? h('p.note', `${gains.length} Pokémon haben EVs gesammelt (bleiben erhalten).`) : null,
     h('p.note', 'Level und Entwicklungen aus dem Kampf verfallen jetzt wieder.'),
-    h('button.btn.primary.big', { onclick: () => { closeArena(); battle = null; step = 'opponent'; renderBattleSetup(); } }, 'Weiter'));
+    h('button.btn.primary.big', { onclick: () => { closeArena(); battle = null; oppNames = {}; step = 'opponent'; renderBattleSetup(); } }, 'Weiter'));
   arena.root.append(box);
 }

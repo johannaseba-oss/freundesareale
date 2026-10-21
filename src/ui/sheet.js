@@ -7,7 +7,7 @@ import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
 import { msToNextCoin, msToNextBerry, coinRange } from '../game/sim.js';
 import { modsFor, bonusTraits } from '../game/bonuses.js';
-import { habitatText, habitatFit } from '../game/habitat.js';
+import { habitatText, habitatFit, suitsArea } from '../game/habitat.js';
 import { mood, petBoost, affinity } from '../game/mood.js';
 import { isPsychic, canForesee, revealActive } from '../game/gacha.js';
 import { typeChip } from '../game/types.js';
@@ -187,6 +187,7 @@ export function openSheet(p) {
     }
     if (boost) notes.push(h('div.note', `♥ Betüdelt: Stimmung +${Math.round(boost)} (noch ${fmtDuration(p.petBoost.until - t)})`));
     if (p.area) { const hf = habitatFit(p.dex, p.area).fit; if (hf < 0) notes.push(h('div.note.warn', `Fühlt sich in ${areaById(p.area).name} nicht wohl und produziert hier keine Münzen.`)); }
+    if (p.area && !suitsArea(p.dex, p.area)) notes.push(h('div.note', `Kein passender Typ in ${areaById(p.area).name} – steigt hier kein Level auf.`));
     if (p.area && CFG.berryProducers.has(p.dex)) notes.push(h('div.note', `Beeren: nächste in ${fmtDuration(msToNextBerry(st, p))}`));
     const m = p.area ? modsFor(st, p) : null;
     if (m?.sources.length) notes.push(h('div.note', 'Boni: ' + [...new Set(m.sources.map((x) => x.name))].join(', ')));

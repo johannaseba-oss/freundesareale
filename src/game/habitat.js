@@ -9,6 +9,13 @@ export function habitatFit(dex, areaId) {
   return { fit: Math.max(-1, Math.min(1, likes.length - dislikes.length)), likes, dislikes };
 }
 
+// Geeignet = mindestens ein Typ passt zum Areal (oder Allround-Areal) – Voraussetzung für Levelaufstiege
+export function suitsArea(dex, areaId) {
+  const a = areaById(areaId), sp = species(dex);
+  if (!a || !sp) return false;
+  return !!a.allTypes || sp.types.some((t) => (a.likes || []).includes(t));
+}
+
 export function habitatText(dex, areaId) {
   const h = habitatFit(dex, areaId), name = areaById(areaId)?.name;
   if (h.fit > 0) return `Fühlt sich in ${name} wohl (${h.likes.join(', ')}) – wird mit der Zeit zufriedener.`;
