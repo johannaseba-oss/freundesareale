@@ -10,7 +10,7 @@ import { $, h, toast, modal, confirmDialog } from './dom.js';
 import { renderDefenseSetup } from './defense.js';
 import { teamPicker } from './teampick.js';
 import { drawWeather } from './weatherfx.js';
-import { sfx } from '../audio.js';
+import { sfx, setMusic } from '../audio.js';
 import { haptic } from '../haptics.js';
 
 const B = () => CFG.battle;
@@ -166,6 +166,7 @@ function openArena(o) {
   const root = h('div.battle', top, h('div.b-field', canvas), hand, ghost, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
+  setMusic('arena');
   arena = { root, canvas, ctx: canvas.getContext('2d'), hand, ghost, msg, fx: [], texts: [], flashes: [], sel: null, drag: null, hover: null, cards: null, count, pulses: [], wx: [], wxKind: null, last: performance.now(), raf: 0, opp: o };
   for (const u of [...battle.units, ...battle.roster('p'), ...battle.roster('c')]) loadSprites(u.dex, u.gender);
   renderWeather();
@@ -191,6 +192,7 @@ function closeArena() {
   arena.root.remove();
   document.body.classList.remove('in-battle');
   arena = null;
+  setMusic('menu');
 }
 
 function layout() {
@@ -412,8 +414,8 @@ function drawUnit(x, u, [X, Y], T, now) {
     const bt = battle.t;
     let name = u.moving ? 'Walk' : 'Idle', ms = now, once = false;
     if (down) { name = 'Hurt'; ms = (bt - u.faintT) * 1000; once = true; }
+    else if (u.hurtT != null && bt - u.hurtT < 0.28 && e.anims.Hurt) { name = 'Hurt'; ms = (bt - u.hurtT) * 1000; once = true; } // getroffen
     else if (u.anim && (bt - u.anim.t0) * 1000 < (e.anims[u.anim.name]?.total || 0) * (1000 / 60)) { name = u.anim.name; ms = (bt - u.anim.t0) * 1000; once = true; }
-    else if (u.hurtT != null && bt - u.hurtT < 0.25) { name = 'Hurt'; ms = (bt - u.hurtT) * 1000; once = true; }
     const f = frameOf(e, name, u.dir ?? 0, ms, once);
     const SP = B().sprite, body = bodyHeight(e);
     let s = T / SP.pixelsPerTile;

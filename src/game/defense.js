@@ -208,6 +208,7 @@ export class Defense {
     if (mv?.type === 'Gift' && from?.dex && e.hp > 0) e.poison = { until: this.t + D().poison.seconds, dps: e.maxHp * D().poison.pctPerSecond, from, tick: 0 };
     const ab = from?.dex ? abilityOf(from.dex) : null;
     if (ab?.type === 'confuse' && e.hp > 0 && this.rnd() < ab.chance) { e.confusedUntil = this.t + ab.seconds; this.events.push({ type: 'confuse', e }); }
+    if (ab?.type === 'sleep' && e.hp > 0 && this.t >= (e.sleepUntil || 0) && this.rnd() < ab.chance) { e.sleepUntil = this.t + ab.seconds; this.events.push({ type: 'sleep', e }); }
     this.events.push({ type: 'hit', target: e, dmg, eff, move: mv, crit, melee: from?.role === 'nahkampf' });
     if (e.hp <= 0) { this.events.push({ type: 'defeat', e }); if (from?.role && from.hp > 0) this.reward(from, e); }
   }
@@ -325,6 +326,8 @@ export class Defense {
         if (e.poison.tick >= Math.max(1, e.poison.dps * 0.5)) { this.events.push({ type: 'poison', e, dmg: Math.round(e.poison.tick) }); e.poison.tick = 0; }
         if (e.hp <= 0) { e.hurtT = this.t; this.events.push({ type: 'defeat', e }); if (e.poison.from.hp > 0) this.reward(e.poison.from, e); continue; }
       }
+      // schläft (Schlafpuder): bleibt stehen und greift nicht an
+      if (this.t < (e.sleepUntil || 0)) { e.eating = false; continue; }
       // verwirrt: dreht um, greift Gegner hinter sich an oder trifft sich selbst
       if (this.t < (e.confusedUntil || 0)) {
         e.cd -= dt; e.eating = false;

@@ -7,28 +7,61 @@ export const audioSettings = load();
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(audioSettings)); } catch { /* privat */ } };
 
 // ---------- Musik ----------
-let music = null, wantMusic = false, unlocked = false;
-function track() {
+// Musik je Bereich (public/config/music.json): 'areas' (Playlist), 'menu', 'arena', 'chaos' oder ein Level-Stück 'track:<name>'.
+// Wechsel werden kurz übergeblendet; null = Stille (z. B. App im Hintergrund).
+import { CFG } from './config.js';
+let music = null, want = null, playing = null, unlocked = false, areaIdx = 0, fadeTimer = 0;
+function player() {
   if (!music) {
-    music = new Audio(base + 'audio/cozy-bell-adventure.mp3');
-    music.loop = true;
+    music = new Audio();
     music.preload = 'auto';
+    music.addEventListener('ended', () => { if (playing === 'areas') { areaIdx++; start(want, true); } });
   }
-  music.volume = audioSettings.music;
   return music;
 }
-// on = Musik soll laufen (Areale sichtbar und App im Vordergrund)
-export function setMusic(on) {
-  wantMusic = on;
-  if (!unlocked) return;
-  const m = track();
-  if (on && audioSettings.music > 0) m.play().catch(() => {});
-  else m.pause();
+// welche Datei zu einem Bereich gehört
+function fileFor(key) {
+  const M = CFG.music;
+  if (!key || !M) return null;
+  if (key === 'areas') return M.areas[areaIdx % M.areas.length];
+  if (key.startsWith('track:')) return key.slice(6);
+  return M[key] || null;
 }
-export function setMusicVolume(v) { audioSettings.music = v; save(); if (music) music.volume = v; setMusic(wantMusic); }
+function start(key, force = false) {
+  const m = player(), file = fileFor(key);
+  clearInterval(fadeTimer);
+  if (!file || audioSettings.music <= 0) { m.pause(); playing = null; return; }
+  if (!force && playing === key && !m.paused) return;
+  const switchTo = () => {
+    m.src = `${base}audio/${file}.mp3`;
+    m.loop = key !== 'areas'; // Level- und Menü-Stücke laufen in Schleife, die Areale wechseln ab
+    m.volume = audioSettings.music;
+    playing = key;
+    m.play().catch(() => {});
+  };
+  // kurz ausblenden, dann umschalten
+  if (!m.paused && m.src) {
+    fadeTimer = setInterval(() => {
+      m.volume = Math.max(0, m.volume - audioSettings.music / 8);
+      if (m.volume <= 0.001) { clearInterval(fadeTimer); switchTo(); }
+    }, 50);
+  } else switchTo();
+}
+// key = gewünschter Musik-Bereich (siehe oben)
+let lastKey = null;
+export const resumeMusic = () => setMusic(lastKey); // nach dem Zurückkehren in die App weiterspielen
+export function setMusic(key) {
+  want = key || null;
+  if (want) lastKey = want;
+  if (!unlocked) return;
+  if (!want) { clearInterval(fadeTimer); if (music) music.pause(); playing = null; return; }
+  start(want);
+}
+export const musicForLevel = (types) => (CFG.music?.byType[types?.[0]] ? 'track:' + CFG.music.byType[types[0]] : 'menu');
+export function setMusicVolume(v) { audioSettings.music = v; save(); if (music) music.volume = v; if (v > 0 && want && (!music || music.paused)) start(want, true); else if (v <= 0 && music) music.pause(); }
 export function setSfxVolume(v) { audioSettings.sfx = v; save(); }
 // erstes Antippen schaltet Ton frei
-window.addEventListener('pointerdown', () => { if (unlocked) return; unlocked = true; ctx(); setMusic(wantMusic); }, { capture: true });
+window.addEventListener('pointerdown', () => { if (unlocked) return; unlocked = true; ctx(); setMusic(want); }, { capture: true });
 
 // ---------- Soundeffekte ----------
 let ac = null, master = null, noiseBuf = null;

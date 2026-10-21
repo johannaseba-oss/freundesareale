@@ -295,6 +295,13 @@
       "text": "extrem harter Panzer – ein Schild gegen Gegner",
       "hpMult": 16
     },
+    "12": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
+    },
     "14": {
       "type": "shield",
       "name": "Kokon-Panzer",
@@ -309,6 +316,27 @@
       "radius": 1.6,
       "pct": 0.15
     },
+    "43": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
+    },
+    "44": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
+    },
+    "45": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
+    },
     "54": {
       "type": "confuse",
       "name": "Konfustrahl",
@@ -322,6 +350,27 @@
       "text": "10 % Chance: Gegner wird verwirrt, dreht um und greift andere Gegner oder sich selbst an",
       "chance": 0.1,
       "seconds": 6
+    },
+    "69": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
+    },
+    "70": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
+    },
+    "71": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
     },
     "74": {
       "type": "reactive",
@@ -382,6 +431,13 @@
       "radius": 1.6,
       "pct": 0.15
     },
+    "182": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
+    },
     "242": {
       "type": "heal",
       "name": "Heilende Aura",
@@ -395,6 +451,13 @@
       "name": "Kokon-Panzer",
       "text": "extrem harter Panzer – ein Schild gegen Gegner",
       "hpMult": 16
+    },
+    "267": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
     },
     "268": {
       "type": "shield",
@@ -414,7 +477,14 @@
       "text": "extrem harter Panzer – ein Schild gegen Gegner",
       "hpMult": 16
     },
-    "_hinweis": "Sonderfähigkeiten einzelner Pokémon (Pokédex-Nummer). Typen: beam (Strahl über length Felder, durchschlägt), shield (Panzer, hpMult statt Mauer-Faktor), confuse (chance auf Verwirrung für seconds), reactive (explodiert bei Angriff), boomerang (hin und zurück, pierce Gegner je Richtung), heal (heilt pct der KP im radius alle every s). Neue Einträge einfach ergänzen."
+    "666": {
+      "type": "sleep",
+      "name": "Schlafpuder",
+      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
+      "chance": 0.25,
+      "seconds": 4
+    },
+    "_hinweis": "Sonderfähigkeiten einzelner Pokémon (Pokédex-Nummer). Typen: beam (Strahl über length Felder, durchschlägt), shield (Panzer, hpMult statt Mauer-Faktor), confuse (chance auf Verwirrung für seconds), reactive (explodiert bei Angriff), boomerang (hin und zurück, pierce Gegner je Richtung), heal (heilt pct der KP im radius alle every s), sleep (chance, dass Gegner seconds lang schlafen). Neue Einträge einfach ergänzen."
   },
   "elecSlow": {
     "factor": 0.8,

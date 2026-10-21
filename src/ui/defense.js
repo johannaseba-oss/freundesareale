@@ -11,7 +11,7 @@ import { $, h, toast, confirmDialog, modal } from './dom.js';
 import { teamPicker } from './teampick.js';
 import { haptic } from '../haptics.js';
 import { drawWeather } from './weatherfx.js';
-import { sfx } from '../audio.js';
+import { sfx, setMusic, musicForLevel } from '../audio.js';
 import { weatherInfo, weatherText } from '../game/weather.js';
 
 const D = () => CFG.defense;
@@ -151,6 +151,8 @@ function openField() {
   const root = h('div.battle.defense', top, h('div.b-field', canvas, go), info, cards, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
+  const levelMusic = game.chaos ? 'chaos' : musicForLevel(game.theme); // je Level ein passendes Stück
+  setMusic(levelMusic);
   ui = { root, canvas, ctx: canvas.getContext('2d'), cards, info, starsEl, waveEl, msg, sel: null, fx: [], texts: [], booms: [], rings: [], slashes: [], beams: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
   for (const c of game.cards) loadSprites(c.dex, c.src.gender);
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`; ui.trainer = tr;
@@ -182,6 +184,7 @@ function closeField() {
   ui.root.remove();
   document.body.classList.remove('in-battle');
   ui = null;
+  setMusic('menu');
 }
 
 function layout() {
@@ -431,11 +434,13 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   const e = loadSprites(o.dex, o.gender);
   const dead = o.hp <= 0;
   if (!e.ready) return;
-  let name = mine ? 'Idle' : (o.eating ? 'Idle' : 'Walk'), ms = now, once = false;
-  if (o.anim && (game.t - o.anim.t0) * 1000 < (e.anims[o.anim.name]?.total || 0) * (1000 / 60)) { name = o.anim.name; ms = (game.t - o.anim.t0) * 1000; once = true; }
-  else if (o.hurtT != null && game.t - o.hurtT < 0.2) { name = 'Hurt'; ms = (game.t - o.hurtT) * 1000; once = true; }
+  const asleep = !mine && game.t < (o.sleepUntil || 0);
+  let name = mine ? 'Idle' : asleep ? 'Sleep' : o.eating ? 'Idle' : 'Walk', ms = now, once = false;
+  // Treffer-Sprite (Hurt) hat Vorrang, dann Angriffs-Sprite (Attack/Shoot)
+  if (o.hurtT != null && game.t - o.hurtT < 0.28 && e.anims.Hurt) { name = 'Hurt'; ms = (game.t - o.hurtT) * 1000; once = true; }
+  else if (o.anim && (game.t - o.anim.t0) * 1000 < (e.anims[o.anim.name]?.total || 0) * (1000 / 60)) { name = o.anim.name; ms = (game.t - o.anim.t0) * 1000; once = true; }
   const confused = !mine && game.t < (o.confusedUntil || 0);
-  const f = frameOf(e, name, mine || confused ? 4 : 0, ms, once);
+  const f = frameOf(e, name, name === 'Sleep' ? 0 : mine || confused ? 4 : 0, ms, once);
   let s = T / 28;
   if (e.anims.Idle.fh * s > T * 1.6) s = (T * 1.6) / e.anims.Idle.fh;
   // Rückstoß nach Treffern (Gegner werden kurz nach oben gedrückt), Pop beim Einsetzen
@@ -456,6 +461,12 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   x.globalAlpha = 1;
   if (dead) return;
   if (!mine && o.poison && game.t < o.poison.until && Math.random() < 0.15) ui.fx.push({ x: o.x + (Math.random() - 0.5) * 0.4, y: o.y - 0.2, vx: 0, vy: -0.8, g: -0.5, drag: 0, color: Math.random() < 0.5 ? '#a33ea1' : '#d79ae0', shape: 'ring', size: 0.6, life: 0.6 }); // Giftblasen
+  if (asleep) { // kleine "z", die aus dem schlafenden Pokémon aufsteigen
+    x.font = `600 ${Math.round(T * 0.22)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center';
+    for (let i = 0; i < 3; i++) { const k = ((now / 900) + i / 3) % 1; x.globalAlpha = 1 - k; x.fillStyle = '#e8f0ff'; x.strokeStyle = 'rgba(30,30,60,.8)'; x.lineWidth = 2;
+      const zx = X + T * (0.15 + k * 0.25), zy = Y - T * (0.3 + k * 0.55); x.strokeText('z', zx, zy); x.fillText('z', zx, zy); }
+    x.globalAlpha = 1;
+  }
   if (confused) { // kreisende Sternchen über dem Kopf
     for (let i = 0; i < 3; i++) { const a = now / 180 + (i * Math.PI * 2) / 3; x.fillStyle = i % 2 ? '#f95587' : '#ffe066'; x.fillRect(X + Math.cos(a) * T * 0.28 - 2, Y - T * 0.62 + Math.sin(a) * T * 0.08 - 2, 4, 4); }
   }
@@ -567,6 +578,7 @@ function handleEvents() {
     if (ev.type === 'collect' && ev.drop.dex) { const p = dropPos(ev.drop); say({ x: p.x, y: p.y }, species(ev.drop.dex).name + '!', '#ffffff', 0.28, 1); }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
     if (ev.type === 'heal') { ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
+    if (ev.type === 'sleep') { say(ev.e, 'schläft ein!', '#cfe0ff', 0.26, 1, -0.9); burst(ev.e, 'Fee', 8, 0.8); continue; }
     if (ev.type === 'confuse') { say(ev.e, 'verwirrt!', '#f95587', 0.28, 1, -0.9); burst(ev.e, 'Psycho', 10, 1.2); sfx.attack('Psycho'); continue; }
     if (ev.type === 'hit') {
       const o = ev.target, type = ev.move?.type || 'Normal';

@@ -7,7 +7,7 @@ import { hashString } from './rng.js';
 import { newGame, migrate } from './game/state.js';
 import { SaveManager } from './save.js';
 import { haptic } from './haptics.js';
-import { setMusic } from './audio.js';
+import { setMusic, resumeMusic } from './audio.js';
 import * as A from './game/actions.js';
 import { showAuth, hideAuth } from './ui/auth.js';
 import { $, h, toast, confirmDialog } from './ui/dom.js';
@@ -227,7 +227,7 @@ function updateSaveState(status, err) {
 let currentTab = 'areas';
 function switchTab(tab) {
   currentTab = tab;
-  setMusic(tab === 'areas' && !document.hidden); // Musik läuft in den Arealen
+  if (!document.body.classList.contains('in-battle')) setMusic(document.hidden ? null : tab === 'areas' ? 'areas' : 'menu'); // Areale: eigene Musik, sonst Menü-Musik
   for (const b of document.querySelectorAll('#tabs button')) b.classList.toggle('active', b.dataset.tab === tab);
   for (const id of ['areas', 'collection', 'gacha', 'battle']) $('#scr-' + id).classList.toggle('hidden', id !== tab);
   if (tab === 'collection') renderCollection(true);
@@ -255,7 +255,9 @@ function bindChrome() {
     onRestored: async () => reloadFromCloud(null, false),
   });
   document.addEventListener('visibilitychange', async () => {
-    setMusic(!document.hidden && currentTab === 'areas');
+    if (document.hidden) setMusic(null);
+    else if (!document.body.classList.contains('in-battle')) setMusic(currentTab === 'areas' ? 'areas' : 'menu');
+    else resumeMusic(); // Kampf-Musik wieder aufnehmen
     if (document.hidden || !app.state) return;
     try { await syncServerTime(); } catch { /* offline: Gerätezeit + letzter Offset */ }
     checkDailyFeed();

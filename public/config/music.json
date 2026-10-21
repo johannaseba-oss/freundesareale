@@ -1,0 +1,27 @@
+{
+  "_hinweis": "Hintergrundmusik (Dateien in public/audio). areas = abwechselnd in den Arealen, menu = Sammlung/Automat/Kampf-Menüs, arena = Arena-Kampf, chaos = PokeDefense-Chaos, byType = je Level ein Stück nach dem ersten Gegner-Typ (läuft in Schleife).",
+  "areas": ["heartwarming", "schatzstadt"],
+  "menu": "gilde",
+  "arena": "zeitturm",
+  "chaos": "verborgenes-land",
+  "byType": {
+    "Feuer": "dampfhoehle",
+    "Wasser": "wasserfallhoehle",
+    "Pflanze": "apfelwald",
+    "Käfer": "baumhainwald",
+    "Normal": "strandhoehle",
+    "Elektro": "zeitturm",
+    "Eis": "borstenberg",
+    "Kampf": "horn-berg",
+    "Gift": "nebelwald",
+    "Boden": "noerdliche-wueste",
+    "Flug": "felsenkueste",
+    "Psycho": "kristallhoehle",
+    "Geist": "dunkler-huegel",
+    "Gestein": "nasse-klippe",
+    "Drache": "verborgenes-land",
+    "Unlicht": "dunkler-huegel",
+    "Stahl": "zeitturm",
+    "Fee": "apfelwald"
+  }
+}
