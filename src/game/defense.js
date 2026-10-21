@@ -86,7 +86,7 @@ export class Defense {
     this.nextId = 1;
     this.weather = pickWeather(this.rnd);
     this.weatherNext = nextWeatherIn(this.rnd);
-    if (chaos) { this.stars = 0; for (let i = 0; i < D().chaos.startCards; i++) this.addChaosCard(randomDex(this.rnd)); }
+    if (chaos) { this.stars = 0; for (let i = 0; i < D().chaos.startCards; i++) this.addChaosCard(randomDex(this.rnd, undefined, D().chaos.cards?.weights)); }
   }
   // Chaos: einmalige Karte mit einem zufälligen Pokémon (kostenlos, verschwindet nach dem Einsetzen)
   addChaosCard(dex) {
@@ -119,7 +119,9 @@ export class Defense {
     card.readyAt = this.t + card.recharge;
     if (card.once) this.cards.splice(this.cards.indexOf(card), 1);
     const src = card.src, R = D().roles;
-    const L = Math.max(D().level, (this.level?.enemyLevel || 0) - (D().levelGap ?? 99)); // spätere Level: eigene Pokémon starten stärker
+    const L = this.endless // Chaos: knapp unter dem Level der aktuellen Gegner
+      ? Math.max(D().level, (this.chaosLevel ?? D().chaos.endless.baseLevel) - (D().chaos.cards?.levelGap ?? 2))
+      : Math.max(D().level, (this.level?.enemyLevel || 0) - (D().levelGap ?? 99)); // spätere Level: eigene Pokémon starten stärker
     const stats = calcStats(src.dex, L, src.ivs, src.evs);
     const ab = abilityOf(src.dex);
     const hpMult = D().defenderHpMult * (ab?.type === 'shield' ? ab.hpMult : card.role === 'mauer' ? R.mauer.hpMult : 1);
@@ -150,7 +152,7 @@ export class Defense {
   }
   dropStar(x, y, fromY, value) {
     // im Chaos-Modus fällt statt eines Sterns ein Pokéball mit einem zufälligen Pokémon
-    const dex = this.chaos ? randomDex(this.rnd) : null;
+    const dex = this.chaos ? randomDex(this.rnd, undefined, D().chaos.cards?.weights) : null;
     this.drops.push({ id: this.nextId++, x, y, fromY, value, born: this.t, dex });
   }
 
@@ -163,6 +165,7 @@ export class Defense {
       this.waves.push({ count: Math.round((E.base + this.wave * E.perWave) * (D().chaos.countMult || 1)), spread: 28, final: false });
       if (this.wave > 0 && this.wave % E.familyRefresh === 0) this.families = pickFamilies(this.level, this.rnd);
       level = Math.round(E.baseLevel + this.wave * E.levelPerWave);
+      this.chaosLevel = level;
       p = Math.min(1, this.wave / 10);
     } else {
       level = this.level.enemyLevel + this.wave * D().enemy.levelPerWave;
@@ -422,8 +425,8 @@ export function pickFamilies(level, rnd) {
 export const levelsList = () => CFG.defenseLevels.levels;
 
 // zufällige Art, gewichtet wie am Automaten (häufige öfter, Legendäre sehr selten)
-export function randomDex(rnd = Math.random, filter = () => true) {
-  const balls = CFG.balance.gacha.balls;
+export function randomDex(rnd = Math.random, filter = () => true, weights = null) {
+  const balls = weights ? Object.entries(weights).map(([rarity, weight]) => ({ rarity, weight })) : CFG.balance.gacha.balls;
   for (let k = 0; k < 20; k++) {
     let r = rnd() * balls.reduce((a, b) => a + b.weight, 0);
     const ball = balls.find((b) => (r -= b.weight) < 0) || balls[0];

@@ -548,6 +548,16 @@
       "_hinweis": "Flinke Gegner: chance je Gegner, pace = Tempo-Faktor",
       "chance": 0.18,
       "pace": 1.75
+    },
+    "cards": {
+      "_hinweis": "Pokémon aus Pokébällen im Chaos: weights = Seltenheits-Gewichte (statt Automat), levelGap = so viele Level unter den aktuellen Gegnern",
+      "weights": {
+        "gewoehnlich": 40,
+        "selten": 32,
+        "sehr_selten": 22,
+        "legendaer": 6
+      },
+      "levelGap": 2
     }
   },
   "levelGap": 5,
