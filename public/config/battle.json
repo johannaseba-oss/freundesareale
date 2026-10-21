@@ -4,9 +4,10 @@
   "towerCount": 3,
   "startLevel": 5,
   "maxLevel": 100,
-  "hand": { "_hinweis": "size = Karten auf der Hand, drawSeconds = Zeit, bis nach dem Ausspielen eine neue Karte nachkommt", "size": 4, "drawSeconds": 5 },
-  "recycleFainted": true,
-  "_recycle": "true = besiegte (nicht-Verteidiger) Pokémon kommen mit voller KP zurück in den Nachziehstapel und behalten ihr Kampf-Level",
+  "maxActive": 6,
+  "_maxActive": "Höchstens so viele Pokémon (ohne Verteidiger) pro Trainer gleichzeitig auf dem Spielfeld",
+  "koCooldown": 30,
+  "_koCooldown": "Sekunden, die ein besiegtes Pokémon gesperrt bleibt, bevor es wieder eingesetzt werden kann (mit voller KP, behält sein Kampf-Level)",
   "grid": {
     "_hinweis": "Spielfeld in Feldern. Spieler unten, Gegner oben (gespiegelt). Fluss = Reihe riverRow, Brücken in den Spalten von lanes.",
     "cols": 9,
@@ -14,7 +15,8 @@
     "riverRow": 7,
     "lanes": [1, 4, 7],
     "towerCells": [[1, 12], [4, 13], [7, 12]],
-    "placeRows": [8, 14]
+    "spawnRow": 14,
+    "_spawnRow": "Nur in dieser (hintersten) Reihe dürfen Pokémon eingesetzt werden; beim Gegner gespiegelt"
   },
   "stats": {
     "_hinweis": "Offizielle Formel: KP = (2·Basis + IV + EV/4)·L/100 + L + 10, andere = (2·Basis + IV + EV/4)·L/100 + 5 (ohne Wesen).",

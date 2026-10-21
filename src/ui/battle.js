@@ -144,15 +144,17 @@ function openArena(o) {
   const ghost = h('img.b-ghost.hidden', { alt: '' });
   const msg = h('div.b-msg');
   const stoneBtn = h('button.b-btn', { onclick: openStoneShop }, '💎 Steine');
+  const count = h('span.b-count');
   const top = h('div.b-top',
     trainerCanvas(o.trainer, 0.85),
     h('div.b-name', h('b', oppName(o)), h('small', o.level)),
+    count,
     stoneBtn,
     h('button.b-btn', { onclick: giveUp }, 'Aufgeben'));
   const root = h('div.battle', top, h('div.b-field', canvas), hand, ghost, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
-  arena = { root, canvas, ctx: canvas.getContext('2d'), hand, ghost, msg, fx: [], texts: [], flashes: [], selSlot: -1, drag: null, hover: null, handKey: '', last: performance.now(), raf: 0, opp: o };
+  arena = { root, canvas, ctx: canvas.getContext('2d'), hand, ghost, msg, fx: [], texts: [], flashes: [], sel: null, drag: null, hover: null, cards: null, count, last: performance.now(), raf: 0, opp: o };
   for (const u of [...battle.units, ...battle.roster('p'), ...battle.roster('c')]) loadSprites(u.dex, u.gender);
   arena.ro = new ResizeObserver(() => layout());
   arena.ro.observe(canvas.parentElement);
@@ -271,7 +273,7 @@ function draw(dt) {
     x.fillRect(A.ox + col * T + fx, A.oy + G.riverRow * T + T * (0.3 + (i % 3) * 0.2), Math.max(2, T / 10), 2);
   }
   // Platzierung: erlaubte Felder hervorheben
-  if (A.drag || A.selSlot >= 0) {
+  if (A.drag || A.sel) {
     x.fillStyle = 'rgba(255,255,255,.16)';
     for (let r = 0; r < G.rows; r++) for (let col = 0; col < G.cols; col++) if (battle.canPlace('p', col, r)) x.fillRect(A.ox + col * T + 1, A.oy + r * T + 1, T - 2, T - 2);
     if (A.hover) {
@@ -436,27 +438,39 @@ function handleEvents() {
   battle.events.length = 0;
 }
 
-// ---------- Handkarten ----------
+// ---------- Kartenleiste (wischbar, frei wählbar) ----------
+// Karten werden einmal pro Kampf gebaut und nur bei Änderungen aktualisiert (damit die Scroll-Position bleibt).
 function renderHand() {
-  const A = arena, S = battle.sides.p, D = B().hand.drawSeconds;
-  const key = S.hand.map((f, i) => (f ? `${f.id}:${f.dex}:${f.level}` : `-${Math.ceil(S.timers[i] * 4)}`)).join('|') + '|' + A.selSlot + '|' + !!A.drag;
-  if (key === A.handKey) return;
-  A.handKey = key;
-  A.hand.replaceChildren(...S.hand.map((f, i) => {
-    if (!f) {
-      const k = Math.max(0, Math.min(1, 1 - S.timers[i] / D));
-      return h('div.bcard.empty', h('div.bcard-fill', { style: { height: k * 100 + '%' } }), h('span', S.deck.length ? '…' : ''));
-    }
+  const A = arena, S = battle.sides.p, full = battle.activeCount('p') >= B().maxActive;
+  A.count.textContent = `${battle.activeCount('p')}/${B().maxActive} aktiv`;
+  A.count.classList.toggle('full', full);
+  if (!A.cards) {
+    A.cards = new Map();
+    A.hand.replaceChildren(...S.bench.map((f) => {
+      const card = h('div.bcard');
+      card.addEventListener('pointerdown', (e) => onCardDown(e, f));
+      A.cards.set(f.id, { el: card, key: '' });
+      return card;
+    }));
+  }
+  for (const f of S.bench) {
+    const c = A.cards.get(f.id);
+    const cool = f.state === 'bench' && !battle.isReady(f) ? Math.ceil(f.readyAt - battle.t) : 0;
+    const st = f.state === 'field' ? 'field' : cool ? 'cool' : full ? 'blocked' : 'ready';
+    const key = `${f.dex}|${f.level}|${st}|${cool}|${A.sel === f}|${A.drag?.f === f}`;
+    if (key === c.key) continue;
+    c.key = key;
     const sp = species(f.dex), mv = moveOf(movesOf(f)[0]);
-    const card = h('div.bcard' + (A.selSlot === i ? '.sel' : '') + (A.drag?.slot === i ? '.dragging' : ''),
-      { style: { '--tc': typeColor(sp.types[0]), '--tc2': typeColor(sp.types[1] || sp.types[0]) } },
+    c.el.className = 'bcard ' + st + (A.sel === f ? ' sel' : '') + (A.drag?.f === f ? ' dragging' : '');
+    c.el.style.setProperty('--tc', typeColor(sp.types[0]));
+    c.el.style.setProperty('--tc2', typeColor(sp.types[1] || sp.types[0]));
+    c.el.replaceChildren(
       h('span.bcard-lv', `Lv ${f.level}`),
       h('img', { src: portraitUrl(f.dex), alt: '', draggable: false }),
       h('b', sp.name),
-      h('small', h('i.tdot', { style: { background: typeColor(mv.type) } }), mv.name));
-    card.addEventListener('pointerdown', (e) => onCardDown(e, i));
-    return card;
-  }));
+      h('small', h('i.tdot', { style: { background: typeColor(mv.type) } }), mv.name),
+      ...(st === 'cool' ? [h('span.bcard-cool', `${cool} s`)] : st === 'field' ? [h('span.bcard-cool.on', 'im Kampf')] : []));
+  }
 }
 
 function cellAt(clientX, clientY) {
@@ -465,48 +479,67 @@ function cellAt(clientX, clientY) {
   const G = B().grid;
   return col >= 0 && row >= 0 && col < G.cols && row < G.rows ? [col, row] : null;
 }
+// Eingesetzt wird immer in der hintersten eigenen Reihe – die Spalte bestimmt der Finger
+const spawnCell = (c) => (c ? [c[0], B().grid.spawnRow] : null);
 
-function onCardDown(e, slot) {
+function blockedMsg(f) {
+  if (f.state === 'field') return 'Ist schon im Kampf.';
+  if (!battle.isReady(f)) return `Erholt sich noch ${Math.ceil(f.readyAt - battle.t)} s.`;
+  if (battle.activeCount('p') >= B().maxActive) return `Höchstens ${B().maxActive} Pokémon gleichzeitig auf dem Feld.`;
+  return '';
+}
+
+// Waagerecht wischen = Leiste scrollen, nach oben ziehen = Pokémon aufs Feld ziehen, antippen = auswählen
+function onCardDown(e, f) {
   if (battle.over) return;
-  e.preventDefault();
-  const A = arena, f = battle.sides.p.hand[slot];
-  if (!f) return;
+  const A = arena;
   const sx = e.clientX, sy = e.clientY;
-  let moved = false;
-  A.ghost.src = portraitUrl(f.dex);
+  let mode = null; // null | 'drag' | 'scroll'
   const move = (ev) => {
-    if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 8) return;
-    if (!moved) { moved = true; A.drag = { slot }; A.ghost.classList.remove('hidden'); haptic('tick'); }
+    const dx = ev.clientX - sx, dy = ev.clientY - sy;
+    if (!mode) {
+      if (Math.hypot(dx, dy) < 8) return;
+      if (dy < 0 && Math.abs(dy) > Math.abs(dx)) {
+        const why = blockedMsg(f);
+        if (why) { toast(why); mode = 'scroll'; return; }
+        mode = 'drag'; A.drag = { f }; A.ghost.src = portraitUrl(f.dex); A.ghost.classList.remove('hidden'); haptic('tick');
+      } else { mode = 'scroll'; return; }
+    }
+    if (mode !== 'drag') return;
+    ev.preventDefault();
     A.ghost.style.transform = `translate(${ev.clientX - 28}px, ${ev.clientY - 60}px)`;
-    A.hover = cellAt(ev.clientX, ev.clientY - 30);
+    A.hover = spawnCell(cellAt(ev.clientX, ev.clientY - 30));
   };
   const up = (ev) => {
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
     window.removeEventListener('pointercancel', up);
     A.ghost.classList.add('hidden');
-    if (moved) {
-      const c = cellAt(ev.clientX, ev.clientY - 30);
+    if (mode === 'drag') {
+      const c = ev.type === 'pointerup' ? spawnCell(cellAt(ev.clientX, ev.clientY - 30)) : null;
       A.drag = null; A.hover = null;
-      if (c && tryPlace(slot, c)) A.selSlot = -1;
-    } else A.selSlot = A.selSlot === slot ? -1 : slot; // Antippen: Karte wählen, dann Feld antippen
-    A.handKey = '';
+      if (c && tryPlace(f, c)) A.sel = null;
+    } else if (!mode) { // Antippen: Karte wählen, dann eine Spalte auf dem Feld antippen
+      const why = blockedMsg(f);
+      if (why) toast(why); else A.sel = A.sel === f ? null : f;
+    }
   };
-  window.addEventListener('pointermove', move);
+  window.addEventListener('pointermove', move, { passive: false });
   window.addEventListener('pointerup', up);
   window.addEventListener('pointercancel', up);
 }
 
 function onFieldDown(e) {
   const A = arena;
-  if (A.selSlot < 0 || battle.over) return;
-  const c = cellAt(e.clientX, e.clientY);
-  if (c && tryPlace(A.selSlot, c)) { A.selSlot = -1; A.handKey = ''; }
+  if (!A.sel || battle.over) return;
+  const c = spawnCell(cellAt(e.clientX, e.clientY));
+  if (c && tryPlace(A.sel, c)) A.sel = null;
 }
 
-function tryPlace(slot, [col, row]) {
-  if (!battle.canPlace('p', col, row)) { toast('Nur auf deiner Spielfeldhälfte.'); return false; }
-  const ok = battle.place('p', slot, col, row);
+function tryPlace(f, [col, row]) {
+  const why = blockedMsg(f);
+  if (why) { toast(why); return false; }
+  const ok = battle.place('p', f, col, row);
   if (ok) haptic('medium');
   return ok;
 }
@@ -519,7 +552,7 @@ function openStoneShop() {
   modal((el, close) => {
     const offers = [];
     for (const f of battle.roster('p')) for (const st of stonesFor(f)) offers.push({ f, st, to: stoneEvolution(f, st).to });
-    const where = (f) => (f.tower ? 'Verteidiger' : f.state === 'field' ? 'auf dem Feld' : f.state === 'hand' ? 'auf der Hand' : 'im Stapel');
+    const where = (f) => (f.tower ? 'Verteidiger' : f.state === 'field' ? 'auf dem Feld' : 'in der Leiste');
     el.append(h('h3', '💎 Entwicklungssteine'),
       h('p.note', `Entwickelt ein Pokémon sofort – nur für diesen Kampf. Du hast `, iconImg('coin', 2), ` ${app.state.coins}.`),
       offers.length
@@ -556,7 +589,7 @@ function endBattle() {
   haptic(won ? 'medium' : 'tick');
   // EVs dauerhaft übernehmen (Level und Entwicklungen verfallen)
   const gains = [];
-  const all = [...battle.sides.p.towers, ...battle.roster('p'), ...battle.units.filter((u) => u.side === 'p'), ...battle.sides.p.deck];
+  const all = [...battle.sides.p.towers, ...battle.roster('p'), ...battle.sides.p.bench];
   const seen = new Set();
   for (const f of all) {
     if (seen.has(f.id) || f.uid == null) continue;

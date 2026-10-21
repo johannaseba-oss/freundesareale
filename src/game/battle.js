@@ -130,36 +130,26 @@ export class Battle {
         f.state = 'field'; f.lane = i; f.role = towerRole(f.dex); f.healT = 0;
         return f;
       });
-      const deck = def.team.map((src) => makeFighter(src, side));
-      this.sides[side] = { towers, deck, hand: Array(B().hand.size).fill(null), timers: Array(B().hand.size).fill(0), ai: side === 'c' ? { t: 1.5 } : null };
+      const bench = def.team.map((src) => { const f = makeFighter(src, side); f.state = 'bench'; f.readyAt = 0; return f; });
+      this.sides[side] = { towers, bench, ai: side === 'c' ? { t: 1.5 } : null };
       this.units.push(...towers);
-      for (let i = 0; i < B().hand.size; i++) this.draw(side, i);
     }
   }
 
-  // ---- Karten ----
-  draw(side, slot) {
-    const S = this.sides[side];
-    if (!S.deck.length) return;
-    const i = Math.floor(this.rnd() * S.deck.length);
-    const f = S.deck.splice(i, 1)[0];
-    f.state = 'hand';
-    S.hand[slot] = f;
-  }
-  // Feld (Spalte, Reihe) für eine Seite erlaubt? Eigene Hälfte, keine Verteidiger-Felder
+  // ---- Kartenleiste ----
+  activeCount(side) { return this.units.filter((u) => u.side === side && !u.tower).length; }
+  isReady(f) { return f.state === 'bench' && this.t >= (f.readyAt || 0); }
+  available(side) { return this.activeCount(side) < B().maxActive ? this.sides[side].bench.filter((f) => this.isReady(f)) : []; }
+  // Feld (Spalte, Reihe) erlaubt? Nur die hinterste Reihe der eigenen Seite, keine Verteidiger-Felder
   canPlace(side, col, row) {
     const G = B().grid;
     if (col < 0 || col >= G.cols) return false;
     const r = side === 'p' ? row : G.rows - 1 - row;
-    if (r < G.placeRows[0] || r > G.placeRows[1]) return false;
+    if (r !== G.spawnRow) return false;
     return !G.towerCells.some(([x, y]) => x === col && y === r);
   }
-  place(side, slot, col, row) {
-    const S = this.sides[side];
-    const f = S.hand[slot];
-    if (!f || this.over || !this.canPlace(side, col, row)) return false;
-    S.hand[slot] = null;
-    S.timers[slot] = B().hand.drawSeconds;
+  place(side, f, col, row) {
+    if (!f || f.side !== side || this.over || !this.isReady(f) || this.activeCount(side) >= B().maxActive || !this.canPlace(side, col, row)) return false;
     f.state = 'field'; f.alive = true; f.x = col + 0.5; f.y = row + 0.5;
     f.lane = this.laneOf(col); f.cd = 0.6; f.spawnT = this.t; f.dir = side === 'p' ? 4 : 0;
     this.units.push(f);
@@ -226,10 +216,6 @@ export class Battle {
     if (this.over || this.paused) return;
     this.t += dt;
     const G = B().grid;
-    for (const side of ['p', 'c']) {
-      const S = this.sides[side];
-      S.hand.forEach((f, i) => { if (!f) { S.timers[i] -= dt; if (S.timers[i] <= 0) this.draw(side, i); } });
-    }
     // Heiler-Verteidiger
     for (const t of this.units) {
       if (!t.tower || t.hp <= 0) continue;
@@ -269,11 +255,10 @@ export class Battle {
       p.x += ((tgt.x - p.x) / d) * step; p.y += ((tgt.y - p.y) / d) * step;
       return true;
     });
-    // Besiegte entfernen (nach kurzer Ohnmachts-Animation), ggf. zurück in den Stapel
+    // Besiegte verlassen das Feld (nach kurzer Ohnmachts-Animation) und sind für koCooldown Sekunden gesperrt
     this.units = this.units.filter((u) => {
       if (u.tower || u.hp > 0 || this.t - u.faintT < 0.7) return true;
-      u.state = 'deck';
-      if (B().recycleFainted) { u.hp = u.maxHp; u.anim = null; this.sides[u.side].deck.push(u); }
+      u.state = 'bench'; u.hp = u.maxHp; u.anim = null; u.readyAt = u.faintT + B().koCooldown;
       return false;
     });
     if (this.sides.c.ai) this.cpu(dt);
@@ -367,10 +352,10 @@ export class Battle {
     this.events.push({ type: 'evolve', f, from, to });
   }
 
-  // Kämpfer einer Seite, die (noch) mitspielen – auf dem Feld, auf der Hand oder im Stapel
+  // Kämpfer einer Seite, die (noch) mitspielen – Verteidiger, auf dem Feld oder in der Kartenleiste
   roster(side) {
     const S = this.sides[side];
-    return [...S.towers.filter((t) => t.hp > 0), ...this.units.filter((u) => u.side === side && !u.tower && u.hp > 0), ...S.hand.filter(Boolean), ...S.deck];
+    return [...S.towers.filter((t) => t.hp > 0), ...S.bench.filter((f) => f.state === 'bench' || f.hp > 0)];
   }
   // Entwicklungsstein einsetzen (Bezahlung erledigt die Oberfläche)
   useStone(f, stone) {
@@ -386,8 +371,8 @@ export class Battle {
     ai.t -= dt;
     if (ai.t > 0) return;
     ai.t = o.think * (0.7 + this.rnd() * 0.6);
-    const slots = S.hand.map((f, i) => (f ? i : -1)).filter((i) => i >= 0);
-    if (!slots.length) return;
+    const ready = this.available('c');
+    if (!ready.length) return;
     const G = B().grid, R = G.riverRow;
     const mine = this.aliveTowers('c');
     // Bedrohung: Spieler-Pokémon auf der eigenen Hälfte oder kurz davor
@@ -399,25 +384,24 @@ export class Battle {
       const taken = fm.power * effectiveness(fm.type, species(f.dex).types);
       return atk / (taken + 20) + (f.level - B().startLevel) * 0.2;
     };
-    const pickFor = (foe) => slots.reduce((b, i) => (score(S.hand[i], foe) > score(S.hand[b], foe) ? i : b), slots[0]);
+    const pickFor = (foe) => ready.reduce((b, f) => (score(f, foe) > score(b, foe) ? f : b), ready[0]);
     if (threats.length) {
       const foe = threats[0];
       const tower = mine.sort((a, b) => dist(a, foe) - dist(b, foe))[0] || foe;
-      const dx = tower.x - foe.x, dy = tower.y - foe.y, d = Math.hypot(dx, dy) || 1;
-      const slot = pickFor(foe);
-      const cell = this.nearestFree('c', foe.x + (dx / d) * 1.6, foe.y + (dy / d) * 1.6);
-      if (cell) this.place('c', slot, cell[0], cell[1]);
+      // Verteidigen: in der hinteren Reihe hinter dem bedrohten Verteidiger einsetzen
+      const f = pickFor(foe);
+      const cell = this.nearestFree('c', (foe.x + tower.x) / 2, 0);
+      if (cell) this.place('c', f, cell[0], cell[1]);
       return;
     }
-    if (slots.length < S.hand.length && this.rnd() > o.aggression) return; // Karten sammeln
+    if (this.rnd() > o.aggression) return; // abwarten
     // Angriff: auf den schwächsten Verteidiger des Spielers
     const targets = this.aliveTowers('p').sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp);
     if (!targets.length) return;
     const tgt = targets[0];
-    const slot = pickFor(tgt);
-    const row = this.rnd() < 0.5 ? R - 1 : R - 3;
-    const cell = this.nearestFree('c', G.lanes[tgt.lane] + 0.5 + (this.rnd() - 0.5) * 2, row + 0.5);
-    if (cell) this.place('c', slot, cell[0], cell[1]);
+    const f = pickFor(tgt);
+    const cell = this.nearestFree('c', G.lanes[tgt.lane] + 0.5 + (this.rnd() - 0.5) * 2, 0);
+    if (cell) this.place('c', f, cell[0], cell[1]);
   }
   nearestFree(side, x, y) {
     const G = B().grid;
