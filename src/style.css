@@ -557,3 +557,7 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
   text-shadow: 0 4px 0 #6b4a12, 0 0 18px rgba(255, 210, 63, .8); letter-spacing: 2px; animation: dbanner 1.9s ease-out forwards; }
 .d-banner.final { color: #ffd6d6; text-shadow: 0 4px 0 #7a1f1f, 0 0 22px rgba(255, 80, 80, .9); font-size: 40px; }
 @keyframes dbanner { 0% { opacity: 0; transform: translateX(-40%) scale(.8); } 15% { opacity: 1; transform: translateX(0) scale(1.15); } 25% { transform: scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateX(30%); } }
+
+.vol { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 15px; }
+.vol span { width: 92px; }
+.vol input { flex: 1; accent-color: var(--green-d); }

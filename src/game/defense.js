@@ -3,7 +3,7 @@
 // Erreicht ein Gegner die untere Linie (Trainer), ist die Runde verloren; nach fünf abgewehrten Wellen gewonnen.
 import { CFG, species } from '../config.js';
 import { effectiveness } from './types.js';
-import { calcStats, bdata, moveOf, rollIvs } from './battle.js';
+import { calcStats, bdata, moveOf, rollIvs, expForLevel, levelEvolution } from './battle.js';
 import { mulberry32 } from '../rng.js';
 import { pickWeather, nextWeatherIn, weatherBoost } from './weather.js';
 
@@ -80,7 +80,7 @@ export class Defense {
   // oberste freie Reihe: anfangs nur die untersten startRows, mit jeder Welle rowsPerWave mehr
   minRow() {
     const G = D().grid;
-    const open = (G.startRows || 99) + Math.max(0, this.wave + 1) * (G.rowsPerWave || 0);
+    const open = (G.startRows || 99) + Math.floor(Math.max(0, this.wave + 1) * (G.rowsPerWave || 0));
     return Math.max(G.placeRows[0], G.placeRows[1] - open + 1);
   }
   canPlace(col, row) {
@@ -95,7 +95,7 @@ export class Defense {
     const src = card.src, L = D().level, R = D().roles;
     const stats = calcStats(src.dex, L, src.ivs, src.evs);
     const hpMult = D().defenderHpMult * (card.role === 'mauer' ? R.mauer.hpMult : 1);
-    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, role: card.role, col, row, x: col + 0.5, y: row + 0.5, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t };
+    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: L, exp: expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t };
     u.hp = u.maxHp;
     if (card.role === 'produzent') u.nextStar = this.t + this.between(R.produzent.every) * 0.5;
     if (card.role === 'explosiv') u.armAt = this.t + (evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
@@ -119,7 +119,7 @@ export class Defense {
   startWave() {
     this.wave++;
     const W = D().waves[this.wave], th = D().themes;
-    const level = D().level + this.wave * D().enemy.levelPerWave;
+    const level = (D().enemy.baseLevel || D().level) + this.wave * D().enemy.levelPerWave;
     for (let i = 0; i < W.count; i++) {
       const stage = W.stages[Math.floor(this.rnd() * W.stages.length)];
       const useTheme = this.rnd() < th.share;
@@ -155,7 +155,26 @@ export class Defense {
     e.hp -= dmg; e.hurtT = this.t;
     if (mv?.type === 'Eis') e.slowUntil = this.t + D().iceSlow.seconds;
     this.events.push({ type: 'hit', target: e, dmg, eff, move: mv, crit, melee: from?.role === 'nahkampf' });
-    if (e.hp <= 0) this.events.push({ type: 'defeat', e });
+    if (e.hp <= 0) { this.events.push({ type: 'defeat', e }); if (from?.role && from.hp > 0) this.reward(from, e); }
+  }
+
+  // EP für den Angreifer (offizielle Formel × xp.multiplier), Levelaufstieg und Entwicklung – nur für diese Runde
+  reward(u, e) {
+    const b = bdata(e.dex).exp, Ld = e.level, Lp = u.level;
+    u.exp += Math.floor((Math.floor(((b * Ld) / 5) * Math.pow((2 * Ld + 10) / (Ld + Lp + 10), 2.5)) + 1) * (D().xp?.multiplier || 1));
+    let up = false;
+    while (u.level < 100 && u.exp >= expForLevel(u.dex, u.level + 1)) { u.level++; up = true; }
+    if (!up) return;
+    this.restat(u);
+    this.events.push({ type: 'level', u, level: u.level });
+    const evo = levelEvolution(u);
+    if (evo) { const from = u.dex; u.dex = evo.to; this.restat(u); this.events.push({ type: 'evolve', u, from, to: evo.to }); }
+  }
+  restat(u) {
+    const old = u.maxHp;
+    u.stats = calcStats(u.dex, u.level, u.ivs, u.evs);
+    u.maxHp = u.stats[0] * u.hpMult;
+    u.hp = Math.min(u.maxHp, u.hp + Math.max(0, u.maxHp - old));
   }
 
   // ---- Simulation ----
@@ -210,17 +229,18 @@ export class Defense {
         if (d <= range && (!target || e.y > target.y)) target = e;
       }
       if (!target) continue;
-      const spd = u.stats[5] / refSpeed(L);
+      const spd = u.stats[5] / refSpeed(u.level);
       u.cd = R[u.role].cooldown / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3)));
       u.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
-      if (melee) { const r = this.damage(u, L, target, R.nahkampf.damageMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); }
+      this.events.push({ type: 'shoot', u, moveType: moveOf(bdata(u.dex).move).type, melee });
+      if (melee) { const r = this.damage(u, u.level, target, R.nahkampf.damageMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); }
       else this.projectiles.push({ x: u.x, y: u.y - 0.3, col: u.col, from: u, type: moveOf(bdata(u.dex).move).type });
     }
     // Geschosse fliegen die Spalte hinauf und treffen den ersten Gegner
     this.projectiles = this.projectiles.filter((p) => {
       p.y -= 6 * dt;
       const hit = this.enemies.find((e) => e.hp > 0 && e.col === p.col && Math.abs(e.y - p.y) < 0.35);
-      if (hit) { const r = this.damage(p.from, L, hit, R.fernkampf.damageMult); this.hurtEnemy(hit, r.dmg, r.eff, p.from, r.mv, r.crit); return false; }
+      if (hit) { const r = this.damage(p.from, p.from.level, hit, R.fernkampf.damageMult); this.hurtEnemy(hit, r.dmg, r.eff, p.from, r.mv, r.crit); return false; }
       return p.y > -1;
     });
     // Gegner laufen nach unten, beißen eigene Pokémon, die im Weg stehen

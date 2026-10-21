@@ -10,11 +10,11 @@
     ],
     "_placeRows": "Reihen, in denen eigene Pokémon stehen dürfen (0 = oben)",
     "startRows": 3,
-    "rowsPerWave": 1,
-    "_rows": "Am Anfang sind nur die untersten startRows Reihen frei, mit jeder Welle rowsPerWave mehr (bis placeRows)."
+    "rowsPerWave": 0.5,
+    "_rows": "Am Anfang sind nur die untersten startRows Reihen frei, alle 1/rowsPerWave Wellen eine weitere (bis placeRows)."
   },
-  "level": 25,
-  "_level": "Kampfwerte aller Pokémon werden auf diesem Level berechnet (eigene mit ihren IVs/EVs)",
+  "level": 10,
+  "_level": "Startlevel der eigenen Pokémon (mit ihren IVs/EVs). Sie sammeln EP durch besiegte Gegner, steigen auf und entwickeln sich – nur für diese Runde.",
   "stars": {
     "start": 75,
     "skyEvery": [
@@ -34,31 +34,36 @@
         35,
         36,
         173,
-        120,
-        121,
-        385,
-        113,
-        242,
-        440,
-        191,
-        192,
-        313,
-        314,
-        170,
-        171,
-        175,
-        176,
-        468,
         52,
         53,
-        337,
+        63,
+        64,
+        65,
+        81,
+        82,
+        170,
+        171,
+        174,
+        175,
+        176,
+        191,
+        192,
+        238,
         338,
-        358,
+        337,
+        351,
+        203,
+        417,
         433,
-        281,
-        282,
-        280,
-        417
+        439,
+        440,
+        479,
+        517,
+        518,
+        595,
+        596,
+        702,
+        707
       ],
       "every": [
         18,
@@ -87,8 +92,6 @@
         103,
         299,
         476,
-        81,
-        82,
         462,
         425,
         426
@@ -187,7 +190,8 @@
       0.75,
       1.35
     ],
-    "_speed": "Tempo = tilesPerSecond × (Initiative / Vergleichswert)^speedExp × Zufall aus speedVariation – Gegner sind unterschiedlich schnell."
+    "_speed": "Tempo = tilesPerSecond × (Initiative / Vergleichswert)^speedExp × Zufall aus speedVariation – Gegner sind unterschiedlich schnell.",
+    "baseLevel": 10
   },
   "iceSlow": {
     "factor": 0.5,
@@ -195,24 +199,39 @@
     "_hinweis": "Eis-Attacken verlangsamen Gegner"
   },
   "firstWaveDelay": 15,
-  "waveGap": 10,
+  "waveGap": 8,
   "waves": [
     {
-      "count": 4,
+      "count": 6,
       "stages": [
         1
       ],
       "spread": 30
     },
     {
-      "count": 7,
+      "count": 8,
+      "stages": [
+        1
+      ],
+      "spread": 30
+    },
+    {
+      "count": 9,
       "stages": [
         1
       ],
       "spread": 32
     },
     {
-      "count": 9,
+      "count": 10,
+      "stages": [
+        1,
+        2
+      ],
+      "spread": 32
+    },
+    {
+      "count": 11,
       "stages": [
         1,
         2
@@ -220,19 +239,42 @@
       "spread": 34
     },
     {
-      "count": 11,
+      "count": 12,
       "stages": [
         2
       ],
       "spread": 34
     },
     {
-      "count": 16,
+      "count": 13,
+      "stages": [
+        2
+      ],
+      "spread": 34
+    },
+    {
+      "count": 14,
       "stages": [
         2,
         3
       ],
-      "spread": 28,
+      "spread": 34
+    },
+    {
+      "count": 15,
+      "stages": [
+        2,
+        3
+      ],
+      "spread": 32
+    },
+    {
+      "count": 20,
+      "stages": [
+        2,
+        3
+      ],
+      "spread": 30,
       "final": true
     }
   ],
@@ -266,5 +308,9 @@
     "mult": 1.5,
     "_hinweis": "Volltreffer: Chance und Schadensfaktor"
   },
-  "_weather": "Wetter wie in der Arena (battle.json weather): passende Typen machen mehr Schaden."
+  "_weather": "Wetter wie in der Arena (battle.json weather): passende Typen machen mehr Schaden.",
+  "xp": {
+    "multiplier": 3,
+    "_hinweis": "EP für eigene Pokémon pro besiegtem Gegner (offizielle Formel × multiplier). Nur der Angreifer, der den Gegner besiegt, bekommt die EP."
+  }
 }

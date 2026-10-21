@@ -10,6 +10,7 @@ import { $, h, toast, confirmDialog, modal } from './dom.js';
 import { teamPicker } from './teampick.js';
 import { haptic } from '../haptics.js';
 import { drawWeather } from './weatherfx.js';
+import { sfx } from '../audio.js';
 import { weatherInfo, weatherText } from '../game/weather.js';
 
 const D = () => CFG.defense;
@@ -393,8 +394,13 @@ function buzz(kind) {
 
 function handleEvents() {
   for (const ev of game.events) {
+    if (ev.type === 'shoot') { if (!ev.melee) sfx.attack(ev.moveType); continue; }
+    if (ev.type === 'level') { say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
+    if (ev.type === 'evolve') { evolveFx(ev); continue; }
     if (ev.type === 'hit') {
       const o = ev.target, type = ev.move?.type || 'Normal';
+      if (!ev.mine && ev.melee) sfx.attack(type);
+      if (ev.crit && !ev.mine) sfx.crit();
       if (ev.mine) { burst(o, 'Unlicht', 4, 0.7, 0.8); continue; } // eigenes Pokémon wird gebissen
       burst(o, type, ev.crit ? 18 : ev.eff > 1 ? 12 : 7, ev.crit ? 1.6 : 1, ev.crit ? 1.3 : 1);
       ring(o, typeColor(type), 0.15, ev.crit ? 1.1 : 0.6, ev.crit ? 0.4 : 0.25);
@@ -405,23 +411,34 @@ function handleEvents() {
       const e = ev.e, type = species(e.dex).types[0];
       burst(e, type, 20, 1.6, 1.2); burst(e, 'Fee', 8, 1.2, 0.8);
       ring(e, '#ffffff', 0.2, 1.3, 0.45);
-      shake(T() * 0.07); buzz('tick');
+      shake(T() * 0.07); buzz('tick'); sfx.ko();
     } else if (ev.type === 'explode') {
+      sfx.explosion();
       ui.booms.push({ u: ev.u, r: ev.radius, t: 0 });
       burst(ev.u, 'Feuer', 34, 2.6, 1.5); burst(ev.u, 'Gestein', 16, 2.2, 1.2);
       shake(T() * 0.3); ui.flash = 0.3; ui.freeze = 0.1; haptic('strong');
     } else if (ev.type === 'wave') {
-      banner(ev.final ? 'LETZTE WELLE!' : `WELLE ${ev.wave + 1}`, ev.final);
+      banner(ev.final ? 'LETZTE WELLE!' : `WELLE ${ev.wave + 1}`, ev.final); sfx.wave(ev.final);
       if (ev.wave > 0 && ev.minRow >= D().grid.placeRows[0]) message('Eine weitere Reihe ist frei!');
       shake(T() * (ev.final ? 0.12 : 0.05)); haptic(ev.final ? 'strong' : 'medium');
     } else if (ev.type === 'weather') { renderWeatherChip(); message('Wetter: ' + weatherText(game.weather)); }
     else if (ev.type === 'lost') { burst(ev.u, 'Normal', 14, 1.2); say(ev.u, 'K.O.', '#ffb0b0', 0.34); shake(T() * 0.06); buzz('medium'); }
-    else if (ev.type === 'place') { burst(ev.u, 'Boden', 10, 1, 0.9); ring(ev.u, '#fff6c0', 0.2, 0.6, 0.3); }
-    else if (ev.type === 'collect') { const d = ev.drop, p = dropPos(d); const o = { x: p.x, y: p.y + 0.15 }; burst(o, 'Fee', 10, 1.2); burst(o, 'Elektro', 6, 1); ring(o, '#ffe066', 0.2, 0.8, 0.35); }
+    else if (ev.type === 'place') { sfx.place(); burst(ev.u, 'Boden', 10, 1, 0.9); ring(ev.u, '#fff6c0', 0.2, 0.6, 0.3); }
+    else if (ev.type === 'collect') { sfx.star(); const d = ev.drop, p = dropPos(d); const o = { x: p.x, y: p.y + 0.15 }; burst(o, 'Fee', 10, 1.2); burst(o, 'Elektro', 6, 1); ring(o, '#ffe066', 0.2, 0.8, 0.35); }
   }
   game.events.length = 0;
 }
 const T = () => ui.tile;
+// Entwicklung: Lichtsäule, Funkenregen, Nachricht und Klang
+function evolveFx(ev) {
+  const u = ev.u;
+  loadSprites(ev.to, u.gender);
+  ring(u, '#ffffff', 0.1, 1.6, 0.7); ring(u, '#ffe066', 0.3, 1.2, 0.9);
+  burst(u, 'Fee', 26, 1.8, 1.2);
+  ui.flash = Math.max(ui.flash, 0.18); shake(T() * 0.06);
+  message(`${species(ev.from).name} hat sich zu ${species(ev.to).name} entwickelt!`);
+  sfx.evolve(); haptic('medium');
+}
 function banner(text, big) {
   const el = h('div.d-banner' + (big ? '.final' : ''), text);
   ui.root.append(el);
@@ -438,8 +455,9 @@ function end() {
   ui.ended = true;
   const won = game.over.won;
   haptic(won ? 'medium' : 'strong');
+  if (won) sfx.win(); else sfx.lose();
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
     h('h2', won ? 'Geschafft!' : 'Niederlage'),
-    h('p', won ? 'Du hast alle fünf Wellen abgewehrt.' : game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`),
+    h('p', won ? `Du hast alle ${D().waves.length} Wellen abgewehrt.` : game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`),
     h('button.btn.primary.big', { onclick: () => { closeField(); game = null; theme = null; pick = []; app.refresh(); document.dispatchEvent(new Event('defense-closed')); } }, 'Weiter')));
 }

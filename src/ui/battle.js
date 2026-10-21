@@ -10,6 +10,7 @@ import { $, h, toast, modal, confirmDialog } from './dom.js';
 import { renderDefenseSetup } from './defense.js';
 import { teamPicker } from './teampick.js';
 import { drawWeather } from './weatherfx.js';
+import { sfx } from '../audio.js';
 import { haptic } from '../haptics.js';
 
 const B = () => CFG.battle;
@@ -467,6 +468,7 @@ function handleEvents() {
     const u = ev.f;
     if (ev.type === 'hit') {
       const mv = moveOf(ev.move);
+      sfx.attack(mv.type);
       burst(u, typeColor(mv.type), mv.cat === 'phys' ? 7 : 10, mv.cat === 'phys' ? 1.8 : 2.4);
       say(u, `-${ev.dmg}`, '#fff', 0.32, 0.7);
       if (ev.eff > 1) say(u, 'Sehr effektiv!', '#ffe066', 0.26, 1, -0.95);

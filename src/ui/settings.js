@@ -2,6 +2,7 @@
 import { app } from '../app.js';
 import { h, modal, toast, confirmDialog } from './dom.js';
 import { profileCard } from './profile.js';
+import { audioSettings, setMusicVolume, setSfxVolume } from '../audio.js';
 
 const REASON = { auto: 'Automatisch', taeglich: 'Täglich', manuell: 'Manuell', vor_wiederherstellung: 'Vor Wiederherstellung' };
 
@@ -24,6 +25,10 @@ export function openSettings({ onLogout, onRestored }) {
     el.append(
       h('h3', 'Einstellungen'),
       profileCard(),
+      h('b', 'Ton'),
+      h('label.vol', h('span', '🎵 Musik'), h('input', { type: 'range', min: 0, max: 100, value: Math.round(audioSettings.music * 100), oninput: (e) => setMusicVolume(e.target.value / 100) })),
+      h('label.vol', h('span', '🔊 Effekte'), h('input', { type: 'range', min: 0, max: 100, value: Math.round(audioSettings.sfx * 100), oninput: (e) => setSfxVolume(e.target.value / 100) })),
+      h('hr'),
       h('p', 'Angemeldet als ', h('b', app.user.email)),
       h('p.effects', app.backend.kind === 'dev' ? '⚠ Entwicklungsmodus: Supabase ist noch nicht eingerichtet, gespeichert wird nur in diesem Browser.' : 'Dein Spielstand wird nach jeder Aktion in der Cloud gespeichert.'),
       h('hr'),

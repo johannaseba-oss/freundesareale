@@ -52,7 +52,7 @@ function bot(g) {
 }
 const out = [];
 for (const [label, prods] of [['mit Sternensammlern', true], ['ohne Sternensammler', false]]) {
-  let won = 0, waves = 0, time = 0, starsLeft = 0;
+  let won = 0, waves = 0, time = 0, starsLeft = 0, evos = 0, maxLv = 0;
   for (let k = 0; k < N; k++) {
     const theme = rollTheme(rnd);
     const coll = Array.from({ length: 25 }, randomDex);
@@ -60,12 +60,12 @@ for (const [label, prods] of [['mit Sternensammlern', true], ['ohne Sternensamml
     const g = new Defense({ team, theme, seed: 100 + k });
     g.started = true;
     let i = 0;
-    while (!g.over && g.t < 900) { if (i++ % 10 === 0) bot(g); g.update(0.05); }
+    while (!g.over && g.t < 1500) { if (i++ % 10 === 0) bot(g); g.update(0.05); for (const ev of g.events) { if (ev.type === 'evolve') evos++; if (ev.type === 'level') maxLv = Math.max(maxLv, ev.level); } g.events.length = 0; }
     if (g.over?.won) won++;
     waves += g.wave + 1; time += g.t; starsLeft += g.stars;
     if (k % 10 === 9) { document.getElementById('out').textContent = `${label} ${k + 1}/${N} …`; await new Promise((r) => setTimeout(r)); }
   }
-  out.push(`${label.padEnd(22)} Siege ${Math.round((100 * won) / N)} % · Ø erreichte Welle ${(waves / N).toFixed(1)} · Ø Dauer ${(time / N / 60).toFixed(1)} min · Ø übrige Sterne ${Math.round(starsLeft / N)}`);
+  out.push(`${label.padEnd(22)} Siege ${Math.round((100 * won) / N)} % · Ø erreichte Welle ${(waves / N).toFixed(1)} · Ø Dauer ${(time / N / 60).toFixed(1)} min · Ø übrige Sterne ${Math.round(starsLeft / N)} · Entwicklungen Ø ${(evos / N).toFixed(1)} · höchstes Level ${maxLv}`);
 }
 document.getElementById('out').textContent = out.join('\n');
 window.done = out;
