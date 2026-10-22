@@ -638,3 +638,7 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .card .type-chips.mini { justify-content: center; margin: 1px 0 2px; }
 /* Areal-Menü (☰) und Shop über der Navi, damit sie auf schmalen Handys nicht verdeckt werden */
 .fab { bottom: calc(60px + var(--safe-b)); }
+
+/* Chaos: Rekord am Knopf, Karte löschen */
+.chaos-btn .chaos-best { display: block; font-size: 12px; opacity: .85; }
+.d-card-del { position: absolute; top: 1px; right: 1px; width: 20px; height: 20px; line-height: 17px; border-radius: 50%; background: #ef5d5d; color: #fff; border: 2px solid var(--line); font-size: 15px; font-weight: 700; text-align: center; z-index: 2; }

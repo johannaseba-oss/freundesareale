@@ -21,6 +21,7 @@ const cleared = () => app.state?.defense?.cleared || 0;
 let pick = [];
 let game = null;
 let ui = null;
+let chaosBestBefore = 0; // Rekord vor der laufenden Chaos-Runde (für „neuer Rekord!“)
 
 // Stern-Sprite (Platzhalter, bis ein eigener Stern bereitgestellt wird)
 let starCv = null;
@@ -77,7 +78,7 @@ function renderRoadmap(el, back) {
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
     h('p.note', 'Tippe auf das leuchtende Level. Die Punkte zeigen die Typen der Gegner.'),
-    h('button.btn.chaos-btn', { onclick: startChaos }, '🎲 Chaos-Modus – Pokébälle statt Sterne'),
+    h('button.btn.chaos-btn', { onclick: startChaos }, '🎲 Chaos-Modus – Pokébälle statt Sterne', app.state.defense?.chaosBest ? h('small.chaos-best', `Rekord: Welle ${app.state.defense.chaosBest}`) : null),
     h('div.road-wrap', map)));
   // zum nächsten Level scrollen
   setTimeout(() => { const n = map.querySelector('.road-node.next'); if (n) n.scrollIntoView({ block: 'center' }); }, 50);
@@ -132,7 +133,7 @@ function startChaos() {
       h('p.note', 'Statt Sternen fallen Pokébälle! Jeder Ball enthält ein zufälliges Pokémon, das du genau einmal einsetzen kannst – danach kommen andere. Einsetzen kostet nichts.'),
       h('p.note', `Gegner aller Typen in endlosen Wellen – wie weit kommst du?${app.state.defense?.chaosBest ? ` Bisheriger Rekord: Welle ${app.state.defense.chaosBest}.` : ''}`),
       h('div.row', h('button.btn', { onclick: () => { close(); chosen = null; } }, 'Abbrechen'),
-        h('button.btn.primary.big', { onclick: () => { close(); game = new Defense({ team: [], level: chosen, chaos: true }); openField(); } }, 'Los!')));
+        h('button.btn.primary.big', { onclick: () => { close(); chaosBestBefore = app.state.defense?.chaosBest || 0; game = new Defense({ team: [], level: chosen, chaos: true }); openField(); } }, 'Los!')));
   });
 }
 
@@ -247,6 +248,20 @@ function flyStar(from, d) {
 }
 
 // ---------- Karten ----------
+function saveChaosBest(wave) {
+  if (wave > (app.state.defense?.chaosBest || 0)) app.act((s) => { s.defense ||= {}; s.defense.chaosBest = Math.max(s.defense.chaosBest || 0, wave); return { ok: true }; }, true);
+}
+// Chaos-Karte aus der Hand werfen, um Platz für neue Pokébälle zu machen
+async function askDiscard(c) {
+  if (!(await confirmDialog(`${species(c.dex).name} aus deiner Hand löschen?`, 'Löschen'))) return;
+  const i = game?.cards.indexOf(c) ?? -1;
+  if (i < 0 || game.over) return;
+  game.cards.splice(i, 1);
+  if (ui.sel === c) ui.sel = null;
+  if (ui.inspect === c) ui.inspect = null;
+  haptic('tick');
+}
+
 function buildCards() {
   ui.cardEls = [];
   ui.cardKey = game.cards.map((c) => c.id ?? c.dex).join();
@@ -260,7 +275,8 @@ function buildCards() {
       h('img', { src: portraitUrl(c.dex), alt: '', draggable: false }),
       h('span.d-card-ab.r-' + c.role, ab ? ab.name : ROLE_SHORT[c.role]),
       h('span.d-card-cost', c.once ? '1×' : String(c.cost)),
-      h('i.d-card-cool'));
+      h('i.d-card-cool'),
+      c.once ? h('span.d-card-del', { title: 'Löschen', onclick: (e) => { e.stopPropagation(); askDiscard(c); } }, '×') : null);
     el.addEventListener('click', () => {
       if (game.over) return;
       ui.inspect = c; // Infozeile zeigt die Karte auch, wenn sie gerade nicht spielbar ist
@@ -286,7 +302,7 @@ function updateCards() {
     const left = Math.max(0, c.readyAt - game.t);
     el.classList.toggle('sel', ui.sel === c);
     el.classList.toggle('poor', game.stars < c.cost);
-    el.lastChild.style.height = (left > 0 ? (left / c.recharge) * 100 : 0) + '%';
+    el.querySelector('.d-card-cool').style.height = (left > 0 ? (left / c.recharge) * 100 : 0) + '%';
   }
 }
 function renderTop() {
@@ -624,6 +640,7 @@ function handleEvents() {
       burst(ev.u, 'Feuer', 34, 2.6, 1.5); burst(ev.u, 'Gestein', 16, 2.2, 1.2);
       shake(T() * 0.3); ui.flash = 0.3; ui.freeze = 0.1; haptic('strong');
     } else if (ev.type === 'wave') {
+      if (game.chaos) saveChaosBest(ev.wave + 1);
       banner(ev.final ? 'LETZTE WELLE!' : `WELLE ${ev.wave + 1}`, ev.final); sfx.wave(ev.final);
       if (ev.wave > 0 && ev.minRow >= D().grid.placeRows[0]) message('Eine weitere Reihe ist frei!');
       shake(T() * (ev.final ? 0.12 : 0.05)); haptic(ev.final ? 'strong' : 'medium');
@@ -663,8 +680,8 @@ function end() {
   haptic(won ? 'medium' : 'strong');
   if (won) sfx.win(); else sfx.lose();
   const lv = chosen, next = game.chaos ? null : levelsList().find((x) => x.n === lv.n + 1);
-  const reached = game.wave + 1, best = app.state.defense?.chaosBest || 0;
-  if (game.chaos && reached > best) app.act((s) => { s.defense ||= {}; s.defense.chaosBest = reached; return { ok: true }; }, true);
+  const reached = game.wave + 1, best = chaosBestBefore;
+  if (game.chaos) saveChaosBest(reached);
   if (won && !game.chaos) app.act((s) => { s.defense ||= {}; s.defense.cleared = Math.max(s.defense.cleared || 0, lv.n); s.stats.defenseCleared = s.defense.cleared; return { ok: true }; }, true);
   const leave = (to) => { closeField(); game = null; pick = []; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
