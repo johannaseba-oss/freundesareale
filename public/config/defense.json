@@ -492,11 +492,6 @@
     "seconds": 1.5,
     "_hinweis": "Elektro-Attacken verlangsamen Gegner ein wenig"
   },
-  "poison": {
-    "seconds": 5,
-    "pctPerSecond": 0.02,
-    "_hinweis": "Gift-Attacken vergiften: Gegner verliert seconds lang pctPerSecond seiner max. KP pro Sekunde"
-  },
   "families": {
     "count": 8,
     "_hinweis": "So viele Entwicklungsfamilien (passend zu den Level-Typen) bilden die Gegner einer Runde – frühe Wellen Grundformen, später deren Entwicklungen"
@@ -631,5 +626,31 @@
     }
   },
   "levelGap": 5,
-  "_levelGap": "Eigene Pokémon starten höchstens levelGap Level unter den Gegnern der ersten Welle (sonst level)"
+  "_levelGap": "Eigene Pokémon starten höchstens levelGap Level unter den Gegnern der ersten Welle (sonst level)",
+  "dots": {
+    "_hinweis": "Statuseffekte mit Schaden über Zeit nach Attacken-Typ: seconds = Dauer, pctPerSecond = Anteil der max. KP pro Sekunde. Ein neuer Treffer frischt den Effekt auf.",
+    "Gift": {
+      "name": "Gift",
+      "seconds": 5,
+      "pctPerSecond": 0.02
+    },
+    "Feuer": {
+      "name": "Verbrennung",
+      "seconds": 4,
+      "pctPerSecond": 0.022
+    },
+    "Elektro": {
+      "name": "Elektroschock",
+      "seconds": 3,
+      "pctPerSecond": 0.018
+    }
+  },
+  "tempo": {
+    "_hinweis": "Angriffstempo: Abklingzeit × (Attackenstärke / refPower), begrenzt auf min–max. Starke Attacken = langsamer (und härter), schwache = schneller (und leichter). Gilt für eigene Pokémon und Gegner. slowFrom/fastBelow = ab wann die Karte „langsam, hart“ bzw. „schnell, leicht“ zeigt.",
+    "refPower": 75,
+    "min": 0.6,
+    "max": 1.6,
+    "slowFrom": 1.2,
+    "fastBelow": 0.8
+  }
 }

@@ -13,6 +13,15 @@ const bst = (dex) => bdata(dex).base.reduce((a, b) => a + b, 0);
 // Sonderfähigkeit einer Art (defense.json abilities)
 export const abilityOf = (dex) => D().abilities?.[dex] || null;
 
+// Angriffstempo: Faktor auf die Abklingzeit nach Stärke der Attacke (stark = langsamer, schwach = schneller).
+// Der Schaden hängt ohnehin von der Attackenstärke ab – so gibt es harte, langsame und schnelle, leichte Angreifer.
+export function tempoOf(dex) {
+  const T = D().tempo, mv = moveOf(bdata(dex).move);
+  if (!T || !mv?.power) return 1;
+  return Math.max(T.min, Math.min(T.max, mv.power / T.refPower));
+}
+export const tempoLabel = (dex) => { const k = tempoOf(dex), T = D().tempo; return !T ? '' : k >= T.slowFrom ? 'langsam, hart' : k <= T.fastBelow ? 'schnell, leicht' : ''; };
+
 // Rolle einer Art (siehe defense.json roles); Panzer = Mauer, Explosion bei Angriff = Explosiv
 export function roleOf(dex) {
   const R = D().roles, ab = abilityOf(dex);
@@ -178,12 +187,13 @@ export class Defense {
     const L = this.chaos // Chaos: knapp unter dem Level der aktuellen Gegner
       ? Math.max(D().level, (this.chaosLevel ?? (this.endless ? D().chaos.endless.baseLevel : this.level.enemyLevel)) - (D().chaos.cards?.levelGap ?? 2))
       : Math.max(D().level, (this.level?.enemyLevel || 0) - (D().levelGap ?? 99)); // spätere Level: eigene Pokémon starten stärker
-    const stats = calcStats(src.dex, L, src.ivs, src.evs);
+    const keep = card.keep && card.keep.level > L ? card.keep : null; // zurückgenommenes Pokémon behält sein Level
+    const stats = calcStats(src.dex, keep ? keep.level : L, src.ivs, src.evs);
     const ab = abilityOf(src.dex);
     const hpMult = this.hpMultOf(src.dex, card.role);
     // dir: 0 = greift die eigene Spalte hinauf an, ±1 = Seitenfeld, greift quer über das Feld an
     const dir = col < 0 ? 1 : col >= D().grid.cols ? -1 : 0;
-    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: L, exp: expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t };
+    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: keep ? keep.level : L, exp: keep ? keep.exp : expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t };
     u.hp = u.maxHp;
     if (card.role === 'produzent') u.nextStar = this.t + this.between(R.produzent.every) * 0.5;
     if (card.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
@@ -192,11 +202,14 @@ export class Defense {
     this.events.push({ type: 'place', u });
     return true;
   }
-  // eigenes Pokémon vom Feld nehmen (Platz wird frei)
-  removeUnit(u) {
+  // eigenes Pokémon zurück auf die Hand nehmen (Platz wird frei). Chaos: es wird wieder eine Karte – mit seiner
+  // aktuellen Form und seinem Level; normale Level: die Karte ist ohnehin auf der Hand und lädt wie gewohnt.
+  canTakeBack() { return !this.chaos || this.cards.length < D().chaos.handMax; }
+  takeBack(u) {
     const i = this.units.indexOf(u);
-    if (i < 0 || u.hp <= 0) return false;
+    if (i < 0 || u.hp <= 0 || !this.canTakeBack()) return false;
     this.units.splice(i, 1);
+    if (this.chaos) this.cards.push({ src: { dex: u.dex, gender: u.gender, nick: u.nick, ivs: u.ivs, evs: u.evs }, dex: u.dex, role: chaosRole(u.dex), cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++, keep: { level: u.level, exp: u.exp } });
     this.events.push({ type: 'remove', u });
     return true;
   }
@@ -331,7 +344,9 @@ export class Defense {
     e.hp -= dmg; e.hurtT = this.t;
     if (mv?.type === 'Eis') { e.slowUntil = this.t + D().iceSlow.seconds; e.slowFactor = D().iceSlow.factor; }
     else if (mv?.type === 'Elektro' && !(this.t < e.slowUntil && e.slowFactor < D().elecSlow.factor)) { e.slowUntil = this.t + D().elecSlow.seconds; e.slowFactor = D().elecSlow.factor; }
-    if (mv?.type === 'Gift' && from?.dex && e.hp > 0) e.poison = { until: this.t + D().poison.seconds, dps: e.maxHp * D().poison.pctPerSecond, from, tick: 0 };
+    // Gift, Feuer und Elektro hinterlassen einen Statuseffekt, der regelmäßig Schaden macht (je Typ einer, neuer Treffer frischt ihn auf)
+    const dot = mv && D().dots?.[mv.type];
+    if (dot && from?.dex && e.hp > 0) (e.dots ||= {})[mv.type] = { until: this.t + dot.seconds, dps: e.maxHp * dot.pctPerSecond, from, tick: 0 };
     const ab = from?.dex ? abilityOf(from.dex) : null;
     if (!this.chaos && e.hp > 0 && this.rnd() < (ab?.chance || 0)) this.applyStatus(e, ab); // Chaos: Status wirkt stattdessen als Fläche
     this.events.push({ type: 'hit', target: e, dmg, eff, move: mv, crit, melee: from?.role === 'nahkampf' });
@@ -398,7 +413,10 @@ export class Defense {
     // Sternenregen
     if (this.t >= this.nextSky) {
       this.nextSky = this.t + this.between(this.chaos ? D().chaos.dropEvery : S.skyEvery);
-      this.dropStar(0.5 + this.rnd() * (G.cols - 1), 2 + this.rnd() * (G.rows - 3), -0.5, S.skyValue);
+      if (this.chaos) { // links oder rechts neben dem Trainer, damit er nicht verdeckt wird
+        const side = this.rnd() < 0.5 ? -1 : 1, x = G.cols / 2 + side * (0.75 + this.rnd() * (G.cols / 2 - 1.1));
+        this.dropStar(x, G.rows + 0.5, -0.5, S.skyValue);
+      } else this.dropStar(0.5 + this.rnd() * (G.cols - 1), 2 + this.rnd() * (G.rows - 3), -0.5, S.skyValue);
     }
     this.drops = this.drops.filter((d) => this.t - d.born < S.lifetime + 1.5);
     // Wellen
@@ -461,7 +479,7 @@ export class Defense {
       }
       if (!target) continue;
       const spd = u.stats[5] / refSpeed(u.level);
-      u.cd = R[u.role].cooldown / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3)));
+      u.cd = (R[u.role].cooldown * tempoOf(u.dex)) / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3)));
       u.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
       this.events.push({ type: 'shoot', u, moveType: mv.type, melee });
       const [dx, dy] = u.dir ? [u.dir, 0] : [0, -1], x0 = u.x + dx * 0.3, y0 = u.y + dy * 0.3;
@@ -491,13 +509,16 @@ export class Defense {
     const E = D().enemy;
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
-      // Gift: Schaden über Zeit, Anzeige alle 0,5 s
-      if (e.poison && this.t < e.poison.until) {
-        const d = e.poison.dps * dt;
-        e.hp -= d; e.poison.tick += d;
-        if (e.poison.tick >= Math.max(1, e.poison.dps * 0.5)) { this.events.push({ type: 'poison', e, dmg: Math.round(e.poison.tick) }); e.poison.tick = 0; }
-        if (e.hp <= 0) { e.hurtT = this.t; this.events.push({ type: 'defeat', e }); if (e.poison.from.hp > 0) this.reward(e.poison.from, e); continue; }
+      // Statuseffekte (Gift, Verbrennung, Elektroschock): Schaden über Zeit, Anzeige alle 0,5 s
+      let died = false;
+      for (const [type, st] of Object.entries(e.dots || {})) {
+        if (this.t >= st.until) { delete e.dots[type]; continue; }
+        const d = st.dps * dt;
+        e.hp -= d; st.tick += d;
+        if (st.tick >= Math.max(1, st.dps * 0.5)) { this.events.push({ type: 'dot', e, dot: type, dmg: Math.round(st.tick) }); st.tick = 0; }
+        if (e.hp <= 0) { e.hurtT = this.t; this.events.push({ type: 'defeat', e }); if (st.from.hp > 0) this.reward(st.from, e); died = true; break; }
       }
+      if (died) continue;
       // schläft (Schlafpuder): bleibt stehen und greift nicht an
       if (this.t < (e.sleepUntil || 0)) { e.eating = false; continue; }
       // verwirrt: dreht um, greift Gegner hinter sich an oder trifft sich selbst
@@ -505,7 +526,7 @@ export class Defense {
         e.cd -= dt; e.eating = false;
         const other = this.enemies.find((o) => o !== e && o.hp > 0 && o.col === e.col && e.y - o.y > 0 && e.y - o.y < 0.8);
         if (e.cd <= 0) {
-          e.cd = E.biteCooldown; e.anim = { name: 'Attack', t0: this.t };
+          e.cd = E.biteCooldown * tempoOf(e.dex); e.anim = { name: 'Attack', t0: this.t };
           const victim = other || e, r = this.damage(e, e.level, victim, other ? 1 : 0.5);
           this.hurtEnemy(victim, r.dmg, r.eff, null, r.mv, r.crit);
         }
@@ -517,7 +538,7 @@ export class Defense {
       if (block) {
         e.cd -= dt; e.eating = true;
         if (e.cd <= 0) {
-          e.cd = E.biteCooldown; e.anim = { name: 'Attack', t0: this.t };
+          e.cd = E.biteCooldown * tempoOf(e.dex); e.anim = { name: 'Attack', t0: this.t };
           const r = this.damage(e, e.level, block);
           block.hp -= r.dmg; block.hurtT = this.t;
           this.events.push({ type: 'hit', target: block, dmg: r.dmg, eff: r.eff, move: r.mv, mine: true, crit: r.crit });
@@ -559,7 +580,7 @@ export class Defense {
   snapshot() {
     const data = {};
     for (const [k, v] of Object.entries(this)) if (k !== 'rnd' && k !== 'events') data[k] = v;
-    data.enemies = this.enemies.map((e) => (e.poison ? { ...e, poison: { ...e.poison, from: e.poison.from?.id ?? null } } : e));
+    data.enemies = this.enemies.map((e) => (e.dots ? { ...e, dots: Object.fromEntries(Object.entries(e.dots).map(([k, v]) => [k, { ...v, from: v.from?.id ?? null }])) } : e));
     data.projectiles = this.projectiles.map((p) => ({ ...p, from: p.from.id, hits: [...p.hits] }));
     return JSON.parse(JSON.stringify(data));
   }
@@ -569,7 +590,10 @@ export class Defense {
     g.rnd = mulberry32((Date.now() ^ (g.nextId * 7919)) >>> 0);
     g.events = [];
     const byId = new Map(g.units.map((u) => [u.id, u]));
-    for (const e of g.enemies) if (e.poison) e.poison.from = byId.get(e.poison.from) || { hp: 0 };
+    for (const e of g.enemies) {
+      if (e.poison) { (e.dots ||= {}).Gift = e.poison; delete e.poison; } // ältere Spielstände
+      for (const st of Object.values(e.dots || {})) st.from = byId.get(st.from) || { hp: 0 };
+    }
     g.projectiles = g.projectiles.filter((p) => byId.has(p.from)).map((p) => ({ ...p, from: byId.get(p.from), hits: new Set(p.hits) }));
     return g;
   }

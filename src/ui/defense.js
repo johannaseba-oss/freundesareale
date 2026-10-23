@@ -2,7 +2,7 @@
 // dann das vertikale Spielfeld: Sterne einsammeln, Karten antippen und Pokémon auf das untere Feld setzen.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
-import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam, abilityOf } from '../game/defense.js';
+import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam, abilityOf, tempoLabel } from '../game/defense.js';
 import { ballCanvas, ballSprite } from '../gfx/balls.js';
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
@@ -372,8 +372,10 @@ async function buyLife() {
 
 async function askRemove(u) {
   const name = u.nick || species(u.dex).name;
-  if (!(await confirmDialog(`${name} vom Feld nehmen? Es ist dann für diese Runde weg.`, 'Entfernen'))) return;
-  if (game && !game.over && game.removeUnit(u)) { haptic('medium'); handleEvents(); }
+  if (!game.canTakeBack()) { toast(`Deine Hand ist voll (${D().chaos.handMax} Karten) – setz erst ein Pokémon ein.`); return; }
+  const text = game.chaos ? `${name} zurück auf die Hand nehmen? Es behält sein Level (Lv. ${u.level}) und kann woanders wieder eingesetzt werden.` : `${name} zurück auf die Hand nehmen? Der Platz wird frei, die Karte lädt wie gewohnt.`;
+  if (!(await confirmDialog(text, 'Zurück auf die Hand'))) return;
+  if (game && !game.over && game.takeBack(u)) { haptic('medium'); handleEvents(); }
 }
 
 function flyStar(from, d) {
@@ -433,7 +435,7 @@ function updateCards() {
   if (ui.infoKey !== ik) {
     ui.infoKey = ik;
     const c = shown;
-    ui.info.replaceChildren(...(c ? [h('b', c.src.nick || species(c.dex).name), h('span.type-chips.inline', species(c.dex).types.map((t) => typeChip(t))), h('small', `${D().roles[c.role].icon} ${abilityText(c.dex)}`)] : [h('small', 'Tippe eine Karte an, dann ein Feld.')]));
+    ui.info.replaceChildren(...(c ? [h('b', c.src.nick || species(c.dex).name), h('span.type-chips.inline', species(c.dex).types.map((t) => typeChip(t))), h('small', `${D().roles[c.role].icon} ${abilityText(c.dex)} · ${moveInfo(c.dex)}`)] : [h('small', 'Tippe eine Karte an, dann ein Feld.')]));
   }
   for (const { c, el } of ui.cardEls) {
     const left = Math.max(0, c.readyAt - game.t);
@@ -441,6 +443,11 @@ function updateCards() {
     el.classList.toggle('poor', game.stars < c.cost);
     el.querySelector('.d-card-cool').style.height = (left > 0 ? (left / c.recharge) * 100 : 0) + '%';
   }
+}
+// Schadensart (physisch gegen Verteidigung, speziell gegen Spezial-Verteidigung), Statuseffekt und Angriffstempo
+function moveInfo(dex) {
+  const mv = moveOf(bdata(dex).move), dot = D().dots?.[mv.type], tp = tempoLabel(dex);
+  return [mv.cat === 'phys' ? 'physisch (gegen Vert.)' : 'speziell (gegen Sp.-Vert.)', dot ? dot.name : '', tp].filter(Boolean).join(' · ');
 }
 function renderTop() {
   const cd = game.started || game.prepLeft == null ? 0 : Math.ceil(game.prepLeft);
@@ -656,7 +663,7 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   }
   x.globalAlpha = 1;
   if (dead) return;
-  if (!mine && o.poison && game.t < o.poison.until && Math.random() < 0.15) ui.fx.push({ x: o.x + (Math.random() - 0.5) * 0.4, y: o.y - 0.2, vx: 0, vy: -0.8, g: -0.5, drag: 0, color: Math.random() < 0.5 ? '#a33ea1' : '#d79ae0', shape: 'ring', size: 0.6, life: 0.6 }); // Giftblasen
+  for (const type of Object.keys((!mine && o.dots) || {})) if (Math.random() < 0.12) burstAt({ x: o.x + (Math.random() - 0.5) * 0.4, y: o.y - 0.3 }, type, 1, 0.3, 0.7); // Gift-Blasen, Flämmchen, Funken
   if (asleep) { // kleine "z", die aus dem schlafenden Pokémon aufsteigen
     x.font = `600 ${Math.round(T * 0.22)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center';
     for (let i = 0; i < 3; i++) { const k = ((now / 900) + i / 3) % 1; x.globalAlpha = 1 - k; x.fillStyle = '#e8f0ff'; x.strokeStyle = 'rgba(30,30,60,.8)'; x.lineWidth = 2;
@@ -858,7 +865,7 @@ function handleEvents() {
     }
     if (ev.type === 'level') { say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
     if (ev.type === 'evolve') { evolveFx(ev); continue; }
-    if (ev.type === 'poison') { say(ev.e, String(ev.dmg), '#d48ae0', 0.24, 0.6, -0.3); burst(ev.e, 'Gift', 4, 0.6, 0.7); continue; }
+    if (ev.type === 'dot') { say(ev.e, String(ev.dmg), { Gift: '#d48ae0', Feuer: '#ffa75c', Elektro: '#ffe066' }[ev.dot] || '#ffffff', 0.24, 0.6, -0.3); burst(ev.e, ev.dot, 4, 0.6, 0.7); continue; }
     if (ev.type === 'handFull') { toast(`Höchstens ${D().chaos.handMax} Karten – setz erst eins ein.`); continue; }
     if (ev.type === 'collect' && ev.drop.dex) { const p = dropPos(ev.drop); say({ x: p.x, y: p.y }, species(ev.drop.dex).name + '!', '#ffffff', 0.28, 1); }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
