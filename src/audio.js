@@ -17,7 +17,7 @@ function player() {
     music.preload = 'auto';
     music.addEventListener('ended', () => { if (playing === 'areas') { areaIdx++; start(want, true); } });
     // über WebAudio leiten, damit die Lautstärke überall wirkt (Safari/iPhone ignoriert audio.volume)
-    if (ctx()) { musicGain = ac.createGain(); ac.createMediaElementSource(music).connect(musicGain); musicGain.connect(ac.destination); }
+    if (ctx()) { musicGain = ac.createGain(); ac.createMediaElementSource(music).connect(musicGain); musicGain.connect(bus); }
   }
   return music;
 }
@@ -73,13 +73,19 @@ window.addEventListener('pointerdown', () => {
 }, { capture: true });
 
 // ---------- Soundeffekte ----------
-let ac = null, master = null, noiseBuf = null;
+let ac = null, master = null, bus = null, noiseBuf = null;
 function ctx() {
   if (!ac) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
-    ac = new AC();
-    master = ac.createGain(); master.connect(ac.destination);
+    // größerer Audiopuffer ('balanced'): kurze Lastspitzen (Sprites laden, Zeichnen) reißen keine Lücken in die Musik
+    try { ac = new AC({ latencyHint: 'balanced' }); } catch { ac = new AC(); }
+    // gemeinsamer Ausgang für Musik und Geräusche mit Begrenzer: mehrere gleichzeitige Geräusche plus Musik
+    // dürfen die Summe nicht über Vollaussteuerung treiben (sonst übersteuert die ganze Mischung hörbar)
+    bus = ac.createDynamicsCompressor();
+    bus.threshold.value = -8; bus.knee.value = 6; bus.ratio.value = 12; bus.attack.value = 0.003; bus.release.value = 0.2;
+    bus.connect(ac.destination);
+    master = ac.createGain(); master.connect(bus);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;

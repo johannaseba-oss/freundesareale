@@ -11,10 +11,10 @@ import { setMusic, resumeMusic } from './audio.js';
 import * as A from './game/actions.js';
 import { showAuth, hideAuth } from './ui/auth.js';
 import { $, h, toast, confirmDialog } from './ui/dom.js';
-import { iconImg, berryImg } from './gfx/icons.js';
-import { pending, setOnLand } from './ui/fly.js';
+import { iconImg, berryImg, berryUrl } from './gfx/icons.js';
+import { pending, setOnLand, fly } from './ui/fly.js';
 import { openInventory, collectWithFx } from './ui/collect.js';
-import { initAreas, scenePosOf, sceneReact } from './ui/areas.js';
+import { initAreas, scenePosOf, sceneReact, sceneFeed, sceneGroundPos } from './ui/areas.js';
 import { initCollection, render as renderCollection, setFilter } from './ui/collection.js';
 import { ballCanvas, loadBallSprites } from './gfx/balls.js';
 import { initGacha } from './ui/gacha.js';
@@ -162,11 +162,19 @@ function checkDailyFeed() {
 
 function hudPos(sel) { const r = $(sel).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
 
+// Alles einsammeln: Münzen und Beeren der Pokémon plus alle Beeren, die in den Arealen am Boden liegen
 function collectAll() {
   const list = app.state.pokemon.filter((p) => p.area && (p.coinsReady > 0 || Object.values(p.berriesReady || {}).some((n) => n > 0)));
-  if (!list.length) { toast('Gerade hat niemand Münzen bereit.'); return; }
-  const r = collectWithFx(list, (p) => scenePosOf(p.uid) || hudPos('#hud-collect'));
-  if (r.ok) { for (const p of list) sceneReact(p.uid, 'coin'); haptic('medium'); }
+  const ground = Object.values(app.state.areas).some((st) => st.unlocked && st.ground?.length);
+  if (!list.length && !ground) { toast('Gerade gibt es nichts einzusammeln.'); return; }
+  if (list.length) { const r = collectWithFx(list, (p) => scenePosOf(p.uid) || hudPos('#hud-collect')); if (r.ok) for (const p of list) sceneReact(p.uid, 'coin'); }
+  if (ground) {
+    const from = {}; // Bildschirmposition der sichtbaren Bodenbeeren, bevor sie verschwinden
+    for (const st of Object.values(app.state.areas)) for (const g of st.ground || []) from[g.id] = sceneGroundPos(g.id);
+    const r = app.act((s) => A.pickAllGround(s));
+    for (const g of r.picked || []) fly('berry', from[g.id] || hudPos('#hud-collect'), 1, '#hud-bag', berryUrl(g.berry));
+  }
+  haptic('medium');
 }
 
 // „Alle füttern“ (immer in der Kopfzeile): alle hungrigen Pokémon mit Beeren aus dem Beutel versorgen
@@ -178,6 +186,7 @@ function feedAllBerries() {
   haptic('medium');
   const list = CFG.balance.berries.filter((b) => r.used[b.id]).map((b) => `${r.used[b.id]} ${b.name}${r.used[b.id] > 1 ? 'n' : ''}`).join(' und ');
   toast(`${list} an ${r.pokemon} Pokémon verteilt.`);
+  for (const [uid, berry] of r.fed) sceneFeed(uid, berry); // sichtbare Pokémon fressen ihre Beere
   renderHud();
 }
 
@@ -210,10 +219,8 @@ function renderHud() {
   $('#hud-box').replaceChildren(ball, String(free));
   $('#hud-collect').replaceChildren(iconImg('coin', 2), ready ? `+${ready}` : '');
   $('#hud-collect').classList.toggle('dim', !ready);
-  // immer sichtbar; blass, wenn niemand Hunger hat oder keine Beeren da sind; beim ersten Öffnen am Tag pulsiert er
-  $('#hud-feed').classList.toggle('dim', !hungry || !berries);
-  $('#hud-feed').classList.toggle('offer', !!app.feedOffer && !!hungry && !!berries);
-  $('#hud-feed').replaceChildren(berryImg('sinelbeere', 2), hungry ? String(hungry) : ''); // Zahl = hungrige Pokémon (wie beim Münzknopf)
+  // Beeren-Knopf füttert alle; beim ersten Öffnen am Tag pulsiert er, wenn jemand Hunger hat
+  $('#hud-bag').classList.toggle('offer', !!app.feedOffer && !!hungry && !!berries);
 }
 
 function updateSaveState(status, err) {
@@ -243,9 +250,12 @@ function bindChrome() {
   for (const b of document.querySelectorAll('#tabs button')) b.onclick = () => switchTab(b.dataset.tab);
   app.views.add(renderHud);
   setOnLand(renderHud);
-  $('#hud-bag').onclick = openInventory;
+  // Beeren-Knopf: Antippen = alle hungrigen Pokémon füttern, lange drücken = Beerenübersicht
+  let bagHold = 0, bagLong = false;
+  $('#hud-bag').onpointerdown = () => { bagLong = false; clearTimeout(bagHold); bagHold = setTimeout(() => { bagLong = true; haptic('tick'); openInventory(); }, 550); };
+  $('#hud-bag').onpointerup = $('#hud-bag').onpointerleave = $('#hud-bag').onpointercancel = () => clearTimeout(bagHold);
+  $('#hud-bag').onclick = () => { if (!bagLong) feedAllBerries(); };
   $('#hud-collect').onclick = collectAll;
-  $('#hud-feed').onclick = feedAllBerries;
   $('#hud-box').onclick = () => { setFilter('frei'); switchTab('collection'); };
   $('#hud-settings').onclick = () => openSettings({
     onLogout: async () => {

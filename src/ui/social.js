@@ -45,7 +45,7 @@ export class SocialDirector {
   // passendes Paar suchen und Art der Begegnung festlegen
   start() {
     const S = this.scene, B = CFG.social.behavior;
-    const free = [...S.actors.values()].filter((a) => !a.busy && !a.dragging && a.sprites.ready && a.state !== 'sleep');
+    const free = [...S.actors.values()].filter((a) => !a.busy && !a.dragging && a.sprites.ready && a.state !== 'sleep' && a.state !== 'eat');
     if (free.length < 2) return;
     const W = S.bg.naturalWidth;
     const pairs = [];
@@ -75,7 +75,7 @@ export class SocialDirector {
   checkHunt() {
     const S = this.scene, H = CFG.social.hunt;
     if (!H) return;
-    const free = [...S.actors.values()].filter((a) => !a.busy && !a.dragging && a.sprites.ready && a.state !== 'sleep');
+    const free = [...S.actors.values()].filter((a) => !a.busy && !a.dragging && a.sprites.ready && a.state !== 'sleep' && a.state !== 'eat');
     const W = S.bg.naturalWidth, now = performance.now();
     for (let i = 0; i < free.length; i++) for (let j = 0; j < free.length; j++) {
       if (i === j) continue;

@@ -115,6 +115,23 @@ export class AreaScene {
     }
   }
 
+  // Füttern sichtbar machen: Beere liegt vor dem Pokémon, es frisst sie in kleinen Bissen auf
+  feed(uid, berry) {
+    const a = this.actors.get(uid);
+    if (!a || a.dragging) return false;
+    if (a.busy) this.social.finish(a.busy, false); // Fressen hat Vorrang vor einer laufenden Begegnung
+    const s = this.area.spriteScale;
+    a.state = 'eat'; a.t = 0; a.timer = 2.6; a.dir = 0; // schaut nach vorn zur Beere
+    a.food = { berry, x: a.x, y: a.y + 10 * s, t0: this.time, dur: 2.6 };
+    return true;
+  }
+  groundScreenPos(id) {
+    const g = this.ground.find((x) => x.id === id);
+    if (!g) return null;
+    const p = this.groundPos(g);
+    return this.toScreen(p.x, p.y - 8);
+  }
+
   react(uid, kind) {
     const a = this.actors.get(uid);
     if (!a) return;
@@ -136,6 +153,7 @@ export class AreaScene {
         if (d < 1.5) { a.state = 'idle'; a.t = 0; a.timer = rand(2, 6); }
         else { a.dir = dirFromVector(dx, dy); a.x += (dx / d) * speed * dt; a.y += (dy / d) * speed * dt; }
       } else if (a.timer <= 0) {
+        if (a.food) { a.food = null; for (let i = 0; i < 3; i++) this.particles.push({ icon: 'heart', x: a.x + rand(-6, 6), y: a.y - 26, vy: rand(-30, -18), life: 1 }); }
         // Schlafen nach Tageszeit: aktive Pokémon dösen selten und kurz, ruhende oft und lange
         const act = CFG.social.activity, awake = isActiveNow(a.p.dex);
         const tired = a.p.fullness < n.hungryBelow || a.p.satisfaction < 25 ? act.tiredExtra : 0;
@@ -188,7 +206,7 @@ export class AreaScene {
     for (const a of list) {
       if (!a.sprites.ready) continue;
       if (a.dragging) ctx.globalAlpha = 0.85;
-      const anim = { walk: 'Walk', sleep: 'Sleep', hop: 'Hop', idle: 'Idle' }[a.state];
+      const anim = { walk: 'Walk', sleep: 'Sleep', hop: 'Hop', idle: 'Idle', eat: 'Eat' }[a.state];
       const f = frameOf(a.sprites, anim, a.dir, a.t);
       ctx.fillStyle = 'rgba(30,40,20,.28)';
       ctx.beginPath(); ctx.ellipse(a.x, a.y, 9 * s, 3.5 * s, 0, 0, Math.PI * 2); ctx.fill();
@@ -198,6 +216,17 @@ export class AreaScene {
       ctx.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(a.x - w / 2), Math.round(a.y - hgt / 2 - 4 * s - (a.dragging ? 6 * s : 0)), w, hgt);
       ctx.globalAlpha = 1;
       if (a.p.shineUntil && a.p.shineUntil > Date.now()) this.drawShine(a, s);
+    }
+    // Beeren vor den Pokémon, die gerade fressen (liegen vorn, also über dem Sprite): werden in drei Bissen kleiner und verschwinden
+    for (const a of this.actors.values()) {
+      const fd = a.food;
+      if (!fd || a.state !== 'eat') continue;
+      const k = Math.min(1, (this.time - fd.t0) / fd.dur), left = 1 - Math.floor(k * 3.2) / 3;
+      if (left <= 0) continue;
+      const c = berryCanvas(fd.berry), bw = 10 * s * left;
+      ctx.fillStyle = 'rgba(30,40,20,.25)';
+      ctx.beginPath(); ctx.ellipse(fd.x, fd.y + s, 4 * s * left, 1.6 * s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.drawImage(c, Math.round(fd.x - bw / 2), Math.round(fd.y - bw), bw, bw);
     }
     for (const a of list) {
       if (!a.box) continue;

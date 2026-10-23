@@ -433,10 +433,10 @@ body.in-battle #app { visibility: hidden; }
 /* Kopfzeile: Alle einsammeln / Alle füttern */
 .hud-act { cursor: pointer; font-size: 15px; padding: 4px 9px 4px 5px; }
 .hud-act.dim { opacity: .55; }
-/* „Alle füttern“: fester Knopf in der Kopfzeile neben „Alle Münzen sammeln“ */
-#hud-feed { white-space: nowrap; gap: 3px; padding: 4px 8px 4px 6px; }
-#hud-feed.offer { background: #ffe9f0; animation: psy 2s ease-in-out infinite; }
-body.in-battle #hud-feed { display: none; }
+/* Beeren-Knopf (füttert alle): pulsiert beim ersten Öffnen am Tag */
+#hud-bag.offer { background: #ffe9f0; animation: psy 2s ease-in-out infinite; }
+#hud-bag { -webkit-touch-callout: none; user-select: none; }
+
 #hud-collect { padding: 4px 8px 4px 6px; gap: 3px; }
 @media (max-width: 440px) {
   #hud { gap: 5px; padding-left: 8px; padding-right: 8px; }
@@ -661,3 +661,7 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 /* Infozeile über der Kartenleiste ebenfalls mit fester Höhe (Name + bis zu zwei Zeilen Beschreibung) */
 .d-info { height: 50px; min-height: 0; flex: none; box-sizing: border-box; overflow: hidden; align-content: center; gap: 2px 8px; padding: 3px 10px; }
 .d-info small { font-size: 11.5px; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Chaos: pausierte Runde fortsetzen */
+.chaos-resume { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; margin: 8px 0 2px; }
+.chaos-resume small { font-size: 12px; opacity: .9; }

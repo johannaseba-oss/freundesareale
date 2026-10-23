@@ -99,16 +99,16 @@ export function feedAllInventory(s, t) {
   const hungry = () => s.pokemon.some((q) => q.area && q.fullness < 99);
   if (!hungry()) return fail('Alle Pokémon in deinen Arealen sind satt.');
   if (!CFG.balance.berries.some((b) => s.berries[b.id] > 0)) return fail('Keine Beeren im Beutel.');
-  const used = {}, who = new Set();
+  const used = {}, fed = new Map(); // fed: Pokémon -> zuletzt gegebene Beere (für die Fress-Animation)
   for (const b of CFG.balance.berries) {
     while (s.berries[b.id] > 0 && hungry()) {
       const p = s.pokemon.filter((q) => q.area && q.fullness < 99).sort((a, c) => a.fullness - c.fullness)[0];
       if (!giveBerry(s, p, b.id, t).ok) break;
       used[b.id] = (used[b.id] || 0) + 1;
-      who.add(p.uid);
+      fed.set(p.uid, b.id);
     }
   }
-  return { ok: true, used, pokemon: who.size };
+  return { ok: true, used, fed, pokemon: fed.size };
 }
 
 export function assign(s, p, areaId) {
@@ -235,6 +235,17 @@ export function storeBallPositions(s, list) {
 }
 
 // Beere vom Boden eines Areals aufsammeln
+// alle Beeren, die in den Arealen am Boden liegen, auf einmal einsammeln
+export function pickAllGround(s) {
+  const picked = [];
+  for (const [areaId, st] of Object.entries(s.areas)) {
+    if (!st.unlocked || !st.ground?.length) continue;
+    for (const g of st.ground) { s.berries[g.berry] = (s.berries[g.berry] || 0) + 1; picked.push({ areaId, id: g.id, berry: g.berry }); }
+    st.ground = [];
+  }
+  return { ok: picked.length > 0, picked };
+}
+
 export function pickGroundBerry(s, areaId, id) {
   const st = s.areas[areaId], i = (st.ground || []).findIndex((g) => g.id === id);
   if (i < 0) return fail();

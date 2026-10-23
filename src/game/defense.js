@@ -51,7 +51,7 @@ export function abilityText(dex) {
   if (role === 'explosiv') return evolved(dex) ? 'explodiert sofort und trifft alles in der Nähe' : `Mine: explodiert, sobald ein Gegner sie erreicht (${R.explosiv.armSeconds} s scharf machen)`;
   if (role === 'mauer') return 'sehr robust – hält Gegner auf';
   const slow = mv.type === 'Eis' ? ', verlangsamt' : mv.type === 'Elektro' ? ', bremst etwas' : '';
-  return role === 'nahkampf' ? `${mv.name}: starker Hieb aufs Feld davor${slow}` : `${mv.name}: schießt die Spalte hinauf${slow}`;
+  return role === 'nahkampf' ? `${mv.name}: starker Hieb, reicht 2 Felder weit${slow}` : `${mv.name}: schießt die Spalte hinauf${slow}`;
 }
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -245,15 +245,17 @@ export class Defense {
       const fast = this.endless && this.rnd() < D().chaos.fast.chance;
       this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * spread + this.rnd() * 3), dex: this.rollEnemy(), level, col: Math.floor(this.rnd() * D().grid.cols), fast });
     }
-    const Bo = D().chaos.boss;
-    if (this.endless && this.wave + 1 >= (Bo.fromWave || 2)) { // Infinity: ein Boss pro Welle, begleitet von Leibwächtern in den Nachbarspalten
+    const Bo = D().chaos.boss, legendWave = this.tournament && W.final && this.level.legendary;
+    // Chaos (Infinity und Tournament): ab fromWave ein Boss pro Welle, später mit Leibwächtern in den Nachbarspalten.
+    // In der letzten Tournament-Welle mit legendärem Boss kommt dieser statt des normalen Bosses.
+    if (this.chaos && !legendWave && this.wave + 1 >= (Bo.fromWave || 2)) {
       // in den ersten soloWaves Boss-Wellen: höchstens ein Boss gleichzeitig, ohne Leibwächter
       const solo = this.bossWaves < (Bo.soloWaves ?? 0);
       if (!(solo && this.enemies.some((e) => e.boss && e.hp > 0))) {
         this.bossWaves++;
         const at = this.t + spread * (0.35 + this.rnd() * 0.3), col = Math.floor(this.rnd() * D().grid.cols);
         const strong = this.families.map((fm) => fm[fm.length - 1]);
-        this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true });
+        this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true, scale: this.bossScale() });
         const n = solo ? 0 : Bo.guards[0] + Math.floor(this.rnd() * (Bo.guards[1] - Bo.guards[0] + 1));
         for (let g = 0; g < n; g++) {
           const gc = Math.max(0, Math.min(D().grid.cols - 1, col + (g % 2 ? 1 : -1) * Math.ceil((g + 1) / 2)));
@@ -262,14 +264,20 @@ export class Defense {
         }
       }
     }
-    if (this.tournament && W.final && this.level.legendary) { // Tournament: legendäres Pokémon als Boss in der letzten Welle
+    if (legendWave) { // Tournament: legendäres Pokémon als Boss in der letzten Welle
       const legs = CFG.dex.filter((s) => s.rarity === 'legendaer' && bdata(s.dex));
       const fit = legs.filter((s) => s.types.some((t) => this.level.types.includes(t)));
       const pool = fit.length ? fit : legs;
-      this.queue.push({ at: this.t + spread * 0.5, dex: pool[Math.floor(this.rnd() * pool.length)].dex, level: level + 3, col: Math.floor(this.rnd() * D().grid.cols), boss: true });
+      this.queue.push({ at: this.t + spread * 0.5, dex: pool[Math.floor(this.rnd() * pool.length)].dex, level: level + 3, col: Math.floor(this.rnd() * D().grid.cols), boss: true, scale: this.bossScale() });
     }
     this.queue.sort((a, b) => a.at - b.at);
     this.events.push({ type: 'wave', wave: this.wave, final: !!W.final, minRow: this.minRow() });
+  }
+  // Boss-Stärke: im Tournament wächst sie mit dem Level (bossScale [Level 1, Level 100]), im Infinity Run voll
+  bossScale() {
+    if (!this.tournament) return 1;
+    const [a, b] = D().chaos.tournament.bossScale, k = Math.min(1, (this.level.n - 1) / 99);
+    return a + (b - a) * k;
   }
   // Gegnerart passend zur aktuellen Welle: früh Grundformen, später Entwicklungen
   rollEnemy() {
@@ -298,7 +306,7 @@ export class Defense {
     if (q.fast) { e.pace *= D().chaos.fast.pace; e.fast = true; }
     if (q.boss) { // sehr stark: viel mehr KP, bessere Verteidigung, etwas langsamer
       const Bo = D().chaos.boss;
-      e.boss = true; e.maxHp *= Bo.hpMult; e.pace *= Bo.pace;
+      e.boss = true; e.maxHp *= Bo.hpMult * (q.scale || 1); e.pace *= Bo.pace;
       e.stats = e.stats.map((v, i) => (i === 2 || i === 4 ? Math.round(v * Bo.defMult) : v));
       this.events.push({ type: 'boss', e });
     }
@@ -398,7 +406,7 @@ export class Defense {
     if (this.chaos) { // Chaos: alle bigEvery s eine große Welle, dazwischen kleine Gruppen
       const F = D().chaos.flow;
       if (moreWaves && this.t >= this.nextWaveAt) { this.startWave(); this.nextWaveAt = this.t + F.bigEvery; this.nextTrickle = this.t + F.bigSpread; }
-      else if (moreWaves && this.wave >= 0 && this.t >= this.nextTrickle) { this.trickle(); this.nextTrickle = this.t + this.between(F.trickleEvery); }
+      else if (moreWaves && this.wave >= 0 && this.t >= this.nextTrickle) { this.trickle(); this.nextTrickle = this.t + this.between(F.trickleEvery) * (1 - (1 - (F.trickleLate ?? 1)) * (this.waveP ?? 0)); }
     } else if (moreWaves && this.t >= this.nextWaveAt && !this.queue.length) {
       this.startWave();
       const W = this.waves[this.wave];
@@ -545,6 +553,26 @@ export class Defense {
     return p.out || p.dist > 0;
   }
   waveProgress() { return { wave: Math.max(0, this.wave + 1), total: this.endless ? null : this.waves.length }; }
+
+  // ---- Pause & Speichern (Chaos) ----
+  // Kompletter Kampfzustand als JSON: Verweise (Gift-Verursacher, Geschoss-Schütze) werden als Pokémon-Nummer abgelegt
+  snapshot() {
+    const data = {};
+    for (const [k, v] of Object.entries(this)) if (k !== 'rnd' && k !== 'events') data[k] = v;
+    data.enemies = this.enemies.map((e) => (e.poison ? { ...e, poison: { ...e.poison, from: e.poison.from?.id ?? null } } : e));
+    data.projectiles = this.projectiles.map((p) => ({ ...p, from: p.from.id, hits: [...p.hits] }));
+    return JSON.parse(JSON.stringify(data));
+  }
+  static restore(data) {
+    const g = Object.create(Defense.prototype);
+    Object.assign(g, JSON.parse(JSON.stringify(data)));
+    g.rnd = mulberry32((Date.now() ^ (g.nextId * 7919)) >>> 0);
+    g.events = [];
+    const byId = new Map(g.units.map((u) => [u.id, u]));
+    for (const e of g.enemies) if (e.poison) e.poison.from = byId.get(e.poison.from) || { hp: 0 };
+    g.projectiles = g.projectiles.filter((p) => byId.has(p.from)).map((p) => ({ ...p, from: byId.get(p.from), hits: new Set(p.hits) }));
+    return g;
+  }
 }
 
 // Wellen eines Levels: Gegneranzahl steigt, die letzte Welle ist besonders groß

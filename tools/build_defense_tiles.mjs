@@ -11,13 +11,13 @@ const T = 24;
 // [Spalte, Zeile] im Tileset
 // Je Thema eine sichere Rand- und Boden-Kachel; dazu werden alle farblich ähnlichen Kacheln gesucht (kein Wasser o. Ä.)
 const THEMES = {
-  wald: { file: 'dayforest.png', name: 'Wald', wall: [2, 0], floor: [0, 6] },
+  wald: { file: 'dayforest.png', name: 'Wald', wall: [2, 0], floor: [0, 6], exact: true },
   herbst: { file: 'autumn forest.png', name: 'Herbstwald', wall: [1, 1], floor: [10, 3] },
   eis: { file: 'icecave.png', name: 'Eishöhle', wall: [1, 1], floor: [12, 0] },
   nachtwald: { file: 'darkforest.png', name: 'Dunkler Wald', wall: [1, 1], floor: [1, 8] },
   garten: { file: 'Flowergarden.png', name: 'Blumengarten', wall: [3, 0], floor: [0, 5] },
   hoehle: { file: 'darkcave.png', name: 'Felshöhle', wall: [1, 1], floor: [11, 2] },
-  kristall: { file: 'bluecrystalcave.png', name: 'Kristallhöhle', wall: [1, 1], floor: [2, 5] },
+  kristall: { file: 'bluecrystalcave.png', name: 'Kristallhöhle', wall: [1, 1], floor: [2, 5], exact: true },
 };
 // Merkmale einer Kachel: mittlere Farbe + Streuung
 async function features(file) {
@@ -69,7 +69,22 @@ async function seamless(file, seed, max, poolSize, maxDist, base = 'best') {
   console.log(file, 'Naht', chosen.map((c) => c.p.join(',') + ':' + c.self.toFixed(2)).join(' '));
   return chosen.map((c) => c.p);
 }
-for (const th of Object.values(THEMES)) { th.wall = await seamless(th.file, th.wall, 4, 40, 45); th.floor = await seamless(th.file, th.floor, 4, 30, 30, 'seed'); }
+// Wand: wenige nahtlose Kacheln. Boden: genau EINE Kachel (flache, gleichmäßige Fläche) – die nahtloseste
+// unter den Kacheln, die der gewählten Bodenkachel farblich fast gleichen.
+async function flatFloor(file, seed) {
+  const feats = await features(file), ref = feats.find((t) => t.c === seed[0] && t.r === seed[1]);
+  let bestT = null, bs = Infinity;
+  for (const t of feats) {
+    if (dist(t, ref) > 14) continue;
+    const d = await tileData(file, [t.c, t.r]);
+    if (d.some((r) => r.some((q) => q[3] < 250))) continue;
+    const x = { d, inner: inner(d) }, v = fit(x, x);
+    if (v < bs) { bs = v; bestT = [t.c, t.r]; }
+  }
+  console.log(file, 'Boden', bestT.join(','), 'Naht', bs.toFixed(2));
+  return [bestT];
+}
+for (const th of Object.values(THEMES)) { th.wall = await seamless(th.file, th.wall, 3, 40, 45); th.floor = th.exact ? [th.floor] : await flatFloor(th.file, th.floor); } // exact: Bodenkachel von Hand festgelegt (gleichmäßigste Fläche)
 // welches Thema zu welchen Gegner-Typen passt (erster Treffer zählt)
 const BY_TYPE = { Eis: 'eis', Geist: 'nachtwald', Unlicht: 'nachtwald', Psycho: 'kristall', Drache: 'kristall', Gestein: 'hoehle', Boden: 'hoehle', Stahl: 'hoehle', Kampf: 'hoehle', Fee: 'garten', Pflanze: 'garten', Feuer: 'herbst', Käfer: 'wald', Normal: 'wald', Flug: 'herbst', Gift: 'nachtwald', Elektro: 'kristall', Wasser: 'wald' };
 

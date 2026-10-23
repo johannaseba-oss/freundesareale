@@ -142,9 +142,10 @@
     "nahkampf": {
       "name": "Nahkampf",
       "icon": "✊",
-      "range": 1.1,
+      "range": 2.1,
       "cooldown": 1.1,
-      "damageMult": 1.6
+      "damageMult": 1.6,
+      "_range": "Reichweite in Feldern (2 = auch über ein eigenes Pokémon direkt davor hinweg)"
     },
     "fernkampf": {
       "name": "Fernkampf",
@@ -561,10 +562,10 @@
       "levelGap": 2
     },
     "_hinweis2": "Zwei Varianten: Infinity Run (endlos, endless) und Tournament Run (100 Level aus tournament.json). Eigene Pokémon kommen in beiden zufällig aus Pokébällen.",
-    "prepSeconds": 20,
+    "prepSeconds": 10,
     "_prepSeconds": "Countdown vor dem ersten Angriff (Sekunden), währenddessen in Ruhe aufstellen",
     "flow": {
-      "_hinweis": "Gegnerfluss: alle bigEvery s eine große Welle (über bigSpread s verteilt), dazwischen alle trickleEvery s kleine Gruppen von group Gegnern auf einer Spalte, im Abstand groupGap s",
+      "_hinweis": "Gegnerfluss: alle bigEvery s eine große Welle (über bigSpread s verteilt), dazwischen alle trickleEvery s kleine Gruppen von group Gegnern auf einer Spalte, im Abstand groupGap s; trickleLate = Faktor für die Abstände der kleinen Gruppen am Ende eines Levels (kürzer = dichter)",
       "bigEvery": 30,
       "bigSpread": 12,
       "trickleEvery": [
@@ -578,7 +579,8 @@
       "groupGap": [
         0.7,
         1.6
-      ]
+      ],
+      "trickleLate": 0.6
     },
     "lives": {
       "_hinweis": "Leben: start = Extra-Leben zu Beginn. Weitere kauft man im Lauf mit Münzen: prices der Reihe nach, danach jeweils × growth. Erreicht ein Gegner den Trainer, kostet das ein Leben; ohne Leben ist der Run verloren.",
@@ -619,6 +621,13 @@
         "range": 2,
         "width": 3
       }
+    },
+    "tournament": {
+      "_hinweis": "Tournament Run: bossScale = Boss-KP-Faktor (× boss.hpMult) bei Level 1 und Level 100, dazwischen linear",
+      "bossScale": [
+        0.45,
+        1.2
+      ]
     }
   },
   "levelGap": 5,

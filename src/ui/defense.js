@@ -88,7 +88,7 @@ function renderRoadmap(el, back) {
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
     h('p.note', 'Tippe auf das leuchtende Level. Die Punkte zeigen die Typen der Gegner.'),
-    h('button.btn.chaos-btn', { onclick: () => startChaos(el, back) }, '🎲 Chaos-Modus – Pokébälle statt Sterne', app.state.defense?.chaosBest || tourDone() ? h('small.chaos-best', `Infinity-Rekord: Welle ${app.state.defense.chaosBest || 0} · Tournament ${tourDone()}/${CFG.tournament.levels.length}`) : null),
+    h('button.btn.chaos-btn', { onclick: () => startChaos(el, back) }, '🎲 Chaos-Modus – Pokébälle statt Sterne', suspended() ? h('small.chaos-best', '⏸ Pausierte Runde wartet') : null, app.state.defense?.chaosBest || tourDone() ? h('small.chaos-best', `Infinity-Rekord: Welle ${app.state.defense.chaosBest || 0} · Tournament ${tourDone()}/${CFG.tournament.levels.length}`) : null),
     roadMap(L, done, (lv) => { chosen = lv; renderDefenseSetup(el, back); el.scrollTop = 0; })));
 }
 // Tournament Run: 100 Level mit Gegner-Thema, eigene Pokémon zufällig aus Pokébällen
@@ -159,18 +159,68 @@ function offerLoaner(el, back) {
 
 // Chaos-Modus: Pokébälle statt Sterne – Variante wählen (Infinity Run oder Tournament Run)
 function startChaos(el, back) {
-  const best = app.state.defense?.chaosBest;
+  const best = app.state.defense?.chaosBest, sus = suspended();
   modal((m, close) => {
     m.append(h('h3', '🎲 Chaos-Modus'),
       h('p.note', 'Statt Sternen fallen Pokébälle! Jeder Ball enthält ein zufälliges Pokémon, das du genau einmal einsetzen kannst – danach kommen andere. Einsetzen kostet nichts.'),
+      sus ? h('button.btn.primary.big.chaos-resume', { onclick: () => { close(); resumeChaos(); } }, '▶ Pausierte Runde fortsetzen', h('small', suspendedLabel(sus))) : null,
       h('div.chaos-modes',
-        h('button.btn.chaos-mode', { onclick: () => { close(); startInfinity(); } },
+        h('button.btn.chaos-mode', { onclick: async () => { close(); if (await dropSuspended()) startInfinity(); } },
           h('b', '∞ Infinity Run'), h('small', `Endlos, Gegner und eigene Pokémon völlig zufällig.${best ? ` Rekord: Welle ${best}` : ''}`)),
-        h('button.btn.chaos-mode', { onclick: () => { close(); tourView = true; if (el) renderDefenseSetup(el, back); } },
+        h('button.btn.chaos-mode', { onclick: async () => { close(); if (!(await dropSuspended())) return; tourView = true; if (el) renderDefenseSetup(el, back); } },
           h('b', '🏆 Tournament Run'), h('small', `${CFG.tournament.levels.length} Level mit Gegner-Themen · ${tourDone()}/${CFG.tournament.levels.length} geschafft`))),
       h('div.row', h('button.btn', { onclick: close }, 'Abbrechen')));
   });
 }
+// ---- Pause & Speichern: laufende Chaos-Runde in den Spielstand legen und später fortsetzen ----
+const suspended = () => app.state?.defense?.suspended || null;
+const suspendedLabel = (sus) => (sus.game.tournament ? `Tournament Level ${sus.game.level.n}` : 'Infinity Run') + ` · Welle ${Math.max(1, sus.game.wave + 1)}`;
+function saveSuspended() {
+  if (!game?.chaos || game.over) return;
+  const data = { game: game.snapshot(), best: chaosBestBefore, theme: ui?.themeId, savedAt: Date.now() };
+  app.act((s) => { s.defense ||= {}; s.defense.suspended = data; return { ok: true }; }, true);
+}
+function clearSuspended() { if (suspended()) app.act((s) => { delete s.defense.suspended; return { ok: true }; }, true); }
+// neue Runde starten, obwohl eine pausiert ist: erst nachfragen, dann verwerfen
+async function dropSuspended() {
+  const sus = suspended();
+  if (!sus) return true;
+  if (!(await confirmDialog(`Du hast noch eine pausierte Runde (${suspendedLabel(sus)}). Eine neue Runde verwirft sie. Trotzdem neu starten?`, 'Neu starten'))) return false;
+  clearSuspended();
+  return true;
+}
+function resumeChaos() {
+  const sus = suspended();
+  if (!sus) return;
+  game = Defense.restore(sus.game);
+  chosen = game.level; tourView = game.tournament; chaosBestBefore = sus.best || 0;
+  openField(sus.theme);
+  ui.paused = false;
+  message('Weiter geht’s!');
+}
+// Pause-Menü: Spiel steht still; weiter, oder speichern und verlassen
+function pauseMenu() {
+  if (!game || game.over || !ui) return;
+  ui.paused = true;
+  modal((m, close) => {
+    const resume = () => { close(); if (ui) ui.paused = false; };
+    m.append(h('h3', '⏸ Pause'),
+      h('p.note', 'Die Runde ist angehalten. Beim Verlassen wird sie gespeichert – im Chaos-Menü kannst du sie später genau hier fortsetzen.'),
+      h('div.row', h('button.btn', { onclick: () => { close(); saveSuspended(); leaveSuspended(); } }, 'Speichern & verlassen'),
+        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')));
+    $('#modal').onclick = (e) => { if (e.target === $('#modal')) resume(); };
+  });
+}
+function leaveSuspended() {
+  closeField(); game = null; chosen = null; app.refresh();
+  document.dispatchEvent(new Event('defense-closed'));
+  toast('Runde gespeichert – im Chaos-Modus kannst du sie fortsetzen.');
+}
+// App geht in den Hintergrund: Chaos-Runde anhalten und sichern (nichts geht verloren, wenn die App beendet wird)
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && game?.chaos && ui && !game.over) { saveSuspended(); if (!ui.paused) pauseMenu(); }
+});
+
 // Infinity Run: Gegner aller Typen, endlose Wellen
 function startInfinity() {
   chosen = { n: 0, chaos: true, types: [...D().themes.types], enemyLevel: D().chaos.endless.baseLevel, countMult: D().chaos.countMult, finalStage: 3, waves: 0 };
@@ -180,7 +230,7 @@ function startInfinity() {
 }
 
 // ================= Spielfeld =================
-function openField() {
+function openField(themeId = null) {
   closeField();
   const canvas = h('canvas.arena-canvas');
   const cards = h('div.d-cards');
@@ -189,7 +239,8 @@ function openField() {
   const msg = h('div.b-msg');
   // Chaos: Leben (antippen = weiteres Leben mit Münzen kaufen)
   const livesEl = game.chaos ? h('button.b-btn.d-lives', { onclick: buyLife, title: 'Leben kaufen' }) : null;
-  const top = h('div.b-top', starsEl, waveEl, livesEl, h('span.b-weather.d-weather'), h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
+  const pauseBtn = game.chaos ? h('button.b-btn.d-pause', { onclick: pauseMenu, title: 'Pause' }, '⏸') : null;
+  const top = h('div.b-top', starsEl, waveEl, livesEl, h('span.b-weather.d-weather'), pauseBtn, h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
   // Normale Level: Vorbereitung ohne Zeitlimit, erst mit „Los!“ beginnen Sternenregen und Wellen. Chaos: Countdown.
   const go = game.chaos ? h('div.d-countdown') : h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message('Los! Sammle Sterne und verteidige deinen Trainer.'); haptic('medium'); } }, 'Los!');
   const info = h('div.d-info');
@@ -203,7 +254,7 @@ function openField() {
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`; ui.trainer = tr;
   // Feld-Thema: passend zu den Gegner-Typen (Chaos: zufällig)
   const TH = CFG.defenseThemes, ids = Object.keys(TH.themes);
-  ui.themeId = game.chaos ? ids[Math.floor(Math.random() * ids.length)] : TH.byType[game.theme[0]] || 'wald';
+  ui.themeId = themeId && TH.themes[themeId] ? themeId : game.chaos ? ids[Math.floor(Math.random() * ids.length)] : TH.byType[game.theme[0]] || 'wald';
   const ti = new Image(); ti.src = `${base}art/defense/${ui.themeId}.png`; ti.onload = () => { ui.bg = null; }; ui.tiles = ti;
   ui.ro = new ResizeObserver(() => layout()); ui.ro.observe(canvas.parentElement);
   canvas.addEventListener('pointerdown', onField);
@@ -211,7 +262,7 @@ function openField() {
   buildCards();
   layout();
   renderWeatherChip();
-  message(game.chaos ? 'Stell dein Team auf – der Countdown läuft!' : 'Stell in Ruhe dein erstes Team auf – dann „Los!“');
+  if (!game.started) message(game.chaos ? 'Stell dein Team auf – der Countdown läuft!' : 'Stell in Ruhe dein erstes Team auf – dann „Los!“');
   const loop = (t) => {
     if (!ui) return;
     const dt = Math.min(0.1, (t - ui.last) / 1000); ui.last = t;
@@ -219,7 +270,7 @@ function openField() {
     ui.raf = requestAnimationFrame(loop);
   };
   ui.raf = requestAnimationFrame(loop);
-  if (import.meta.env.DEV) app.defense = { get g() { return game; }, step: (dt) => frame(dt) };
+  if (import.meta.env.DEV) app.defense = { get g() { return game; }, step: (dt) => frame(dt), theme: (id) => { ui.themeId = id; const t = new Image(); t.src = `${base}art/defense/${id}.png`; t.onload = () => { ui.bg = null; }; ui.tiles = t; } };
 }
 
 function closeField() {
@@ -675,7 +726,9 @@ function drawBone(x, [X, Y], T, spin) {
 }
 
 // Hintergrund-Bild für das aktuelle Thema: überall Rand-Kacheln, im Feld Boden-Kacheln, feine Rasterlinien
-// Gezeichnet direkt in Gerätepixeln: jede Kachel ist genau D = 24 × m Pixel groß und sitzt lückenlos am Raster
+// Gezeichnet direkt in Gerätepixeln: jede Kachel ist genau Dp = 24 × m Pixel groß und sitzt lückenlos am Raster.
+// Spielfläche (und Seitenfelder) = eine flache Bodenkachel, außen nahtlose Wandkacheln. Wo Boden auf Wand trifft,
+// entsteht ein Rand aus Pixel-Kontur, heller Wandkante und Schlagschatten – auch an Ecken und Seitenfeldern sauber.
 function buildBackground() {
   const U = ui, G = D().grid, th = CFG.defenseThemes.themes[U.themeId], S = 24;
   const c = document.createElement('canvas');
@@ -683,37 +736,49 @@ function buildBackground() {
   const x = c.getContext('2d');
   x.imageSmoothingEnabled = false;
   const Dp = Math.round(U.tile * U.dpr), ox = Math.round(U.ox * U.dpr), oy = Math.round(U.oy * U.dpr);
+  const px = Math.max(1, Math.round(Dp / 24)); // ein Pixel der Kachelgrafik
   const X = (col) => ox + col * Dp, Y = (r) => oy + r * Dp;
   const hash = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 997;
   const SR = game.chaos ? D().chaos.side.rows : null; // Chaos: Seitenfelder links und rechts
   const isSide = (col, r) => SR && (col === -1 || col === G.cols) && r >= SR[0] && r <= SR[1];
-  const c0 = Math.floor(-ox / Dp) - 1, r0 = Math.floor(-oy / Dp) - 1;
-  for (let r = r0; Y(r) < c.height; r++) for (let col = c0; X(col) < c.width; col++) {
-    const floor = (col >= 0 && col < G.cols && r >= 0 && r < G.rows + 2) || isSide(col, r);
-    const i = floor ? th.wall + (hash(col + 3, r + 7) % th.floor) : hash(col, r) % th.wall;
+  const isFloor = (col, r) => (col >= 0 && col < G.cols && r >= 0 && r < G.rows + 2) || isSide(col, r);
+  const c0 = Math.floor(-ox / Dp) - 1, r0 = Math.floor(-oy / Dp) - 1, c1 = Math.ceil((c.width - ox) / Dp), r1 = Math.ceil((c.height - oy) / Dp);
+  for (let r = r0; r <= r1; r++) for (let col = c0; col <= c1; col++) {
+    const i = isFloor(col, r) ? th.wall : hash(col, r) % th.wall; // Boden: genau eine Kachel → flache Fläche
     x.drawImage(U.tiles, i * S, 0, S, S, X(col), Y(r), Dp, Dp);
   }
-  const line = Math.max(1, Math.round(U.dpr));
+  // Rand in eigenen Ebenen (so verdoppelt sich die Deckkraft an Ecken nicht)
+  const layer = () => { const l = document.createElement('canvas'); l.width = c.width; l.height = c.height; return l; };
+  const shade = layer(), line = layer(), rim = layer(), sx = shade.getContext('2d'), lx = line.getContext('2d'), rx = rim.getContext('2d');
+  sx.fillStyle = lx.fillStyle = '#000'; rx.fillStyle = '#fff';
+  for (let r = r0; r <= r1; r++) for (let col = c0; col <= c1; col++) {
+    if (!isFloor(col, r)) continue;
+    const L = X(col), T0 = Y(r);
+    if (!isFloor(col, r - 1)) { lx.fillRect(L, T0, Dp, px); sx.fillRect(L, T0, Dp, px * 5); rx.fillRect(L, T0 - px * 2, Dp, px); } // oben: Wand wirft Schatten
+    if (!isFloor(col - 1, r)) { lx.fillRect(L, T0, px, Dp); sx.fillRect(L, T0, px * 3, Dp); rx.fillRect(L - px * 2, T0, px, Dp); }
+    if (!isFloor(col + 1, r)) { lx.fillRect(L + Dp - px, T0, px, Dp); sx.fillRect(L + Dp - px * 2, T0, px * 2, Dp); rx.fillRect(L + Dp + px, T0, px, Dp); }
+    if (!isFloor(col, r + 1)) { lx.fillRect(L, T0 + Dp - px, Dp, px); rx.fillRect(L, T0 + Dp + px, Dp, px); }
+  }
+  x.globalAlpha = 0.22; x.drawImage(shade, 0, 0);
+  x.globalAlpha = 0.18; x.drawImage(rim, 0, 0);
+  x.globalAlpha = 0.55; x.drawImage(line, 0, 0);
+  x.globalAlpha = 1;
+  const ln = Math.max(1, Math.round(U.dpr));
   // Rasterlinien im Hauptfeld
   x.fillStyle = 'rgba(0,0,0,.12)';
-  for (let col = 1; col < G.cols; col++) x.fillRect(X(col), Y(0), line, G.rows * Dp);
-  for (let r = 1; r < G.rows; r++) x.fillRect(X(0), Y(r), G.cols * Dp, line);
-  if (SR) { // Seitenfelder: gleiches Raster, etwas abgesenkt (dunkler), mit Kante – erkennbar außerhalb des Hauptfelds
-    const h = (SR[1] - SR[0] + 1) * Dp;
+  for (let col = 1; col < G.cols; col++) x.fillRect(X(col), Y(0), ln, G.rows * Dp);
+  for (let r = 1; r < G.rows; r++) x.fillRect(X(0), Y(r), G.cols * Dp, ln);
+  if (SR) { // Seitenfelder: gleiches Raster, etwas abgesenkt – erkennbar außerhalb des Hauptfelds
     for (const col of [-1, G.cols]) {
-      x.fillStyle = 'rgba(20,12,8,.16)'; x.fillRect(X(col), Y(SR[0]), Dp, h);
-      // jedes Seitenfeld als eigene Rasterkachel: dunkle Fuge und helle Innenkante
+      x.fillStyle = 'rgba(20,12,8,.16)'; x.fillRect(X(col), Y(SR[0]), Dp, (SR[1] - SR[0] + 1) * Dp);
       for (let r = SR[0]; r <= SR[1]; r++) {
-        x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(X(col), Y(r), Dp, line); x.fillRect(X(col), Y(r), line, Dp); x.fillRect(X(col) + Dp - line, Y(r), line, Dp);
-        x.fillStyle = 'rgba(255,255,255,.14)'; x.fillRect(X(col) + line, Y(r) + line, Dp - line * 2, line); x.fillRect(X(col) + line, Y(r) + line, line, Dp - line * 2);
+        x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(X(col), Y(r), Dp, ln); x.fillRect(X(col), Y(r), ln, Dp); x.fillRect(X(col) + Dp - ln, Y(r), ln, Dp);
+        x.fillStyle = 'rgba(255,255,255,.14)'; x.fillRect(X(col) + ln, Y(r) + ln, Dp - ln * 2, ln); x.fillRect(X(col) + ln, Y(r) + ln, ln, Dp - ln * 2);
       }
-      x.fillStyle = 'rgba(255,255,255,.35)'; x.fillRect(X(col), Y(SR[0]), Dp, line * 2); // Lichtkante oben
-      x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(X(col), Y(SR[1] + 1) - line * 2, Dp, line * 2); // Schattenkante unten
-      x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(col < 0 ? X(col) : X(col + 1) - line * 2, Y(SR[0]), line * 2, h); // Außenkante
     }
+    // Schatten zwischen Hauptfeld und Seitenfeldern
+    x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(X(0) - ln * 2, Y(SR[0]), ln * 2, (SR[1] - SR[0] + 1) * Dp); x.fillRect(X(G.cols), Y(SR[0]), ln * 2, (SR[1] - SR[0] + 1) * Dp);
   }
-  // Schatten am Rand des Hauptfelds (trennt es von Rand und Seitenfeldern)
-  x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(X(0) - line * 2, Y(0), line * 2, Math.round((G.rows + 1.1) * Dp)); x.fillRect(X(G.cols), Y(0), line * 2, Math.round((G.rows + 1.1) * Dp));
   return c;
 }
 
@@ -866,6 +931,7 @@ function end() {
   const lv = chosen, tour = game.tournament, infinity = game.endless;
   const next = tour ? CFG.tournament.levels.find((x) => x.n === lv.n + 1) : game.chaos ? null : levelsList().find((x) => x.n === lv.n + 1);
   const reached = game.wave + 1, best = chaosBestBefore;
+  if (game.chaos) clearSuspended();
   if (infinity) saveChaosBest(reached);
   if (won && tour) app.act((s) => { s.defense ||= {}; s.defense.tournament = Math.max(s.defense.tournament || 0, lv.n); return { ok: true }; }, true);
   if (won && !game.chaos) app.act((s) => { s.defense ||= {}; s.defense.cleared = Math.max(s.defense.cleared || 0, lv.n); s.stats.defenseCleared = s.defense.cleared; return { ok: true }; }, true);

@@ -29,9 +29,9 @@ for (let n = 1; n <= 100; n++) {
     n,
     types,
     mixed,
-    waves: 4 + Math.floor(n / 12),
+    waves: 7 + Math.floor(n / 7),
     enemyLevel: Math.round(8 + n * 0.65),
-    countMult: +(0.6 + n * 0.01).toFixed(2),
+    countMult: +(0.7 + n * 0.012).toFixed(2),
     finalStage: n < 15 ? 2 : 3,
     legendary: (n >= 30 && n % 10 === 0) || (n >= 70 && n % 5 === 0), // legendärer Boss in der letzten Welle
   });

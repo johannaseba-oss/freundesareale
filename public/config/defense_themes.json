@@ -4,37 +4,37 @@
   "wald": {
    "name": "Wald",
    "wall": 2,
-   "floor": 4
+   "floor": 1
   },
   "herbst": {
    "name": "Herbstwald",
    "wall": 2,
-   "floor": 4
+   "floor": 1
   },
   "eis": {
    "name": "Eishöhle",
    "wall": 1,
-   "floor": 3
+   "floor": 1
   },
   "nachtwald": {
    "name": "Dunkler Wald",
    "wall": 1,
-   "floor": 4
+   "floor": 1
   },
   "garten": {
    "name": "Blumengarten",
    "wall": 2,
-   "floor": 4
+   "floor": 1
   },
   "hoehle": {
    "name": "Felshöhle",
    "wall": 1,
-   "floor": 4
+   "floor": 1
   },
   "kristall": {
    "name": "Kristallhöhle",
-   "wall": 4,
-   "floor": 4
+   "wall": 3,
+   "floor": 1
   }
  },
  "byType": {
