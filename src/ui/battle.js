@@ -8,6 +8,7 @@ import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconImg } from '../gfx/icons.js';
 import { $, h, toast, modal, confirmDialog } from './dom.js';
 import { renderDefenseSetup } from './defense.js';
+import { renderRouteSetup } from './route.js';
 import { teamPicker } from './teampick.js';
 import { drawWeather } from './weatherfx.js';
 import { sfx, setMusic } from '../audio.js';
@@ -50,10 +51,12 @@ export function renderBattleSetup() {
   if (mode === 'menu') {
     el.replaceChildren(h('div.bs', h('div.bs-head', h('h2', 'Kampf')),
       h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
+      h('button.mode-card', { onclick: () => { mode = 'route'; renderBattleSetup(); } }, h('b', '🛤 Route'), h('small', 'Tower Defense mit fester Strecke: Pokémon auf Bauplätze setzen, EP verdienen und dauerhaft trainieren.')),
       h('button.mode-card', { onclick: () => { mode = 'arena'; step = 'opponent'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.'))));
     return;
   }
   if (mode === 'defense') { renderDefenseSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
+  if (mode === 'route') { renderRouteSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   const mons = owned();
   const N = B().teamSize;
   const back = (fn) => h('button.btn.small.mode-back', { onclick: fn }, '‹ Zurück');

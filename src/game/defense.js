@@ -658,6 +658,25 @@ export function loanerTeam(rnd = Math.random) {
   return out.map((dex, i) => fromCpu(dex, { id: 'leih' + Math.floor(rnd() * 1e9), ivs: [5, 25], evs: 0 }, i));
 }
 
+// Empfohlenes, ausgewogenes Team: 2 Sternensammler, 1 Mauer, 1 Mine (falls vorhanden), dazu die stärksten Kämpfer
+// gegen die Gegner-Typen – gemischt aus Nah- und Fernkampf. mons: eigene Pokémon, theme: Gegner-Typen.
+export function recommendTeam(mons, theme, N = D().teamSize) {
+  const R = D().teamRecommend || { producers: 2, walls: 1, mines: 1 };
+  const power = (p) => { const mv = moveOf(bdata(p.dex).move); const eff = Math.max(...theme.map((t) => effectiveness(mv.type, [t]))); return eff * (mv.power || 40) * (1 + (p.level || 1) / 50) * Math.sqrt(bst(p.dex)); };
+  const by = (role) => mons.filter((p) => roleOf(p.dex) === role).sort((a, b) => bst(b.dex) - bst(a.dex));
+  const out = [], seen = new Set();
+  const add = (p) => { if (p && out.length < N && !seen.has(p.dex)) { out.push(p); seen.add(p.dex); } }; // keine doppelte Art
+  by('produzent').slice(0, R.producers).forEach(add);
+  by('mauer').slice(0, R.walls).forEach(add);
+  by('explosiv').slice(0, R.mines).forEach(add);
+  const fighters = mons.filter((p) => ['nahkampf', 'fernkampf'].includes(roleOf(p.dex))).sort((a, b) => power(b) - power(a));
+  // abwechselnd Fern- und Nahkampf, solange beide da sind
+  const ranged = fighters.filter((p) => roleOf(p.dex) === 'fernkampf'), melee = fighters.filter((p) => roleOf(p.dex) === 'nahkampf');
+  while (out.length < N && (ranged.length || melee.length)) { add(ranged.shift()); add(melee.shift()); }
+  for (const p of [...mons].sort((a, b) => power(b) - power(a))) add(p); // auffüllen
+  return out.map((p) => p.uid);
+}
+
 // Angekündigte Gegner-Typen einer Runde
 export function rollTheme(rnd = Math.random) {
   const th = D().themes, list = [...th.types], out = [];

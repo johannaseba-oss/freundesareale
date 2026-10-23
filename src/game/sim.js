@@ -94,7 +94,7 @@ function stepPokemon(p, t, dtH, m, fit, social, suits) {
 // Nur Pokémon, die in einem Areal leben, verändern sich. Pokémon in der Sammlung (ohne Areal) ruhen.
 // Level: ein Level pro vollem Tag, den das Pokémon in einem für seinen Typ geeigneten Areal verbracht hat
 export function updateLevel(p) {
-  const target = Math.min(CFG.balance.level.max, 1 + Math.floor((p.levelMs || 0) / (24 * HOUR)));
+  const target = Math.min(CFG.balance.level.max, 1 + Math.floor((p.levelMs || 0) / (24 * HOUR)) + (p.trainLevels || 0)); // + Route-Training
   if (target > p.level) p.levelUps = (p.levelUps || 0) + (target - p.level);
   p.level = target;
 }

@@ -111,6 +111,25 @@ export function feedAllInventory(s, t) {
   return { ok: true, used, fed, pokemon: fed.size };
 }
 
+// ---- Route: EP-Konto und dauerhaftes Training ----
+export function addRouteEp(s, n) { s.route ||= { ep: 0, cleared: 0 }; s.route.ep += Math.max(0, Math.round(n)); return { ok: true }; }
+export function routeCleared(s, n) { s.route ||= { ep: 0, cleared: 0 }; const first = n > (s.route.cleared || 0); s.route.cleared = Math.max(s.route.cleared || 0, n); return { ok: true, first }; }
+// +1 Level gegen EP: Kosten steigen mit dem Level, höchstens dailyPerPokemon Aufstiege pro Pokémon und Tag
+export function trainLevel(s, p, t, cost, dayKey) {
+  const U = CFG.route.upgrade;
+  s.route ||= { ep: 0, cleared: 0 };
+  if (p.level >= CFG.balance.level.max) return fail('Schon auf dem Höchstlevel.');
+  if (s.route.day !== dayKey) { s.route.day = dayKey; s.route.today = {}; }
+  const done = s.route.today[p.uid] || 0;
+  if (done >= U.dailyPerPokemon) return fail(`Heute schon ${U.dailyPerPokemon}× trainiert – morgen geht es weiter.`);
+  if (s.route.ep < cost) return fail(`Zu wenig EP (${cost} nötig, du hast ${s.route.ep}).`);
+  s.route.ep -= cost;
+  s.route.today[p.uid] = done + 1;
+  p.trainLevels = (p.trainLevels || 0) + 1;
+  p.level = Math.min(CFG.balance.level.max, p.level + 1);
+  return { ok: true, level: p.level };
+}
+
 export function assign(s, p, areaId) {
   if (areaId) {
     if (!s.areas[areaId]?.unlocked) return fail('Dieses Areal ist noch nicht freigeschaltet.');

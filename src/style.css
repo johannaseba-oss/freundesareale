@@ -665,3 +665,24 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 /* Chaos: pausierte Runde fortsetzen */
 .chaos-resume { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; margin: 8px 0 2px; }
 .chaos-resume small { font-size: 12px; opacity: .9; }
+
+/* Teamauswahl mit Empfehlung */
+.bs-tools { display: flex; gap: 6px; margin: 4px 0 8px; position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 6px 0; }
+.bs-tools .btn { flex: 1; }
+
+/* Route: Levelauswahl, Teamleiste unten */
+.route-levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.route-lv { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 4px; border: 3px solid var(--line); border-radius: 12px; background: var(--paper); font: inherit; cursor: pointer; }
+.route-lv b { font-size: 18px; } .route-lv small { font-size: 11px; color: var(--ink-soft); }
+.route-lv.done { background: #ffe9a8; } .route-lv.next { background: var(--green); color: #fff; } .route-lv.next small { color: #eafbe0; } .route-lv.locked { opacity: .5; }
+.route-shape { background: #6a5acd; color: #fff; }
+.r-bar { display: flex; gap: 5px; align-items: center; padding: 6px 8px calc(8px + var(--safe-b)); background: rgba(255, 251, 234, .95); border-top: var(--px) solid var(--line); overflow-x: auto; height: calc(84px + var(--safe-b)); box-sizing: border-box; flex: none; }
+.r-mon { position: relative; flex: none; width: 54px; display: flex; flex-direction: column; align-items: center; padding: 3px; border: 3px solid var(--line); border-radius: 10px; background: var(--paper); font: inherit; cursor: pointer; }
+.r-mon img { width: 40px; height: 40px; image-rendering: pixelated; }
+.r-mon small { font-size: 11px; font-weight: 600; }
+.r-mon .r-shape { position: absolute; top: -2px; right: -2px; background: #6a5acd; color: #fff; border-radius: 999px; font-size: 11px; width: 18px; height: 18px; line-height: 18px; text-align: center; }
+.r-mon.sel { transform: translateY(-6px); box-shadow: 0 0 0 3px #fff, 0 5px 0 rgba(74, 59, 51, .35); }
+.r-mon.placed { opacity: .4; }
+.r-count { margin-left: auto; font-weight: 700; padding: 0 6px; }
+.r-stat { font-weight: 700; padding: 0 6px; white-space: nowrap; }
+.route .d-go { top: auto; bottom: 10px; transform: translateX(-50%); }

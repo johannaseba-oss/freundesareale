@@ -2,7 +2,7 @@
 // dann das vertikale Spielfeld: Sterne einsammeln, Karten antippen und Pokémon auf das untere Feld setzen.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
-import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam, abilityOf, tempoLabel } from '../game/defense.js';
+import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam, abilityOf, tempoLabel, recommendTeam } from '../game/defense.js';
 import { ballCanvas, ballSprite } from '../gfx/balls.js';
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
@@ -47,13 +47,14 @@ export function renderDefenseSetup(el, back) {
   const N = D().teamSize;
   // Rolle als farbiges Etikett, Kosten als schlichte Zahl in der Ecke (kein Stern – sonst sieht alles nach Sternensammler aus)
   const hint = (p) => [roleTag(roleOf(p.dex)), h('span.d-price', String(costOf(p.dex)))];
-  const picker = teamPicker({ mons, N, hint, onFull: (uids) => confirmTeam(uids, () => picker.clear()) });
+  // vom Computer empfohlenes, ausgewogenes Team ist schon ausgewählt – frei anpassbar
+  const picker = teamPicker({ mons, N, hint, initial: recommendTeam(mons, theme, N), onFull: (uids) => confirmTeam(uids) });
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: () => { chosen = null; renderDefenseSetup(el, back); } }, '‹ Roadmap'),
     h('div.bs-head', h('h2', `★ Level ${chosen.n}`), picker.count),
     h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', theme.map((t) => typeChip(t))), h('small', ` · ${chosen.waves} Wellen`)),
-    h('p.note', `Tippe ${N} Pokémon an. Die Zahl in der Ecke sind die Sternenkosten. Nur ★ Sammler erzeugen Sterne.`),
-    picker.grid));
+    h('p.note', `Empfohlenes Team ist ausgewählt – antippen zum Tauschen. Die Zahl in der Ecke sind die Sternenkosten. Nur ★ Sammler erzeugen Sterne.`),
+    picker.tools, picker.grid));
 }
 
 // Roadmap: alle Level als Weg; geschaffte golden, das nächste leuchtet, spätere gesperrt
@@ -89,7 +90,7 @@ function renderRoadmap(el, back) {
     roadMap(L, done, (lv) => { chosen = lv; renderDefenseSetup(el, back); el.scrollTop = 0; })));
 }
 // Bestätigung mit Rollen, Kosten und Fähigkeit – dann geht es aufs Feld
-function confirmTeam(uids, reset) {
+function confirmTeam(uids) {
   pick = uids;
   modal((el, close) => {
     el.append(h('h3', 'Dein PokeDefense-Team'),
@@ -100,7 +101,7 @@ function confirmTeam(uids, reset) {
           h('div', h('b', p.nick || species(p.dex).name), h('small', `${D().roles[roleOf(p.dex)].icon} ${abilityText(p.dex)}`)),
           h('span.d-price.inline', String(costOf(p.dex))));
       })),
-      h('div.row', h('button.btn', { onclick: () => { close(); reset(); } }, 'Neu wählen'), h('button.btn.primary.big', { onclick: () => { close(); start(); } }, 'Los!')));
+      h('div.row', h('button.btn', { onclick: close }, 'Anpassen'), h('button.btn.primary.big', { onclick: () => { close(); start(); } }, 'Los!')));
   });
 }
 

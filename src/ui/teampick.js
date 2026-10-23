@@ -1,5 +1,6 @@
-// Gemeinsame Teamauswahl (Arena, PokeDefense): startet leer, Antippen nummeriert und rahmt das Pokémon ein,
-// beim letzten Platz öffnet sich die Bestätigung. Karten werden nur aktualisiert, nicht neu gebaut (bleibt flüssig).
+// Gemeinsame Teamauswahl (Arena, PokeDefense, Route): startet leer oder mit einer Empfehlung (initial), Antippen
+// nummeriert und rahmt das Pokémon ein; beim letzten Platz bzw. mit „Weiter“ öffnet sich die Bestätigung.
+// Karten werden nur aktualisiert, nicht neu gebaut (bleibt flüssig).
 import { species } from '../config.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import { typeChip } from '../game/types.js';
@@ -7,8 +8,9 @@ import { h, toast } from './dom.js';
 import { haptic } from '../haptics.js';
 
 // mons: Pokémon-Liste; N: Teamgröße; hint(p): kleine Zusatzinfo (Attacke/Rolle); onFull(uids): Team vollständig
-export function teamPicker({ mons, N, hint, onFull }) {
-  const sel = [];
+// initial: vorausgewählte uids (Empfehlung) – dann gibt es die Leiste mit „Empfehlung“, „Leeren“ und „Weiter“
+export function teamPicker({ mons, N, hint, onFull, initial = null }) {
+  const sel = initial ? [...initial] : [];
   const count = h('span.bs-count');
   const cards = new Map();
   const refresh = () => {
@@ -39,6 +41,11 @@ export function teamPicker({ mons, N, hint, onFull }) {
     cards.set(p.uid, el);
     return el;
   }));
+  const set = (list) => { sel.length = 0; sel.push(...list); refresh(); };
+  const tools = initial ? h('div.bs-tools',
+    h('button.btn.small', { onclick: () => { set(initial); haptic('tick'); } }, '✦ Empfehlung'),
+    h('button.btn.small', { onclick: () => { set([]); haptic('tick'); } }, 'Leeren'),
+    h('button.btn.small.primary', { onclick: () => { if (sel.length === N || (sel.length && sel.length >= Math.min(N, mons.length))) onFull([...sel]); else toast(`Wähle ${N} Pokémon.`); } }, 'Weiter ›')) : null;
   refresh();
-  return { count, grid, sel, clear: () => { sel.length = 0; refresh(); } };
+  return { count, grid, sel, tools, clear: () => set([]) };
 }

@@ -1,0 +1,47 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Route-Balancetest</title>
+<pre id="out">läuft …</pre>
+<script type="module">
+// Balancetest (nur Entwicklung): ein Bot spielt Route-Level mit zufälligen Teams eines festen Levels.
+// Aufruf im Dev-Server: http://localhost:5190/tools/route_test.html?n=30&levels=1,5,10,20,30&lv=10   (&cfg={"enemy.hpMult":2} überschreibt Werte)
+import { loadConfig, CFG } from '/src/config.js';
+import { Route, routeLevels, maxUnits } from '/src/game/route.js';
+import { canBattle, fromCpu } from '/src/game/battle.js';
+import { mulberry32 } from '/src/rng.js';
+await loadConfig();
+const qs = new URLSearchParams(location.search);
+for (const [k, v] of Object.entries(JSON.parse(qs.get('cfg') || '{}'))) { const p = k.split('.'); let o = CFG.route; while (p.length > 1) o = o[p.shift()]; o[p[0]] = v; }
+const N = +(qs.get('n') || 30), LV = +(qs.get('lv') || 10), rnd = mulberry32(7);
+const pool = CFG.dex.filter((p) => canBattle(p.dex) && p.rarity !== 'legendaer').map((p) => p.dex);
+const out = [];
+for (const ln of (qs.get('levels') || '1,5,10,20,30').split(',').map(Number)) {
+  const level = routeLevels().find((x) => x.n === ln);
+  let won = 0, waves = 0, ep = 0, lives = 0;
+  for (let k = 0; k < N; k++) {
+    const team = Array.from({ length: maxUnits(ln - 1) }, (_, i) => ({ uid: i + 1, level: LV, ...fromCpu(pool[Math.floor(rnd() * pool.length)], { id: 'b' + k, ivs: [0, 31], evs: 0 }, i) }));
+    const g = new Route({ level, team, cleared: ln - 1, seed: 50 + k });
+    // Bauplätze nach erreichbarer Route sortieren, Team der Reihe nach setzen
+    const scored = level.slots.map((sl, i) => ({ i, score: 0 }));
+    for (const m of team) {
+      let best = null;
+      for (const s of scored) {
+        if (!g.slotFree(s.i)) continue;
+        const [c, r] = level.slots[s.i], probe = { x: c + 0.5, y: r + 0.5, shape: undefined };
+        g.place(m.uid, s.i); const u = g.placed(m.uid); let n = 0; for (const [a, b] of [...g.onPath].map((t) => t.split(',').map(Number))) if (g.inReach(u, { x: a + 0.5, y: b + 0.5 })) n++; g.unplace(u);
+        if (!best || n > best.n) best = { i: s.i, n };
+      }
+      if (best) g.place(m.uid, best.i);
+    }
+    g.started = true; g.events.length = 0;
+    while (!g.over && g.t < 1200) { g.update(0.05); g.events.length = 0; }
+    if (g.over?.won) won++;
+    waves += g.wave + 1; ep += g.ep; lives += g.lives;
+  }
+  out.push(`Level ${String(ln).padStart(2)} (${level.name}, ${level.types.join('/')}, Gegner Lv ${level.enemyLevel}+, ${level.waves} W.)`.padEnd(64) + ` Team Lv ${LV}: Siege ${Math.round((100 * won) / N)} % · Ø Welle ${(waves / N).toFixed(1)} · Ø EP ${Math.round(ep / N)} · Ø Leben übrig ${(lives / N).toFixed(1)}`);
+  document.getElementById('out').textContent = out.join('\n') + '\n…';
+  await new Promise((r) => setTimeout(r));
+}
+document.getElementById('out').textContent = out.join('\n');
+window.done = out;
+</script>

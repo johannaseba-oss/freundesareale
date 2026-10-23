@@ -1,0 +1,37 @@
+{
+  "_hinweis": "Route (Tower Defense mit fester Strecke): Wilde Pokémon laufen die Route eines Levels ab, eigene Pokémon stehen auf festen Bauplätzen. Level-Aufstiege mit EP sind dauerhaft (gelten auch in den Freundesarealen). Alle Werte frei anpassbar.",
+  "grid": { "cols": 7, "rows": 11 },
+  "maxUnits": { "start": 6, "perCleared": 10, "max": 8, "_hinweis": "Pokémon gleichzeitig auf dem Feld: start, +1 je perCleared geschaffter Level, höchstens max" },
+  "lives": 10,
+  "_lives": "So viele Gegner dürfen das Ende der Route erreichen; danach ist das Level verloren.",
+  "enemy": {
+    "hpMult": 2.4,
+    "tilesPerSecond": 1.0,
+    "speedExp": 0.5,
+    "levelPerWave": 1,
+    "speedVariation": [0.85, 1.15],
+    "_hinweis": "Tempo = tilesPerSecond × (Initiative / Vergleichswert)^speedExp × Zufall"
+  },
+  "waves": {
+    "base": 5,
+    "perWave": 1.6,
+    "spread": 14,
+    "gap": 6,
+    "firstDelay": 2,
+    "boss": { "hpMult": 7, "levelPlus": 3, "_hinweis": "In der letzten Welle eines Levels kommt ein Boss (Endform einer Gegner-Familie)" },
+    "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels, über spread Sekunden verteilt; danach gap Sekunden Pause"
+  },
+  "shapes": {
+    "_hinweis": "Angriffsformen: adjacent = nur direkt angrenzende Felder (auch schräg), line = die ganze gerade Strecke in Blickrichtung (durchschlägt), circle = kreisrunder Radius (Fernschuss auf ein Ziel), cross = Kreuz (trifft alle auf den Armen). Körperkontakt-Attacken = adjacent, sonst nach Attacken-Typ (byType), sonst circle.",
+    "byType": { "Wasser": "line", "Feuer": "line", "Drache": "line", "Elektro": "cross", "Eis": "cross", "Kampf": "cross", "Psycho": "circle", "Fee": "circle", "Geist": "circle", "Gift": "circle", "Pflanze": "circle", "Käfer": "circle", "Normal": "circle", "Flug": "circle", "Gestein": "cross", "Boden": "cross", "Stahl": "line", "Unlicht": "circle" },
+    "adjacent": { "name": "Nahkampf", "icon": "✊", "cooldown": 0.85, "mult": 1.5 },
+    "line": { "name": "Gerade", "icon": "➶", "cooldown": 1.4, "mult": 0.85 },
+    "circle": { "name": "Radius", "icon": "◎", "cooldown": 1.1, "mult": 1.0, "radius": 1.6, "radiusPerLevel": 0.025, "radiusMax": 3.2 },
+    "cross": { "name": "Kreuz", "icon": "✚", "cooldown": 1.25, "mult": 0.75, "arm": 2 }
+  },
+  "levelEffect": { "speedPerLevel": 0.012, "speedMax": 1.8, "_hinweis": "Jedes Level: schneller (Abklingzeit ÷ (1 + speedPerLevel × (Level−1)), höchstens speedMax-fach), mehr Wucht (über die Kampfwerte des Levels) und bei Radius-Angriffen mehr Reichweite (radiusPerLevel)" },
+  "crit": { "chance": 0.08, "mult": 1.5 },
+  "ep": { "perEnemy": 2, "perEnemyLevel": 0.15, "boss": 25, "win": 60, "firstWin": 120, "_hinweis": "EP pro besiegtem Gegner = perEnemy + Gegnerlevel × perEnemyLevel; Boss extra; Sieg-Bonus (beim ersten Sieg eines Levels firstWin)" },
+  "upgrade": { "base": 30, "exp": 1.35, "dailyPerPokemon": 2, "_hinweis": "Kosten für +1 Level = base × Level^exp (Level 10 → 10: ~670 EP, Level 30: ~2950 EP). dailyPerPokemon = höchstens so viele Level-Aufstiege pro Pokémon und Tag." },
+  "teamRecommend": { "_hinweis": "Empfohlenes Team: möglichst verschiedene Angriffsformen, dann die stärksten gegen die Gegner-Typen" }
+}
