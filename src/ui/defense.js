@@ -6,7 +6,7 @@ import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTea
 import { ballCanvas, ballSprite } from '../gfx/balls.js';
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
-import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
+import { loadSprites, frameOf, portraitUrl, dirFromVector } from '../gfx/sprites.js';
 import { $, h, toast, confirmDialog, modal } from './dom.js';
 import { teamPicker } from './teampick.js';
 import { haptic } from '../haptics.js';
@@ -579,7 +579,9 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   if (o.hurtT != null && game.t - o.hurtT < 0.28 && e.anims.Hurt) { name = 'Hurt'; ms = (game.t - o.hurtT) * 1000; once = true; }
   else if (o.anim && (game.t - o.anim.t0) * 1000 < (e.anims[o.anim.name]?.total || 0) * (1000 / 60)) { name = o.anim.name; ms = (game.t - o.anim.t0) * 1000; once = true; }
   const confused = !mine && game.t < (o.confusedUntil || 0);
-  const f = frameOf(e, name, name === 'Sleep' ? 0 : mine || confused ? 4 : 0, ms, once);
+  // Blickrichtung: eigene schauen nach oben, auf den Seitenfeldern zur Spielfeldmitte; Gegner nach unten
+  const look = mine ? (o.dir ? dirFromVector(o.dir, 0) : 4) : confused ? 4 : 0;
+  const f = frameOf(e, name, name === 'Sleep' ? 0 : look, ms, once);
   let s = T / 28;
   if (e.anims.Idle.fh * s > T * 1.6) s = (T * 1.6) / e.anims.Idle.fh;
   if (o.boss) { // goldene, pulsierende Aura unter dem Boss
