@@ -302,12 +302,11 @@ function renderInfo() {
   const s = app.state;
   if (!s?.gacha?.machine || !meta) return;
   const cfg = CFG.balance.gacha, t = now();
-  const left = s.gacha.machine.length + s.gacha.queue.length;
   const empty = !s.gacha.machine.length, free = !empty && A.freeDrawReady(s, t);
   const rv = revealActive(s, t), seers = rv ? [] : foreseers(s, t);
   const line1 = empty ? `Diese Woche leer · neue Füllung in ${fmtDuration(nextWeekStart(t) - t)}`
     : free ? '✦ Gratis-Ziehung bereit ✦' : `· gratis in ${fmtDuration(s.freeDrawAt - t)}`;
-  const line2 = `${left} Bälle diese Woche · neu in ${fmtDuration(nextWeekStart(t) - t)}`;
+  const line2 = `${s.gacha.machine.length} Bälle · jeder gezogene wird sofort nachgefüllt`;
   const line3 = rv ? `🔮 Psycho-Blick noch ${fmtDuration(rv.until - t)}` : '';
   const key = [line1, line2, line3, !!anim, seers.map((p) => p.uid).join()].join('|');
   if (key === lastInfo) return;
