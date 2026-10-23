@@ -36,7 +36,40 @@ async function similar(file, seed, n = 6, max = 26) {
   const all = await features(file), ref = all.find((t) => t.c === seed[0] && t.r === seed[1]);
   return all.map((t) => ({ t, d: dist(t, ref) })).filter((x) => x.d < max).sort((a, b) => a.d - b.d).slice(0, n).map((x) => [x.t.c, x.t.r]);
 }
-for (const th of Object.values(THEMES)) { th.wall = await similar(th.file, th.wall, 7, 30); th.floor = await similar(th.file, th.floor, 6, 22); }
+// Nahtlos: Aus den ähnlichen Kacheln nur solche nehmen, deren Kanten übergangslos aneinanderpassen
+// (sonst entstehen zerschnittene Bäume/Kristalle). Kosten = Farbsprung an der Kante im Verhältnis zum
+// normalen Farbsprung innerhalb der Kachel; ≤ ~1 heißt: die Naht fällt nicht auf.
+const px = new Map();
+async function pixels(file) {
+  if (!px.has(file)) px.set(file, await sharp(path.join(SRC, file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true }));
+  return px.get(file);
+}
+async function tileData(file, [c, r]) {
+  const { data, info } = await pixels(file), out = [];
+  for (let y = 0; y < T; y++) { const row = []; for (let x = 0; x < T; x++) { const i = ((r * T + y) * info.width + c * T + x) * 4; row.push([data[i], data[i + 1], data[i + 2], data[i + 3]]); } out.push(row); }
+  return out;
+}
+const pd = (p, q) => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]);
+function inner(t) { let s = 0, n = 0; for (let y = 0; y < T; y++) for (let x = 1; x < T; x++) { s += pd(t[y][x], t[y][x - 1]) + pd(t[x][y], t[x - 1][y]); n += 2; } return s / n || 1; }
+// a links/oben, b rechts/unten
+const seamH = (a, b) => { let s = 0; for (let y = 0; y < T; y++) s += pd(a[y][T - 1], b[y][0]); return s / T; };
+const seamV = (a, b) => { let s = 0; for (let x = 0; x < T; x++) s += pd(a[T - 1][x], b[0][x]); return s / T; };
+const fit = (a, b) => Math.max(seamH(a.d, b.d), seamH(b.d, a.d), seamV(a.d, b.d), seamV(b.d, a.d)) / ((a.inner + b.inner) / 2);
+// base = 'seed': die gewählte Kachel ist die Grundkachel (Boden), sonst die mit der unauffälligsten Naht (Rand)
+async function seamless(file, seed, max, poolSize, maxDist, base = 'best') {
+  const pool = await similar(file, seed, poolSize, maxDist), feats = await features(file);
+  const ts = [];
+  for (const p of pool) { const d = await tileData(file, p); if (d.some((r) => r.some((q) => q[3] < 250))) continue; ts.push({ p, d, inner: inner(d), f: feats.find((x) => x.c === p[0] && x.r === p[1]) }); }
+  for (const t of ts) t.self = fit(t, t);
+  ts.sort((a, b) => a.self - b.self);
+  const first = (base === 'seed' && ts.find((t) => t.p[0] === seed[0] && t.p[1] === seed[1])) || ts[0];
+  const lim = Math.max(1.25, first.self * 1.15), chosen = [first];
+  // Varianten: nahtlos UND farblich fast gleich wie die Grundkachel (keine Pflanzen/Kristalle/Ornamente im Boden)
+  for (const t of ts) if (t !== first && chosen.length < max && t.self < lim && dist(t.f, first.f) < 12 && chosen.every((c) => fit(c, t) < lim)) chosen.push(t);
+  console.log(file, 'Naht', chosen.map((c) => c.p.join(',') + ':' + c.self.toFixed(2)).join(' '));
+  return chosen.map((c) => c.p);
+}
+for (const th of Object.values(THEMES)) { th.wall = await seamless(th.file, th.wall, 4, 40, 45); th.floor = await seamless(th.file, th.floor, 4, 30, 30, 'seed'); }
 // welches Thema zu welchen Gegner-Typen passt (erster Treffer zählt)
 const BY_TYPE = { Eis: 'eis', Geist: 'nachtwald', Unlicht: 'nachtwald', Psycho: 'kristall', Drache: 'kristall', Gestein: 'hoehle', Boden: 'hoehle', Stahl: 'hoehle', Kampf: 'hoehle', Fee: 'garten', Pflanze: 'garten', Feuer: 'herbst', Käfer: 'wald', Normal: 'wald', Flug: 'herbst', Gift: 'nachtwald', Elektro: 'kristall', Wasser: 'wald' };
 

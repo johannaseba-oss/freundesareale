@@ -238,8 +238,11 @@ function layout() {
   canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
   canvas.style.width = r.width + 'px'; canvas.style.height = r.height + 'px';
   // etwas Rand links/rechts für Bäume & Co.; im Chaos-Modus zusätzlich die Seitenfelder
-  const tile = Math.floor(Math.min(r.width / (G.cols + (game.chaos ? 2.3 : 0.8)), r.height / (G.rows + 1.1)));
-  Object.assign(ui, { dpr, w: r.width, h: r.height, tile, ox: Math.floor((r.width - tile * G.cols) / 2), oy: Math.max(0, Math.floor((r.height - tile * (G.rows + 1.1)) / 2)) });
+  const fit = Math.min(r.width / (G.cols + (game.chaos ? 2.3 : 0.8)), r.height / (G.rows + 1.1));
+  // Kachelgröße in Gerätepixeln = 24 × ganze Zahl, damit alle Kacheln gleich scharf und nahtlos sind
+  const m = Math.floor((fit * dpr) / 24), tile = m >= 1 ? (24 * m) / dpr : Math.floor(fit);
+  const snap = (v) => Math.round(v * dpr) / dpr; // Feldrand auf ganze Gerätepixel
+  Object.assign(ui, { dpr, w: r.width, h: r.height, tile, ox: snap((r.width - tile * G.cols) / 2), oy: snap(Math.max(0, (r.height - tile * (G.rows + 1.1)) / 2)) });
   ui.bg = null; // Hintergrund neu aufbauen
 }
 
@@ -439,15 +442,6 @@ function draw(dt) {
     const fr = Math.floor(now / 400) % 2 === 0 ? 0 : 1;
     const sz = T * 1.1;
     x.drawImage(U.trainer, fr * 64, 3 * 64, 64, 64, U.ox + (G.cols * T) / 2 - sz / 2, goalY + T * 0.02, sz, sz);
-  }
-  // Chaos: Seitenfelder links und rechts (heller Boden mit Rahmen)
-  if (game.chaos) {
-    const S = D().chaos.side.rows;
-    for (const c of [-1, G.cols]) {
-      x.fillStyle = 'rgba(255,248,220,.16)'; x.fillRect(U.ox + c * T + 1, U.oy + S[0] * T + 1, T - 2, (S[1] - S[0] + 1) * T - 2);
-      x.strokeStyle = 'rgba(255,255,255,.45)'; x.lineWidth = 2; x.strokeRect(U.ox + c * T + 1, U.oy + S[0] * T + 1, T - 2, (S[1] - S[0] + 1) * T - 2);
-      x.fillStyle = 'rgba(0,0,0,.12)'; for (let r = S[0] + 1; r <= S[1]; r++) x.fillRect(U.ox + c * T + 3, U.oy + r * T, T - 6, 1);
-    }
   }
   // Platzierungshilfe
   if (U.sel) {
@@ -681,27 +675,45 @@ function drawBone(x, [X, Y], T, spin) {
 }
 
 // Hintergrund-Bild für das aktuelle Thema: überall Rand-Kacheln, im Feld Boden-Kacheln, feine Rasterlinien
+// Gezeichnet direkt in Gerätepixeln: jede Kachel ist genau D = 24 × m Pixel groß und sitzt lückenlos am Raster
 function buildBackground() {
-  const U = ui, T = U.tile, G = D().grid, th = CFG.defenseThemes.themes[U.themeId], S = 24;
+  const U = ui, G = D().grid, th = CFG.defenseThemes.themes[U.themeId], S = 24;
   const c = document.createElement('canvas');
   c.width = Math.round(U.w * U.dpr); c.height = Math.round(U.h * U.dpr);
   const x = c.getContext('2d');
   x.imageSmoothingEnabled = false;
-  x.scale(U.dpr, U.dpr);
+  const Dp = Math.round(U.tile * U.dpr), ox = Math.round(U.ox * U.dpr), oy = Math.round(U.oy * U.dpr);
+  const X = (col) => ox + col * Dp, Y = (r) => oy + r * Dp;
   const hash = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 997;
-  const tile = (i, X, Y) => x.drawImage(U.tiles, i * S, 0, S, S, Math.floor(X), Math.floor(Y), Math.ceil(T) + 1, Math.ceil(T) + 1);
-  const c0 = Math.floor(-U.ox / T) - 1, r0 = Math.floor(-U.oy / T) - 1;
-  for (let r = r0; r * T + U.oy < U.h; r++) for (let col = c0; col * T + U.ox < U.w; col++) {
-    const SR = game.chaos ? D().chaos.side.rows : null; // Chaos: Seitenfelder bekommen ebenfalls Boden
-    const inField = (col >= 0 && col < G.cols && r >= 0 && r < G.rows + 2) || (SR && (col === -1 || col === G.cols) && r >= SR[0] && r <= SR[1]);
-    const i = inField ? th.wall + (hash(col + 3, r + 7) % th.floor) : hash(col, r) % th.wall;
-    tile(i, U.ox + col * T, U.oy + r * T);
+  const SR = game.chaos ? D().chaos.side.rows : null; // Chaos: Seitenfelder links und rechts
+  const isSide = (col, r) => SR && (col === -1 || col === G.cols) && r >= SR[0] && r <= SR[1];
+  const c0 = Math.floor(-ox / Dp) - 1, r0 = Math.floor(-oy / Dp) - 1;
+  for (let r = r0; Y(r) < c.height; r++) for (let col = c0; X(col) < c.width; col++) {
+    const floor = (col >= 0 && col < G.cols && r >= 0 && r < G.rows + 2) || isSide(col, r);
+    const i = floor ? th.wall + (hash(col + 3, r + 7) % th.floor) : hash(col, r) % th.wall;
+    x.drawImage(U.tiles, i * S, 0, S, S, X(col), Y(r), Dp, Dp);
   }
-  x.fillStyle = 'rgba(0,0,0,.08)';
-  for (let col = 1; col < G.cols; col++) x.fillRect(U.ox + col * T, U.oy, 1, G.rows * T);
-  for (let r = 1; r < G.rows; r++) x.fillRect(U.ox, U.oy + r * T, G.cols * T, 1);
-  // weiche Schatten am Feldrand
-  x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(U.ox - 2, U.oy, 2, (G.rows + 1.1) * T); x.fillRect(U.ox + G.cols * T, U.oy, 2, (G.rows + 1.1) * T);
+  const line = Math.max(1, Math.round(U.dpr));
+  // Rasterlinien im Hauptfeld
+  x.fillStyle = 'rgba(0,0,0,.12)';
+  for (let col = 1; col < G.cols; col++) x.fillRect(X(col), Y(0), line, G.rows * Dp);
+  for (let r = 1; r < G.rows; r++) x.fillRect(X(0), Y(r), G.cols * Dp, line);
+  if (SR) { // Seitenfelder: gleiches Raster, etwas abgesenkt (dunkler), mit Kante – erkennbar außerhalb des Hauptfelds
+    const h = (SR[1] - SR[0] + 1) * Dp;
+    for (const col of [-1, G.cols]) {
+      x.fillStyle = 'rgba(20,12,8,.16)'; x.fillRect(X(col), Y(SR[0]), Dp, h);
+      // jedes Seitenfeld als eigene Rasterkachel: dunkle Fuge und helle Innenkante
+      for (let r = SR[0]; r <= SR[1]; r++) {
+        x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(X(col), Y(r), Dp, line); x.fillRect(X(col), Y(r), line, Dp); x.fillRect(X(col) + Dp - line, Y(r), line, Dp);
+        x.fillStyle = 'rgba(255,255,255,.14)'; x.fillRect(X(col) + line, Y(r) + line, Dp - line * 2, line); x.fillRect(X(col) + line, Y(r) + line, line, Dp - line * 2);
+      }
+      x.fillStyle = 'rgba(255,255,255,.35)'; x.fillRect(X(col), Y(SR[0]), Dp, line * 2); // Lichtkante oben
+      x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(X(col), Y(SR[1] + 1) - line * 2, Dp, line * 2); // Schattenkante unten
+      x.fillStyle = 'rgba(255,255,255,.25)'; x.fillRect(col < 0 ? X(col) : X(col + 1) - line * 2, Y(SR[0]), line * 2, h); // Außenkante
+    }
+  }
+  // Schatten am Rand des Hauptfelds (trennt es von Rand und Seitenfeldern)
+  x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(X(0) - line * 2, Y(0), line * 2, Math.round((G.rows + 1.1) * Dp)); x.fillRect(X(G.cols), Y(0), line * 2, Math.round((G.rows + 1.1) * Dp));
   return c;
 }
 

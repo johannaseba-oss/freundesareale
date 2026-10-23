@@ -433,8 +433,9 @@ body.in-battle #app { visibility: hidden; }
 /* Kopfzeile: Alle einsammeln / Alle füttern */
 .hud-act { cursor: pointer; font-size: 15px; padding: 4px 9px 4px 5px; }
 .hud-act.dim { opacity: .55; }
-#hud-feed { background: #ffe9f0; animation: psy 2s ease-in-out infinite; }
-#hud-feed { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(66px + var(--safe-b)); z-index: 6; white-space: nowrap; border-radius: 999px; padding: 6px 14px 6px 8px; }
+/* „Alle füttern“: fester Knopf in der Kopfzeile neben „Alle Münzen sammeln“ */
+#hud-feed { white-space: nowrap; gap: 3px; padding: 4px 8px 4px 6px; }
+#hud-feed.offer { background: #ffe9f0; animation: psy 2s ease-in-out infinite; }
 body.in-battle #hud-feed { display: none; }
 #hud-collect { padding: 4px 8px 4px 6px; gap: 3px; }
 @media (max-width: 440px) {

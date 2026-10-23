@@ -93,6 +93,24 @@ export function feedAll(s, t, berryId = 'sinelbeere') {
   return { ok: true, used, pokemon: who.size, left: s.berries[berryId] || 0 };
 }
 
+// „Alle füttern“: alle hungrigen Pokémon in Arealen mit Beeren aus dem Inventar versorgen
+// (Sorte für Sorte in der Reihenfolge der Beerenliste, nur vorhandene Beeren – es wird nichts gekauft)
+export function feedAllInventory(s, t) {
+  const hungry = () => s.pokemon.some((q) => q.area && q.fullness < 99);
+  if (!hungry()) return fail('Alle Pokémon in deinen Arealen sind satt.');
+  if (!CFG.balance.berries.some((b) => s.berries[b.id] > 0)) return fail('Keine Beeren im Beutel.');
+  const used = {}, who = new Set();
+  for (const b of CFG.balance.berries) {
+    while (s.berries[b.id] > 0 && hungry()) {
+      const p = s.pokemon.filter((q) => q.area && q.fullness < 99).sort((a, c) => a.fullness - c.fullness)[0];
+      if (!giveBerry(s, p, b.id, t).ok) break;
+      used[b.id] = (used[b.id] || 0) + 1;
+      who.add(p.uid);
+    }
+  }
+  return { ok: true, used, pokemon: who.size };
+}
+
 export function assign(s, p, areaId) {
   if (areaId) {
     if (!s.areas[areaId]?.unlocked) return fail('Dieses Areal ist noch nicht freigeschaltet.');

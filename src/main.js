@@ -169,13 +169,15 @@ function collectAll() {
   if (r.ok) { for (const p of list) sceneReact(p.uid, 'coin'); haptic('medium'); }
 }
 
+// „Alle füttern“ (immer in der Kopfzeile): alle hungrigen Pokémon mit Beeren aus dem Beutel versorgen
 function feedAllBerries() {
-  const r = app.act((s, t) => A.feedAll(s, t, 'sinelbeere'), true);
+  const r = app.act((s, t) => A.feedAllInventory(s, t), true);
   if (r.ok === false) return;
   app.feedOffer = false;
   lastHud = '';
   haptic('medium');
-  toast(`${r.used} Sinelbeeren an ${r.pokemon} Pokémon verteilt${r.left ? ` – ${r.left} übrig, alle sind satt` : ''}.`);
+  const list = CFG.balance.berries.filter((b) => r.used[b.id]).map((b) => `${r.used[b.id]} ${b.name}${r.used[b.id] > 1 ? 'n' : ''}`).join(' und ');
+  toast(`${list} an ${r.pokemon} Pokémon verteilt.`);
   renderHud();
 }
 
@@ -198,8 +200,8 @@ function renderHud() {
   const berries = Math.max(0, Object.values(app.state.berries || {}).reduce((a, b) => a + b, 0) - pending.berries);
   const free = app.state.pokemon.filter((p) => !p.area).length;
   const ready = app.state.pokemon.reduce((n, p) => n + (p.area ? p.coinsReady : 0), 0);
-  const sinel = app.state.berries.sinelbeere || 0;
-  const key = shown + '|' + berries + '|' + free + '|' + ready + '|' + app.feedOffer + '|' + sinel;
+  const hungry = app.state.pokemon.filter((p) => p.area && p.fullness < 99).length;
+  const key = shown + '|' + berries + '|' + free + '|' + ready + '|' + app.feedOffer + '|' + hungry;
   if (key === lastHud) return;
   lastHud = key;
   $('#hud-coins').replaceChildren(iconImg('coin', 3), String(shown));
@@ -208,8 +210,10 @@ function renderHud() {
   $('#hud-box').replaceChildren(ball, String(free));
   $('#hud-collect').replaceChildren(iconImg('coin', 2), ready ? `+${ready}` : '');
   $('#hud-collect').classList.toggle('dim', !ready);
-  $('#hud-feed').classList.toggle('hidden', !app.feedOffer || !sinel);
-  $('#hud-feed').replaceChildren(berryImg('sinelbeere', 2), `Alle füttern`);
+  // immer sichtbar; blass, wenn niemand Hunger hat oder keine Beeren da sind; beim ersten Öffnen am Tag pulsiert er
+  $('#hud-feed').classList.toggle('dim', !hungry || !berries);
+  $('#hud-feed').classList.toggle('offer', !!app.feedOffer && !!hungry && !!berries);
+  $('#hud-feed').replaceChildren(berryImg('sinelbeere', 2), hungry ? String(hungry) : ''); // Zahl = hungrige Pokémon (wie beim Münzknopf)
 }
 
 function updateSaveState(status, err) {
