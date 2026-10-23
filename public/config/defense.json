@@ -576,8 +576,8 @@
       "trickleLate": 0.6
     },
     "lives": {
-      "_hinweis": "Leben: start = Extra-Leben zu Beginn. Weitere kauft man im Lauf mit Münzen: prices der Reihe nach, danach jeweils × growth. Erreicht ein Gegner den Trainer, kostet das ein Leben; ohne Leben ist der Run verloren.",
-      "start": 0,
+      "_hinweis": "Leben: start = so oft darf zu Beginn ein Gegner über die Linie, ohne dass der Run endet (angezeigt als ♥). Weitere kauft man im Lauf mit Münzen: prices der Reihe nach, danach jeweils × growth. Erreicht ein Gegner den Trainer ohne verbleibendes Leben, ist der Run verloren.",
+      "start": 3,
       "prices": [
         200,
         500,
@@ -622,6 +622,14 @@
         2
       ],
       "exceptionShare": 0.2
+    },
+    "multiDrop": {
+      "_hinweis": "Gelegentlich fallen mehrere Pokébälle auf einmal: chance je Ballregen, count = Anzahl [min, max]",
+      "chance": 0.25,
+      "count": [
+        2,
+        3
+      ]
     }
   },
   "levelGap": 5,

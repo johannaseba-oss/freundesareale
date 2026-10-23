@@ -425,7 +425,7 @@ function renderTop() {
   ui.topKey = k;
   if (game.chaos) ui.starsEl.replaceChildren(ballCanvas('pokeball', 1), `${game.cards.length}/${D().chaos.handMax}`);
   else ui.starsEl.replaceChildren(starImg(), String(game.stars));
-  if (ui.livesEl) ui.livesEl.textContent = `♥ ${game.lives + 1}`; // das letzte Leben zählt mit
+  if (ui.livesEl) ui.livesEl.textContent = `♥ ${game.lives}`; // so oft darf noch ein Gegner über die Linie
   if (ui.countEl) { ui.countEl.textContent = cd ? String(cd) : ''; ui.countEl.classList.toggle('hidden', !cd); }
   const w = game.waveProgress();
   ui.waveEl.firstChild.textContent = cd ? `Angriff in ${cd} s` : !w.wave ? 'Vorbereitung' : w.total ? `Welle ${w.wave}/${w.total}` : `Welle ${w.wave} · ${(game.theme || []).join(' & ')}`;
@@ -813,11 +813,11 @@ function handleEvents() {
     if (ev.type === 'shoot') { if (!ev.melee) sfx.attack(ev.moveType); burstAt({ x: ev.u.x + (ev.u.dir || 0) * 0.3, y: ev.u.y - (ev.u.dir ? 0.15 : 0.45) }, ev.moveType, 3, 0.5, 0.6); continue; }
     if (ev.type === 'go') { message(game.chaos ? 'Los! Fang die Pokébälle und setz die Pokémon ein.' : 'Los!'); haptic('medium'); continue; }
     if (ev.type === 'lifeLost') {
-      banner(game.lives + 1 > 1 ? `♥ −1 · noch ${game.lives + 1}` : '♥ −1 · letztes Leben!', true);
+      banner(game.lives > 0 ? `♥ −1 · noch ${game.lives}` : '♥ −1 · keine Leben mehr!', true);
       burst(ev.e, 'Unlicht', 16, 1.4); ui.flash = Math.max(ui.flash, 0.25); shake(T() * 0.15); haptic('strong'); sfx.lose();
       continue;
     }
-    if (ev.type === 'lifeBought') { message(`♥ Leben gekauft – du hast jetzt ${game.lives + 1}.`); sfx.levelUp(); continue; }
+    if (ev.type === 'lifeBought') { message(`♥ Leben gekauft – du hast jetzt ${game.lives}.`); sfx.levelUp(); continue; }
     if (ev.type === 'statusArea') { // 3×3-Fläche um das Pokémon kurz aufleuchten lassen
       const a = ev.area, u = ev.u, sleep = ev.kind === 'sleep';
       ui.areas.push({ x: u.x - a - 0.5, y: u.y - a - 0.5, w: 2 * a + 1, h: 2 * a + 1, color: sleep ? '#cfe0ff' : '#f95587', t: 0, dur: 0.6 });

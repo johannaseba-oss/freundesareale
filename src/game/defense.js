@@ -411,9 +411,12 @@ export class Defense {
     // Sternenregen
     if (this.t >= this.nextSky) {
       this.nextSky = this.t + this.between(this.chaos ? D().chaos.dropEvery : S.skyEvery);
-      if (this.chaos) { // links oder rechts neben dem Trainer, damit er nicht verdeckt wird
-        const side = this.rnd() < 0.5 ? -1 : 1, x = G.cols / 2 + side * (0.75 + this.rnd() * (G.cols / 2 - 1.1));
-        this.dropStar(x, G.rows + 0.5, -0.5, S.skyValue);
+      if (this.chaos) { // links oder rechts neben dem Trainer, damit er nicht verdeckt wird; gelegentlich mehrere Bälle auf einmal
+        const M = D().chaos.multiDrop, n = M && this.rnd() < M.chance ? M.count[0] + Math.floor(this.rnd() * (M.count[1] - M.count[0] + 1)) : 1;
+        for (let i = 0; i < n; i++) {
+          const side = this.rnd() < 0.5 ? -1 : 1, x = G.cols / 2 + side * (0.75 + this.rnd() * (G.cols / 2 - 1.1));
+          this.dropStar(x, G.rows + 0.5, -0.5 - i * 0.8, S.skyValue); // leicht versetzt nacheinander
+        }
       } else this.dropStar(0.5 + this.rnd() * (G.cols - 1), 2 + this.rnd() * (G.rows - 3), -0.5, S.skyValue);
     }
     this.drops = this.drops.filter((d) => this.t - d.born < S.lifetime + 1.5);
