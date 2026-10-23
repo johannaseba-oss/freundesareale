@@ -525,8 +525,7 @@
       "levelPerWave": 2.5,
       "base": 4,
       "perWave": 1.45,
-      "familyRefresh": 4,
-      "_hinweis": "Chaos ist endlos: Gegner aller Typen, alle familyRefresh Wellen neue Familien, Gegneranzahl = (base + Welle × perWave) × countMult, Level = baseLevel + Welle × levelPerWave"
+      "_hinweis": "Chaos ist endlos: Gegneranzahl = (base + Welle × perWave) × countMult, Level = baseLevel + Welle × levelPerWave"
     },
     "boss": {
       "_hinweis": "Pro Welle ein Boss: hpMult = KP-Faktor, defMult = Vert/SpVert-Faktor, guards = Anzahl Leibwächter [min, max], pace = Tempo-Faktor, scale = Darstellungsgröße, fromWave = ab welcher Welle Bosse kommen, soloWaves = in so vielen ersten Boss-Wellen höchstens ein Boss gleichzeitig und ohne Leibwächter",
@@ -556,7 +555,6 @@
       },
       "levelGap": 2
     },
-    "_hinweis2": "Zwei Varianten: Infinity Run (endlos, endless) und Tournament Run (100 Level aus tournament.json). Eigene Pokémon kommen in beiden zufällig aus Pokébällen.",
     "prepSeconds": 10,
     "_prepSeconds": "Countdown vor dem ersten Angriff (Sekunden), währenddessen in Ruhe aufstellen",
     "flow": {
@@ -617,12 +615,13 @@
         "width": 3
       }
     },
-    "tournament": {
-      "_hinweis": "Tournament Run: bossScale = Boss-KP-Faktor (× boss.hpMult) bei Level 1 und Level 100, dazwischen linear",
-      "bossScale": [
-        0.45,
-        1.2
-      ]
+    "waveTypes": {
+      "_hinweis": "Jede große Welle bringt ein neues Gegner-Thema: count = Anzahl Typen [min, max], immer andere als in der Welle davor. exceptionShare = Anteil der Gegner, die als Ausnahme aus anderen Typen kommen (auch in den kleinen Gruppen dazwischen).",
+      "count": [
+        1,
+        2
+      ],
+      "exceptionShare": 0.2
     }
   },
   "levelGap": 5,

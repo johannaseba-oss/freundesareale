@@ -3,8 +3,8 @@
 <title>Chaos-Balancetest</title>
 <pre id="out">läuft …</pre>
 <script type="module">
-// Balancetest (nur Entwicklung): ein Bot spielt den Chaos-Modus (Tournament-Level und Infinity Run).
-// Aufruf im Dev-Server: http://localhost:5190/tools/chaos_test.html?n=30&levels=1,10,30&inf=1   (&cfg={"chaos.flow.bigEvery":25} überschreibt Werte)
+// Balancetest (nur Entwicklung): ein Bot spielt den Chaos-Modus (endlose Wellen mit wechselnden Gegner-Typen).
+// Aufruf im Dev-Server: http://localhost:5190/tools/chaos_test.html?n=30   (&cfg={"chaos.flow.bigEvery":25} überschreibt Werte)
 import { loadConfig, CFG } from '/src/config.js';
 import { Defense } from '/src/game/defense.js';
 await loadConfig();
@@ -40,22 +40,13 @@ function run(level, seed) {
   return { g, stats };
 }
 const out = [];
-const LV = (qs.get('levels') || '1,5,10,20,30,40,50,60,70,80,90,100').split(',').map(Number);
-for (const ln of LV) {
-  const lv = { ...CFG.tournament.levels.find((x) => x.n === ln), chaos: true, tournament: true };
-  let won = 0, waves = 0, up = 0, side = 0;
-  for (let k = 0; k < N; k++) { const { g, stats } = run(lv, 300 + k); if (g.over?.won) won++; waves += g.wave + 1; up += stats.up; side += stats.side; }
-  out.push(`Tournament ${String(ln).padStart(3)} (${lv.types.join('/')}, ${lv.waves} W.${lv.legendary ? ', legendär' : ''})`.padEnd(52) + ` Siege ${Math.round((100 * won) / N)} % · Ø Welle ${(waves / N).toFixed(1)} · Entw. aufgesetzt Ø ${(up / N).toFixed(1)} · Seite Ø ${(side / N).toFixed(1)}`);
-  document.getElementById('out').textContent = out.join('\n') + '\n…';
-  await new Promise((r) => setTimeout(r));
-}
-if (qs.get('inf') !== '0') {
+{
   const lv = { n: 0, chaos: true, types: [...CFG.defense.themes.types], enemyLevel: CFG.defense.chaos.endless.baseLevel, countMult: CFG.defense.chaos.countMult, finalStage: 3, waves: 0 };
   const res = [];
   let time = 0;
   for (let k = 0; k < N; k++) { const { g } = run(lv, 900 + k); res.push(g.wave + 1); time += g.t; }
   res.sort((a, b) => a - b);
-  out.push(`Infinity Run: Ø Welle ${(res.reduce((a, b) => a + b, 0) / N).toFixed(1)} · Median ${res[Math.floor(N / 2)]} · min ${res[0]} · max ${res[N - 1]} · Ø Dauer ${(time / N / 60).toFixed(1)} min`);
+  out.push(`Chaos: Ø Welle ${(res.reduce((a, b) => a + b, 0) / N).toFixed(1)} · Median ${res[Math.floor(N / 2)]} · min ${res[0]} · max ${res[N - 1]} · Ø Dauer ${(time / N / 60).toFixed(1)} min`);
 }
 document.getElementById('out').textContent = out.join('\n');
 window.done = out;

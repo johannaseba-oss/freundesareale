@@ -93,8 +93,7 @@ export class Defense {
     this.t = 0;
     this.level = level;
     this.theme = level.types;
-    this.tournament = chaos && !!level.tournament; // Tournament Run: festes Level mit Gegner-Thema
-    this.endless = chaos && !this.tournament; // Infinity Run: endlose Wellen, Gegner aller Typen
+    this.endless = chaos; // Chaos: endlose Wellen, jede große Welle mit eigenem Gegner-Thema
     this.waves = this.endless ? [] : buildWaves(level);
     this.families = pickFamilies(level, mulberry32(chaos ? seed : level.n * 7919));
     this.stars = D().stars.start;
@@ -239,16 +238,15 @@ export class Defense {
   startWave() {
     this.wave++;
     let level, p;
-    if (this.endless) { // Chaos: nächste Welle erzeugen, alle paar Wellen neue Familien
+    if (this.endless) { // Chaos: nächste Welle erzeugen – jede große Welle mit neuen Gegner-Typen
       const E = D().chaos.endless;
       this.waves.push({ count: Math.round((E.base + this.wave * E.perWave) * (D().chaos.countMult || 1)), spread: 28, final: false });
-      if (this.wave > 0 && this.wave % E.familyRefresh === 0) this.families = pickFamilies(this.level, this.rnd);
+      this.rollWaveTheme();
       level = Math.round(E.baseLevel + this.wave * E.levelPerWave);
       this.chaosLevel = level;
       p = Math.min(1, this.wave / 10);
     } else {
       level = this.level.enemyLevel + this.wave * D().enemy.levelPerWave;
-      if (this.tournament) this.chaosLevel = level;
       // Entwicklungsstufe steigt über die Wellen: erst Grundformen, gelegentlich Zweitentwicklungen, zum Schluss Endentwicklungen
       p = this.waves.length > 1 ? this.wave / (this.waves.length - 1) : 1;
     }
@@ -258,17 +256,16 @@ export class Defense {
       const fast = this.endless && this.rnd() < D().chaos.fast.chance;
       this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * spread + this.rnd() * 3), dex: this.rollEnemy(), level, col: Math.floor(this.rnd() * D().grid.cols), fast });
     }
-    const Bo = D().chaos.boss, legendWave = this.tournament && W.final && this.level.legendary;
-    // Chaos (Infinity und Tournament): ab fromWave ein Boss pro Welle, später mit Leibwächtern in den Nachbarspalten.
-    // In der letzten Tournament-Welle mit legendärem Boss kommt dieser statt des normalen Bosses.
-    if (this.chaos && !legendWave && this.wave + 1 >= (Bo.fromWave || 2)) {
+    const Bo = D().chaos.boss;
+    // Chaos: ab fromWave ein Boss pro Welle (passend zum Thema der Welle), später mit Leibwächtern in den Nachbarspalten
+    if (this.chaos && this.wave + 1 >= (Bo.fromWave || 2)) {
       // in den ersten soloWaves Boss-Wellen: höchstens ein Boss gleichzeitig, ohne Leibwächter
       const solo = this.bossWaves < (Bo.soloWaves ?? 0);
       if (!(solo && this.enemies.some((e) => e.boss && e.hp > 0))) {
         this.bossWaves++;
         const at = this.t + spread * (0.35 + this.rnd() * 0.3), col = Math.floor(this.rnd() * D().grid.cols);
         const strong = this.families.map((fm) => fm[fm.length - 1]);
-        this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true, scale: this.bossScale() });
+        this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true });
         const n = solo ? 0 : Bo.guards[0] + Math.floor(this.rnd() * (Bo.guards[1] - Bo.guards[0] + 1));
         for (let g = 0; g < n; g++) {
           const gc = Math.max(0, Math.min(D().grid.cols - 1, col + (g % 2 ? 1 : -1) * Math.ceil((g + 1) / 2)));
@@ -277,20 +274,19 @@ export class Defense {
         }
       }
     }
-    if (legendWave) { // Tournament: legendäres Pokémon als Boss in der letzten Welle
-      const legs = CFG.dex.filter((s) => s.rarity === 'legendaer' && bdata(s.dex));
-      const fit = legs.filter((s) => s.types.some((t) => this.level.types.includes(t)));
-      const pool = fit.length ? fit : legs;
-      this.queue.push({ at: this.t + spread * 0.5, dex: pool[Math.floor(this.rnd() * pool.length)].dex, level: level + 3, col: Math.floor(this.rnd() * D().grid.cols), boss: true, scale: this.bossScale() });
-    }
     this.queue.sort((a, b) => a.at - b.at);
-    this.events.push({ type: 'wave', wave: this.wave, final: !!W.final, minRow: this.minRow() });
+    this.events.push({ type: 'wave', wave: this.wave, final: !!W.final, minRow: this.minRow(), types: this.endless ? this.theme : null });
   }
-  // Boss-Stärke: im Tournament wächst sie mit dem Level (bossScale [Level 1, Level 100]), im Infinity Run voll
-  bossScale() {
-    if (!this.tournament) return 1;
-    const [a, b] = D().chaos.tournament.bossScale, k = Math.min(1, (this.level.n - 1) / 99);
-    return a + (b - a) * k;
+  // Chaos: Gegner-Thema für die nächste große Welle – andere Typen als in der Welle davor
+  rollWaveTheme() {
+    const C = D().chaos.waveTypes, all = D().themes.types, prev = this.wave > 0 ? this.theme || [] : [];
+    const n = C.count[0] + Math.floor(this.rnd() * (C.count[1] - C.count[0] + 1));
+    let pool = all.filter((t) => !prev.includes(t));
+    const types = [];
+    while (types.length < n && pool.length) types.push(pool.splice(Math.floor(this.rnd() * pool.length), 1)[0]);
+    this.theme = types;
+    this.families = pickFamilies({ types }, this.rnd);
+    this.otherFamilies = pickFamilies({ types: all.filter((t) => !types.includes(t)) }, this.rnd); // für die Ausnahmen
   }
   // Gegnerart passend zur aktuellen Welle: früh Grundformen, später Entwicklungen
   rollEnemy() {
@@ -298,7 +294,9 @@ export class Defense {
     const weights = [Math.max(0.05, 1 - p * 0.9), 0.12 + p * 0.9, this.level.finalStage >= 3 ? Math.max(0, (p - 0.4) * 1.6) : 0];
     let r = this.rnd() * weights.reduce((a, b) => a + b, 0), stage = 1;
     for (let k = 0; k < 3; k++) { if ((r -= weights[k]) < 0) { stage = k + 1; break; } }
-    const fam = this.families[Math.floor(this.rnd() * this.families.length)];
+    // Chaos: ein Teil der Gegner (exceptionShare) kommt als Ausnahme aus anderen Typen
+    const list = this.endless && this.otherFamilies?.length && this.rnd() < D().chaos.waveTypes.exceptionShare ? this.otherFamilies : this.families;
+    const fam = list[Math.floor(this.rnd() * list.length)];
     return fam[Math.min(stage, fam.length) - 1];
   }
   // Chaos: kleine Gruppe (1–3 Gegner) auf einer Spalte zwischen den großen Wellen
@@ -319,7 +317,7 @@ export class Defense {
     if (q.fast) { e.pace *= D().chaos.fast.pace; e.fast = true; }
     if (q.boss) { // sehr stark: viel mehr KP, bessere Verteidigung, etwas langsamer
       const Bo = D().chaos.boss;
-      e.boss = true; e.maxHp *= Bo.hpMult * (q.scale || 1); e.pace *= Bo.pace;
+      e.boss = true; e.maxHp *= Bo.hpMult; e.pace *= Bo.pace;
       e.stats = e.stats.map((v, i) => (i === 2 || i === 4 ? Math.round(v * Bo.defMult) : v));
       this.events.push({ type: 'boss', e });
     }

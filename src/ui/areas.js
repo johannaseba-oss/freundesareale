@@ -306,8 +306,13 @@ function pickResident(area) {
       h('span.type-chips.mini', sp.types.map((t) => typeChip(t))),
       h('div.sub', p.area ? `aus ${CFG.areas.find((a) => a.id === p.area)?.name}` : `Lv. ${p.level} · Beutel`), fitMark(p.dex, area.id));
     };
-    if (free.length) el.append(h('b', 'Im Beutel'), h('div.grid', free.map(card)));
-    if (others.length) el.append(h('b', 'Aus anderen Arealen'), h('div.grid', others.sort((a, b) => a.area.localeCompare(b.area)).map(card)));
+    // Vorschläge zuerst: wer gut hierher passt (Typ gefällt dem Areal), die besten oben – Beutel vor anderen Arealen
+    const fit = (p) => habitatFit(p.dex, area.id), good = [...free, ...others].filter((p) => fit(p).fit > 0)
+      .sort((x, y) => fit(y).likes.length - fit(x).likes.length || !!x.area - !!y.area || y.level - x.level);
+    const rest = (list) => list.filter((p) => !good.includes(p));
+    if (good.length) el.append(h('b', '♥ Passt gut hierher'), h('div.grid', good.map(card)));
+    if (rest(free).length) el.append(h('b', 'Im Beutel'), h('div.grid', rest(free).map(card)));
+    if (rest(others).length) el.append(h('b', 'Aus anderen Arealen'), h('div.grid', rest(others).sort((a, b) => a.area.localeCompare(b.area)).map(card)));
     el.append(h('button.btn', { onclick: close }, 'Schließen'));
   });
 }

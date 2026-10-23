@@ -22,8 +22,6 @@ let pick = [];
 let game = null;
 let ui = null;
 let chaosBestBefore = 0; // Rekord vor der laufenden Chaos-Runde (für „neuer Rekord!“)
-let tourView = false; // Tournament-Run-Übersicht statt PokeDefense-Roadmap
-const tourDone = () => app.state?.defense?.tournament || 0;
 
 // Stern-Sprite (Platzhalter, bis ein eigener Stern bereitgestellt wird)
 let starCv = null;
@@ -42,7 +40,6 @@ const starImg = () => { const i = h('img.star-ico', { src: starCanvas().toDataUR
 
 // ================= Vorbereitung =================
 export function renderDefenseSetup(el, back) {
-  if (tourView) { renderTournament(el, back); return; }
   if (!chosen) { renderRoadmap(el, back); return; }
   const s = app.state, theme = chosen.types;
   const mons = s.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => costOf(a.dex) - costOf(b.dex) || a.dex - b.dex);
@@ -60,7 +57,7 @@ export function renderDefenseSetup(el, back) {
 }
 
 // Roadmap: alle Level als Weg; geschaffte golden, das nächste leuchtet, spätere gesperrt
-// Level-Weg (PokeDefense-Roadmap und Tournament Run): geschaffte golden, das nächste leuchtet, spätere gesperrt
+// Level-Weg (PokeDefense-Roadmap): geschaffte golden, das nächste leuchtet, spätere gesperrt
 function roadMap(L, done, onPick) {
   const PER = 4, W = 340, RH = 74;
   const pos = (i) => { const row = Math.floor(i / PER), k = i % PER, col = row % 2 ? PER - 1 - k : k; return { x: 45 + col * ((W - 90) / (PER - 1)), y: 40 + row * RH }; };
@@ -88,35 +85,9 @@ function renderRoadmap(el, back) {
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
     h('p.note', 'Tippe auf das leuchtende Level. Die Punkte zeigen die Typen der Gegner.'),
-    h('button.btn.chaos-btn', { onclick: () => startChaos(el, back) }, '🎲 Chaos-Modus – Pokébälle statt Sterne', suspended() ? h('small.chaos-best', '⏸ Pausierte Runde wartet') : null, app.state.defense?.chaosBest || tourDone() ? h('small.chaos-best', `Infinity-Rekord: Welle ${app.state.defense.chaosBest || 0} · Tournament ${tourDone()}/${CFG.tournament.levels.length}`) : null),
+    h('button.btn.chaos-btn', { onclick: startChaos }, '🎲 Chaos-Modus – Pokébälle statt Sterne', suspended() ? h('small.chaos-best', '⏸ Pausierte Runde wartet') : null, app.state.defense?.chaosBest ? h('small.chaos-best', `Rekord: Welle ${app.state.defense.chaosBest}`) : null),
     roadMap(L, done, (lv) => { chosen = lv; renderDefenseSetup(el, back); el.scrollTop = 0; })));
 }
-// Tournament Run: 100 Level mit Gegner-Thema, eigene Pokémon zufällig aus Pokébällen
-function renderTournament(el, back) {
-  const L = CFG.tournament.levels, done = tourDone();
-  el.replaceChildren(h('div.bs',
-    h('button.btn.small.mode-back', { onclick: () => { tourView = false; renderDefenseSetup(el, back); } }, '‹ PokeDefense'),
-    h('div.bs-head', h('h2', '🏆 Tournament Run'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
-    h('p.note', 'Jedes Level hat sein eigenes Gegner-Thema. Deine Pokémon kommen zufällig aus Pokébällen. Goldener Rand = legendärer Boss.'),
-    roadMap(L, done, confirmTournament)));
-}
-const themeName = (lv) => (lv.mixed ? 'Gemischt' : lv.types.join(' & '));
-function confirmTournament(lv) {
-  modal((m, close) => {
-    m.append(h('h3', `🏆 Level ${lv.n}: ${themeName(lv)}`),
-      h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', lv.types.map((t) => typeChip(t))), h('small', ` · ${lv.waves} große Wellen`)),
-      lv.legendary ? h('p.note', '⚠ In der letzten Welle wartet ein legendäres Pokémon als Boss.') : null,
-      h('p.note', 'Statt Sternen fallen Pokébälle mit zufälligen Pokémon.'),
-      h('div.row', h('button.btn', { onclick: close }, 'Abbrechen'), h('button.btn.primary.big', { onclick: () => { close(); startTournament(lv); } }, 'Los!')));
-  });
-}
-function startTournament(lv) {
-  tourView = true;
-  chosen = { ...lv, chaos: true, tournament: true };
-  game = new Defense({ team: [], level: chosen, chaos: true });
-  openField();
-}
-
 // Bestätigung mit Rollen, Kosten und Fähigkeit – dann geht es aufs Feld
 function confirmTeam(uids, reset) {
   pick = uids;
@@ -157,24 +128,21 @@ function offerLoaner(el, back) {
   });
 }
 
-// Chaos-Modus: Pokébälle statt Sterne – Variante wählen (Infinity Run oder Tournament Run)
-function startChaos(el, back) {
+// Chaos-Modus: Pokébälle statt Sterne, endlose Wellen; jede große Welle bringt andere Gegner-Typen
+function startChaos() {
   const best = app.state.defense?.chaosBest, sus = suspended();
   modal((m, close) => {
     m.append(h('h3', '🎲 Chaos-Modus'),
       h('p.note', 'Statt Sternen fallen Pokébälle! Jeder Ball enthält ein zufälliges Pokémon, das du genau einmal einsetzen kannst – danach kommen andere. Einsetzen kostet nichts.'),
-      sus ? h('button.btn.primary.big.chaos-resume', { onclick: () => { close(); resumeChaos(); } }, '▶ Pausierte Runde fortsetzen', h('small', suspendedLabel(sus))) : null,
-      h('div.chaos-modes',
-        h('button.btn.chaos-mode', { onclick: async () => { close(); if (await dropSuspended()) startInfinity(); } },
-          h('b', '∞ Infinity Run'), h('small', `Endlos, Gegner und eigene Pokémon völlig zufällig.${best ? ` Rekord: Welle ${best}` : ''}`)),
-        h('button.btn.chaos-mode', { onclick: async () => { close(); if (!(await dropSuspended())) return; tourView = true; if (el) renderDefenseSetup(el, back); } },
-          h('b', '🏆 Tournament Run'), h('small', `${CFG.tournament.levels.length} Level mit Gegner-Themen · ${tourDone()}/${CFG.tournament.levels.length} geschafft`))),
-      h('div.row', h('button.btn', { onclick: close }, 'Abbrechen')));
+      h('p.note', `Endlose Wellen: Mit jeder großen Welle wechseln die Gegner-Typen – mit ein paar Ausnahmen.${best ? ` Rekord: Welle ${best}.` : ''}`),
+      ...(sus ? [h('button.btn.primary.big.chaos-resume', { onclick: () => { close(); resumeChaos(); } }, '▶ Pausierte Runde fortsetzen', h('small', suspendedLabel(sus)))] : []),
+      h('div.row', h('button.btn', { onclick: close }, 'Abbrechen'),
+        h('button.btn' + (sus ? '' : '.primary.big'), { onclick: async () => { close(); if (await dropSuspended()) startInfinity(); } }, sus ? 'Neue Runde' : 'Los!')));
   });
 }
 // ---- Pause & Speichern: laufende Chaos-Runde in den Spielstand legen und später fortsetzen ----
 const suspended = () => app.state?.defense?.suspended || null;
-const suspendedLabel = (sus) => (sus.game.tournament ? `Tournament Level ${sus.game.level.n}` : 'Infinity Run') + ` · Welle ${Math.max(1, sus.game.wave + 1)}`;
+const suspendedLabel = (sus) => `Welle ${Math.max(1, sus.game.wave + 1)}`;
 function saveSuspended() {
   if (!game?.chaos || game.over) return;
   const data = { game: game.snapshot(), best: chaosBestBefore, theme: ui?.themeId, savedAt: Date.now() };
@@ -192,8 +160,9 @@ async function dropSuspended() {
 function resumeChaos() {
   const sus = suspended();
   if (!sus) return;
+  if (sus.game.tournament) { clearSuspended(); toast('Den Tournament-Modus gibt es nicht mehr – die pausierte Runde wurde verworfen.'); return; }
   game = Defense.restore(sus.game);
-  chosen = game.level; tourView = game.tournament; chaosBestBefore = sus.best || 0;
+  chosen = game.level; chaosBestBefore = sus.best || 0;
   openField(sus.theme);
   ui.paused = false;
   message('Weiter geht’s!');
@@ -459,8 +428,7 @@ function renderTop() {
   if (ui.livesEl) ui.livesEl.textContent = `♥ ${game.lives + 1}`; // das letzte Leben zählt mit
   if (ui.countEl) { ui.countEl.textContent = cd ? String(cd) : ''; ui.countEl.classList.toggle('hidden', !cd); }
   const w = game.waveProgress();
-  const name = game.tournament ? `Level ${game.level.n} · ` : '';
-  ui.waveEl.firstChild.textContent = cd ? `Angriff in ${cd} s` : !w.wave ? 'Vorbereitung' : w.total ? `${name}Welle ${w.wave}/${w.total}` : `Welle ${w.wave} · Infinity`;
+  ui.waveEl.firstChild.textContent = cd ? `Angriff in ${cd} s` : !w.wave ? 'Vorbereitung' : w.total ? `Welle ${w.wave}/${w.total}` : `Welle ${w.wave} · ${(game.theme || []).join(' & ')}`;
   ui.waveEl.lastChild.firstChild.style.width = (w.total ? w.wave / w.total : (w.wave % 5) / 5) * 100 + '%';
 }
 function message(text) {
@@ -898,6 +866,7 @@ function handleEvents() {
     } else if (ev.type === 'wave') {
       if (game.endless) saveChaosBest(ev.wave + 1);
       banner(ev.final ? 'LETZTE WELLE!' : `WELLE ${ev.wave + 1}`, ev.final); sfx.wave(ev.final);
+      if (ev.types?.length) message(`Jetzt kommen: ${ev.types.join(' & ')}`);
       if (ev.wave > 0 && ev.minRow >= D().grid.placeRows[0]) message('Eine weitere Reihe ist frei!');
       shake(T() * (ev.final ? 0.12 : 0.05)); haptic(ev.final ? 'strong' : 'medium');
     } else if (ev.type === 'weather') { renderWeatherChip(); message('Wetter: ' + weatherText(game.weather)); }
@@ -935,21 +904,18 @@ function end() {
   const won = game.over.won;
   haptic(won ? 'medium' : 'strong');
   if (won) sfx.win(); else sfx.lose();
-  const lv = chosen, tour = game.tournament, infinity = game.endless;
-  const next = tour ? CFG.tournament.levels.find((x) => x.n === lv.n + 1) : game.chaos ? null : levelsList().find((x) => x.n === lv.n + 1);
+  const lv = chosen, infinity = game.endless;
+  const next = game.chaos ? null : levelsList().find((x) => x.n === lv.n + 1);
   const reached = game.wave + 1, best = chaosBestBefore;
   if (game.chaos) clearSuspended();
   if (infinity) saveChaosBest(reached);
-  if (won && tour) app.act((s) => { s.defense ||= {}; s.defense.tournament = Math.max(s.defense.tournament || 0, lv.n); return { ok: true }; }, true);
   if (won && !game.chaos) app.act((s) => { s.defense ||= {}; s.defense.cleared = Math.max(s.defense.cleared || 0, lv.n); s.stats.defenseCleared = s.defense.cleared; return { ok: true }; }, true);
   const leave = (to) => { closeField(); game = null; pick = []; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
-  const tourLv = (n) => CFG.tournament.levels.find((x) => x.n === n);
   const lostText = game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`;
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
     h('h2', infinity ? `Welle ${reached}` : won ? `Level ${lv.n} geschafft!` : 'Niederlage'),
     h('p', infinity ? `Du hast bis Welle ${reached} durchgehalten${reached > best ? ' – neuer Rekord!' : ` (Rekord: Welle ${best})`}.` : won ? `Du hast alle ${game.waves.length} Wellen abgewehrt.` : lostText),
-    h('div.row', h('button.btn', { onclick: () => leave(null) }, tour ? 'Übersicht' : 'Roadmap'),
-      infinity ? h('button.btn.primary.big', { onclick: () => { leave(null); startInfinity(); } }, '∞ Neuer Infinity Run')
-        : tour ? (won && next ? h('button.btn.primary.big', { onclick: () => { leave(null); startTournament(next); } }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => { leave(null); startTournament(tourLv(lv.n)); } }, won ? 'Nochmal' : 'Nochmal versuchen'))
-          : won && next ? h('button.btn.primary.big', { onclick: () => leave(next) }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => leave(lv) }, won ? 'Nochmal' : 'Nochmal versuchen'))));
+    h('div.row', h('button.btn', { onclick: () => leave(null) }, 'Roadmap'),
+      infinity ? h('button.btn.primary.big', { onclick: () => { leave(null); startInfinity(); } }, '🎲 Neue Chaos-Runde')
+        : won && next ? h('button.btn.primary.big', { onclick: () => leave(next) }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => leave(lv) }, won ? 'Nochmal' : 'Nochmal versuchen'))));
 }
