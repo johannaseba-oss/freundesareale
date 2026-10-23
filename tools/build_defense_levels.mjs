@@ -22,7 +22,7 @@ for (let n = 1; n <= 50; n++) {
     do types = pick(TYPES, size); while (types.some((t) => lastTypes.includes(t)) && rnd() < 0.7);
   }
   lastTypes = types;
-  const waves = Math.min(15, 6 + Math.floor(n / 5) + (n % 10 === 0 ? 1 : 0));
+  const waves = Math.max(10, Math.min(15, 6 + Math.floor(n / 5) + (n % 10 === 0 ? 1 : 0))); // mindestens 10 Wellen
   levels.push({
     n,
     types,

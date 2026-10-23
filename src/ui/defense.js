@@ -239,7 +239,7 @@ function openField(themeId = null) {
     ui.raf = requestAnimationFrame(loop);
   };
   ui.raf = requestAnimationFrame(loop);
-  if (import.meta.env.DEV) app.defense = { get g() { return game; }, step: (dt) => frame(dt), theme: (id) => { ui.themeId = id; const t = new Image(); t.src = `${base}art/defense/${id}.png`; t.onload = () => { ui.bg = null; }; ui.tiles = t; } };
+  if (import.meta.env.DEV) app.defense = { get g() { return game; }, get ui() { return ui; }, step: (dt) => frame(dt), theme: (id) => { ui.themeId = id; const t = new Image(); t.src = `${base}art/defense/${id}.png`; t.onload = () => { ui.bg = null; }; ui.tiles = t; } };
 }
 
 function closeField() {
@@ -258,7 +258,7 @@ function layout() {
   canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
   canvas.style.width = r.width + 'px'; canvas.style.height = r.height + 'px';
   // etwas Rand links/rechts für Bäume & Co.; im Chaos-Modus zusätzlich die Seitenfelder
-  const fit = Math.min(r.width / (G.cols + (game.chaos ? 2.3 : 0.8)), r.height / (G.rows + 1.1));
+  const fit = Math.min(r.width / (G.cols + (G.side ? 2.3 : 0.8)), r.height / (G.rows + 1.1));
   // Kachelgröße in Gerätepixeln = 24 × ganze Zahl, damit alle Kacheln gleich scharf und nahtlos sind
   const m = Math.floor((fit * dpr) / 24), tile = m >= 1 ? (24 * m) / dpr : Math.floor(fit);
   const snap = (v) => Math.round(v * dpr) / dpr; // Feldrand auf ganze Gerätepixel
@@ -278,7 +278,7 @@ function frame(dt) {
 }
 
 const cellAt = (cx, cy) => {
-  const r = ui.canvas.getBoundingClientRect(), G = D().grid, side = game.chaos ? 1 : 0;
+  const r = ui.canvas.getBoundingClientRect(), G = D().grid, side = G.side ? 1 : 0;
   const col = Math.floor((cx - r.left - ui.ox) / ui.tile), row = Math.floor((cy - r.top - ui.oy) / ui.tile);
   return col >= -side && col < G.cols + side && row >= 0 && row < G.rows ? [col, row] : null;
 };
@@ -294,10 +294,30 @@ function onField(e) {
   if (d) { const p = dropPos(d); if (game.collect(d)) { flyStar(toScreen(p.x, p.y), d); haptic('tick'); } handleEvents(); return; }
   const c = cellAt(e.clientX, e.clientY);
   if (!c) return;
-  // eigenes Pokémon antippen (ohne gewählte Karte): nach Bestätigung vom Feld nehmen
+  // eigenes Pokémon (ohne gewählte Karte): ziehen = auf ein anderes Feld verschieben; antippen = im Chaos zurück auf die Hand
   const own = !ui.sel && game.units.find((u) => u.col === c[0] && u.row === c[1] && u.hp > 0);
-  if (own) { askRemove(own); return; }
+  if (own) { dragUnit(e, own); return; }
   if (ui.sel) useCard(ui.sel, c);
+}
+function dragUnit(e, u) {
+  const sx = e.clientX, sy = e.clientY;
+  let ghost = null;
+  const move = (m) => {
+    if (!ghost && Math.hypot(m.clientX - sx, m.clientY - sy) < 12) return;
+    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(u.dex), alt: '' }); document.body.append(ghost); ui.moving = u; haptic('tick'); }
+    ghost.style.transform = `translate(${m.clientX - 26}px, ${m.clientY - 40}px)`;
+    ui.hover = cellAt(m.clientX, m.clientY);
+  };
+  const up = (ev) => {
+    window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    if (!ui) return;
+    if (!ghost) { if (ev.type === 'pointerup' && game.chaos) askRemove(u); return; } // nur angetippt
+    ghost.remove(); ui.moving = null; ui.hover = null;
+    const cell = ev.type === 'pointerup' ? cellAt(ev.clientX, ev.clientY) : null;
+    if (!cell || (cell[0] === u.col && cell[1] === u.row)) return;
+    if (game.moveUnit(u, cell[0], cell[1])) { haptic('medium'); handleEvents(); } else toast('Dorthin kann es nicht.');
+  };
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
 }
 // Karte auf ein Feld setzen – oder als Weiterentwicklung auf ein passendes, schon platziertes Pokémon
 function useCard(card, c) {
@@ -470,15 +490,15 @@ function draw(dt) {
     x.drawImage(U.trainer, fr * 64, 3 * 64, 64, 64, U.ox + (G.cols * T) / 2 - sz / 2, goalY + T * 0.02, sz, sz);
   }
   // Platzierungshilfe
-  if (U.sel) {
+  if (U.sel || U.moving) {
     x.fillStyle = 'rgba(255,255,255,.18)';
     for (let r = 0; r < G.rows; r++) for (let c = -1; c <= G.cols; c++) if (game.canPlace(c, r)) x.fillRect(U.ox + c * T + 2, U.oy + r * T + 2, T - 4, T - 4);
     // passende Pokémon für eine Weiterentwicklung golden umranden
     x.strokeStyle = '#ffd23f'; x.lineWidth = 3;
-    for (const u of game.units) if (game.canUpgrade(U.sel, u)) { const p = 1 + Math.sin(now / 150) * 2; x.strokeRect(U.ox + u.col * T + 2 - p, U.oy + u.row * T + 2 - p, T - 4 + p * 2, T - 4 + p * 2); }
+    for (const u of game.units) if (U.sel && game.canUpgrade(U.sel, u)) { const p = 1 + Math.sin(now / 150) * 2; x.strokeRect(U.ox + u.col * T + 2 - p, U.oy + u.row * T + 2 - p, T - 4 + p * 2, T - 4 + p * 2); }
     if (U.hover) {
       const there = game.units.find((u) => u.col === U.hover[0] && u.row === U.hover[1] && u.hp > 0);
-      x.strokeStyle = game.canPlace(...U.hover) || (there && game.canUpgrade(U.sel, there)) ? '#fff' : 'rgba(255,90,90,.9)'; x.lineWidth = 2; x.strokeRect(U.ox + U.hover[0] * T + 1, U.oy + U.hover[1] * T + 1, T - 2, T - 2);
+      x.strokeStyle = game.canPlace(...U.hover) || (there && U.sel && game.canUpgrade(U.sel, there)) ? '#fff' : 'rgba(255,90,90,.9)'; x.lineWidth = 2; x.strokeRect(U.ox + U.hover[0] * T + 1, U.oy + U.hover[1] * T + 1, T - 2, T - 2);
     }
   }
   const P = (o) => [U.ox + o.x * T, U.oy + o.y * T];
@@ -714,7 +734,7 @@ function buildBackground() {
   const px = Math.max(1, Math.round(Dp / 24)); // ein Pixel der Kachelgrafik
   const X = (col) => ox + col * Dp, Y = (r) => oy + r * Dp;
   const hash = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 997;
-  const SR = game.chaos ? D().chaos.side.rows : null; // Chaos: Seitenfelder links und rechts
+  const SR = G.side?.rows || null; // Seitenfelder links und rechts
   const isSide = (col, r) => SR && (col === -1 || col === G.cols) && r >= SR[0] && r <= SR[1];
   const isFloor = (col, r) => (col >= 0 && col < G.cols && r >= 0 && r < G.rows + 2) || isSide(col, r);
   const c0 = Math.floor(-ox / Dp) - 1, r0 = Math.floor(-oy / Dp) - 1, c1 = Math.ceil((c.width - ox) / Dp), r1 = Math.ceil((c.height - oy) / Dp);

@@ -168,7 +168,7 @@ export class Defense {
   }
   // Chaos: seitliche Felder links (Spalte -1) und rechts (Spalte cols) neben dem Spielfeld
   isSide(col, row) {
-    const S = this.chaos && D().chaos.side, G = D().grid;
+    const G = D().grid, S = G.side;
     return !!S && (col === -1 || col === G.cols) && row >= S.rows[0] && row <= S.rows[1];
   }
   canPlace(col, row) {
@@ -198,6 +198,15 @@ export class Defense {
     if (card.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
     if (ab?.type === 'heal') u.nextHeal = this.t + ab.every * 0.5;
     this.units.push(u);
+    this.events.push({ type: 'place', u });
+    return true;
+  }
+  // eigenes Pokémon auf ein anderes freies Feld verschieben (Drag & Drop)
+  moveUnit(u, col, row) {
+    if (u.hp <= 0 || this.over || (u.col === col && u.row === row) || !this.canPlace(col, row)) return false;
+    u.col = col; u.row = row; u.x = col + 0.5; u.y = row + 0.5;
+    u.dir = col < 0 ? 1 : col >= D().grid.cols ? -1 : 0; // Seitenfeld: greift zur Mitte hin an
+    u.placedAt = this.t;
     this.events.push({ type: 'place', u });
     return true;
   }
@@ -462,7 +471,7 @@ export class Defense {
         if (this.t < u.armAt) continue;
         const big = evolved(u.dex);
         // Chaos: zündet auch, wenn ein Gegner neben ihm vorbeiläuft (Seitenfelder)
-        const trigger = big || this.enemies.some((e) => e.hp > 0 && Math.abs(e.y - u.y) < 0.6 && (this.chaos ? Math.abs(e.x - u.x) < 1.5 : e.col === u.col));
+        const trigger = big || this.enemies.some((e) => e.hp > 0 && Math.abs(e.y - u.y) < 0.6 && (this.chaos || u.dir ? Math.abs(e.x - u.x) < 1.5 : e.col === u.col));
         if (!trigger) continue;
         this.explode(u, big ? R.explosiv.radiusBig : R.explosiv.radiusSmall, R.explosiv.damage);
         continue;

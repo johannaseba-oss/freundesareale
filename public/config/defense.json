@@ -11,7 +11,14 @@
     "_placeRows": "Reihen, in denen eigene Pokémon stehen dürfen (0 = oben)",
     "startRows": 3,
     "rowsPerWave": 0.5,
-    "_rows": "Am Anfang sind nur die untersten startRows Reihen frei, alle 1/rowsPerWave Wellen eine weitere (bis placeRows)."
+    "_rows": "Am Anfang sind nur die untersten startRows Reihen frei, alle 1/rowsPerWave Wellen eine weitere (bis placeRows).",
+    "side": {
+      "_hinweis": "Seitenfelder links und rechts vom Spielfeld (Reihen rows, 0 = oben) – in allen Modi. Pokémon dort greifen quer über das Feld an.",
+      "rows": [
+        2,
+        8
+      ]
+    }
   },
   "level": 10,
   "_level": "Startlevel der eigenen Pokémon (mit ihren IVs/EVs). Sie sammeln EP durch besiegte Gegner, steigen auf und entwickeln sich – nur für diese Runde.",
@@ -585,13 +592,6 @@
         2000
       ],
       "growth": 2
-    },
-    "side": {
-      "_hinweis": "Seitliche Felder links und rechts vom Spielfeld (Reihen rows, 0 = oben). Pokémon dort greifen quer über das Feld an.",
-      "rows": [
-        2,
-        8
-      ]
     },
     "explosionArea": 1,
     "_explosionArea": "Explosionen treffen alles in (2×explosionArea+1)² Feldern um das Pokémon (1 = 3×3)",
