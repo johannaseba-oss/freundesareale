@@ -55,6 +55,23 @@ export function abilityText(dex) {
 }
 
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+// Lage eines Gegners aus Sicht des Pokémon: fwd = Abstand in Angriffsrichtung, lat = seitlicher Versatz
+// (Mitte: die Spalte hinauf, Seitenfeld: quer über die eigene Reihe)
+const aim = (u, e) => (u.dir ? { fwd: (e.x - u.x) * u.dir, lat: Math.abs(e.y - u.y) } : { fwd: u.y - e.y, lat: Math.abs(e.x - u.x) });
+// Chaos: Sammler kämpfen normal (es gibt keine Sterne)
+function chaosRole(dex) {
+  const role = roleOf(dex);
+  return role === 'produzent' ? (moveOf(bdata(dex).move)?.range === 'nah' ? 'nahkampf' : 'fernkampf') : role;
+}
+// true, wenn sich from (direkt oder über Zwischenstufen) zu to entwickelt
+export function evolvesInto(from, to) {
+  const seen = new Set(), list = [from];
+  while (list.length) {
+    const d = list.shift();
+    for (const e of bdata(d)?.evos || []) { if (e.to === to) return true; if (!seen.has(e.to)) { seen.add(e.to); list.push(e.to); } }
+  }
+  return false;
+}
 // Vergleichswert für Tempo: Initiative eines Pokémon mit Basiswert 80 auf demselben Level
 const refSpeed = (level) => Math.floor(((2 * 80 + 15) * level) / 100) + 5;
 
@@ -67,8 +84,9 @@ export class Defense {
     this.t = 0;
     this.level = level;
     this.theme = level.types;
-    this.endless = chaos; // Chaos: endlose Wellen, Gegner aller Typen
-    this.waves = chaos ? [] : buildWaves(level);
+    this.tournament = chaos && !!level.tournament; // Tournament Run: festes Level mit Gegner-Thema
+    this.endless = chaos && !this.tournament; // Infinity Run: endlose Wellen, Gegner aller Typen
+    this.waves = this.endless ? [] : buildWaves(level);
     this.families = pickFamilies(level, mulberry32(chaos ? seed : level.n * 7919));
     this.stars = D().stars.start;
     this.cards = team.map((src) => ({ src, dex: src.dex, role: roleOf(src.dex), cost: costOf(src.dex), recharge: rechargeOf(src.dex), readyAt: 0 }));
@@ -86,17 +104,49 @@ export class Defense {
     this.nextId = 1;
     this.weather = pickWeather(this.rnd);
     this.weatherNext = nextWeatherIn(this.rnd);
-    if (chaos) { this.stars = 0; for (let i = 0; i < D().chaos.startCards; i++) this.addChaosCard(randomDex(this.rnd, undefined, D().chaos.cards?.weights)); }
+    this.lives = 0; this.livesBought = 0; this.bossWaves = 0; this.nextTrickle = 0;
+    this.prepLeft = null;
+    if (chaos) {
+      this.stars = 0;
+      for (let i = 0; i < D().chaos.startCards; i++) this.addChaosCard(randomDex(this.rnd, undefined, D().chaos.cards?.weights));
+      this.lives = D().chaos.lives.start;
+      this.prepLeft = D().chaos.prepSeconds; // Countdown statt unbegrenzter Vorbereitung
+    }
   }
   // Chaos: einmalige Karte mit einem zufälligen Pokémon (kostenlos, verschwindet nach dem Einsetzen)
   addChaosCard(dex) {
     if (this.cards.length >= D().chaos.handMax) return false;
     const src = fromCpu(dex, { id: 'chaos' + this.nextId, ivs: [0, 31], evs: 0 }, this.nextId++);
-    // im Chaos-Modus gibt es keine Sterne – Sammler kämpfen dort ganz normal
-    let role = roleOf(dex);
-    if (role === 'produzent') role = moveOf(bdata(dex).move)?.range === 'nah' ? 'nahkampf' : 'fernkampf';
-    this.cards.push({ src, dex, role, cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++ });
+    this.cards.push({ src, dex, role: chaosRole(dex), cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++ });
     return true;
+  }
+  // Preis des nächsten Extra-Lebens (steigt mit jedem Kauf)
+  lifePrice() {
+    const L = D().chaos.lives, i = this.livesBought;
+    return i < L.prices.length ? L.prices[i] : Math.round(L.prices[L.prices.length - 1] * Math.pow(L.growth, i - L.prices.length + 1));
+  }
+  addLife() { this.lives++; this.livesBought++; this.events.push({ type: 'lifeBought' }); }
+
+  // Chaos: Weiterentwicklung auf ein bereits platziertes Pokémon setzen – es entwickelt sich auf seinem Feld
+  canUpgrade(card, u) { return this.chaos && !!card?.once && u.hp > 0 && evolvesInto(u.dex, card.dex); }
+  upgrade(card, u) {
+    if (!this.canUpgrade(card, u) || this.over) return false;
+    this.cards.splice(this.cards.indexOf(card), 1);
+    const from = u.dex;
+    u.dex = card.dex;
+    u.exp = Math.max(u.exp, expForLevel(u.dex, u.level)); // Level-Fortschritt bleibt erhalten
+    u.role = chaosRole(u.dex);
+    u.hpMult = this.hpMultOf(u.dex, u.role);
+    this.restat(u);
+    const ab = abilityOf(u.dex);
+    if (u.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : 0.8);
+    if (ab?.type === 'heal') u.nextHeal = this.t + ab.every * 0.5;
+    this.events.push({ type: 'evolve', u, from, to: u.dex });
+    return true;
+  }
+  hpMultOf(dex, role) {
+    const ab = abilityOf(dex);
+    return D().defenderHpMult * (ab?.type === 'shield' ? ab.hpMult : role === 'mauer' ? D().roles.mauer.hpMult : 1);
   }
 
   // ---- Platzieren ----
@@ -108,9 +158,15 @@ export class Defense {
     const open = (G.startRows || 99) + Math.min(span, Math.floor(Math.max(0, this.wave + 1) * Math.max(G.rowsPerWave || 0, span / Math.max(1, total * 0.6))));
     return Math.max(G.placeRows[0], G.placeRows[1] - open + 1);
   }
+  // Chaos: seitliche Felder links (Spalte -1) und rechts (Spalte cols) neben dem Spielfeld
+  isSide(col, row) {
+    const S = this.chaos && D().chaos.side, G = D().grid;
+    return !!S && (col === -1 || col === G.cols) && row >= S.rows[0] && row <= S.rows[1];
+  }
   canPlace(col, row) {
     const G = D().grid;
-    return col >= 0 && col < G.cols && row >= this.minRow() && row <= G.placeRows[1] && !this.units.some((u) => u.col === col && u.row === row);
+    const inField = col >= 0 && col < G.cols && row >= this.minRow() && row <= G.placeRows[1];
+    return (inField || this.isSide(col, row)) && !this.units.some((u) => u.col === col && u.row === row);
   }
   cardReady(card) { return this.t >= card.readyAt && this.stars >= card.cost && !this.over; }
   place(card, col, row) {
@@ -119,13 +175,15 @@ export class Defense {
     card.readyAt = this.t + card.recharge;
     if (card.once) this.cards.splice(this.cards.indexOf(card), 1);
     const src = card.src, R = D().roles;
-    const L = this.endless // Chaos: knapp unter dem Level der aktuellen Gegner
-      ? Math.max(D().level, (this.chaosLevel ?? D().chaos.endless.baseLevel) - (D().chaos.cards?.levelGap ?? 2))
+    const L = this.chaos // Chaos: knapp unter dem Level der aktuellen Gegner
+      ? Math.max(D().level, (this.chaosLevel ?? (this.endless ? D().chaos.endless.baseLevel : this.level.enemyLevel)) - (D().chaos.cards?.levelGap ?? 2))
       : Math.max(D().level, (this.level?.enemyLevel || 0) - (D().levelGap ?? 99)); // spätere Level: eigene Pokémon starten stärker
     const stats = calcStats(src.dex, L, src.ivs, src.evs);
     const ab = abilityOf(src.dex);
-    const hpMult = D().defenderHpMult * (ab?.type === 'shield' ? ab.hpMult : card.role === 'mauer' ? R.mauer.hpMult : 1);
-    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: L, exp: expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t };
+    const hpMult = this.hpMultOf(src.dex, card.role);
+    // dir: 0 = greift die eigene Spalte hinauf an, ±1 = Seitenfeld, greift quer über das Feld an
+    const dir = col < 0 ? 1 : col >= D().grid.cols ? -1 : 0;
+    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: L, exp: expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t };
     u.hp = u.maxHp;
     if (card.role === 'produzent') u.nextStar = this.t + this.between(R.produzent.every) * 0.5;
     if (card.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
@@ -177,32 +235,61 @@ export class Defense {
       p = Math.min(1, this.wave / 10);
     } else {
       level = this.level.enemyLevel + this.wave * D().enemy.levelPerWave;
+      if (this.tournament) this.chaosLevel = level;
       // Entwicklungsstufe steigt über die Wellen: erst Grundformen, gelegentlich Zweitentwicklungen, zum Schluss Endentwicklungen
       p = this.waves.length > 1 ? this.wave / (this.waves.length - 1) : 1;
     }
-    const W = this.waves[this.wave];
-    const weights = [Math.max(0.05, 1 - p * 0.9), 0.12 + p * 0.9, this.level.finalStage >= 3 ? Math.max(0, (p - 0.4) * 1.6) : 0];
+    this.waveLevel = level; this.waveP = p;
+    const W = this.waves[this.wave], spread = this.chaos ? D().chaos.flow.bigSpread : W.spread;
     for (let i = 0; i < W.count; i++) {
-      let r = this.rnd() * weights.reduce((a, b) => a + b, 0), stage = 1;
-      for (let k = 0; k < 3; k++) { if ((r -= weights[k]) < 0) { stage = k + 1; break; } }
-      const fam = this.families[Math.floor(this.rnd() * this.families.length)];
-      const dex = fam[Math.min(stage, fam.length) - 1];
       const fast = this.endless && this.rnd() < D().chaos.fast.chance;
-      this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * W.spread + this.rnd() * 3), dex, level, col: Math.floor(this.rnd() * D().grid.cols), fast });
+      this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * spread + this.rnd() * 3), dex: this.rollEnemy(), level, col: Math.floor(this.rnd() * D().grid.cols), fast });
     }
-    if (this.endless && this.wave + 1 >= (D().chaos.boss.fromWave || 2)) { // Chaos: ein Boss pro Welle, begleitet von Leibwächtern in den Nachbarspalten
-      const Bo = D().chaos.boss, at = this.t + W.spread * (0.35 + this.rnd() * 0.3), col = Math.floor(this.rnd() * D().grid.cols);
-      const strong = this.families.map((fm) => fm[fm.length - 1]);
-      this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true });
-      const n = Bo.guards[0] + Math.floor(this.rnd() * (Bo.guards[1] - Bo.guards[0] + 1));
-      for (let g = 0; g < n; g++) {
-        const gc = Math.max(0, Math.min(D().grid.cols - 1, col + (g % 2 ? 1 : -1) * Math.ceil((g + 1) / 2)));
-        const fam = this.families[Math.floor(this.rnd() * this.families.length)];
-        this.queue.push({ at: at + 0.3 + g * 0.25, dex: fam[Math.min(1, fam.length - 1)], level, col: gc === col ? (col + 1) % D().grid.cols : gc, guard: true });
+    const Bo = D().chaos.boss;
+    if (this.endless && this.wave + 1 >= (Bo.fromWave || 2)) { // Infinity: ein Boss pro Welle, begleitet von Leibwächtern in den Nachbarspalten
+      // in den ersten soloWaves Boss-Wellen: höchstens ein Boss gleichzeitig, ohne Leibwächter
+      const solo = this.bossWaves < (Bo.soloWaves ?? 0);
+      if (!(solo && this.enemies.some((e) => e.boss && e.hp > 0))) {
+        this.bossWaves++;
+        const at = this.t + spread * (0.35 + this.rnd() * 0.3), col = Math.floor(this.rnd() * D().grid.cols);
+        const strong = this.families.map((fm) => fm[fm.length - 1]);
+        this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true });
+        const n = solo ? 0 : Bo.guards[0] + Math.floor(this.rnd() * (Bo.guards[1] - Bo.guards[0] + 1));
+        for (let g = 0; g < n; g++) {
+          const gc = Math.max(0, Math.min(D().grid.cols - 1, col + (g % 2 ? 1 : -1) * Math.ceil((g + 1) / 2)));
+          const fam = this.families[Math.floor(this.rnd() * this.families.length)];
+          this.queue.push({ at: at + 0.3 + g * 0.25, dex: fam[Math.min(1, fam.length - 1)], level, col: gc === col ? (col + 1) % D().grid.cols : gc, guard: true });
+        }
       }
+    }
+    if (this.tournament && W.final && this.level.legendary) { // Tournament: legendäres Pokémon als Boss in der letzten Welle
+      const legs = CFG.dex.filter((s) => s.rarity === 'legendaer' && bdata(s.dex));
+      const fit = legs.filter((s) => s.types.some((t) => this.level.types.includes(t)));
+      const pool = fit.length ? fit : legs;
+      this.queue.push({ at: this.t + spread * 0.5, dex: pool[Math.floor(this.rnd() * pool.length)].dex, level: level + 3, col: Math.floor(this.rnd() * D().grid.cols), boss: true });
     }
     this.queue.sort((a, b) => a.at - b.at);
     this.events.push({ type: 'wave', wave: this.wave, final: !!W.final, minRow: this.minRow() });
+  }
+  // Gegnerart passend zur aktuellen Welle: früh Grundformen, später Entwicklungen
+  rollEnemy() {
+    const p = this.waveP ?? 0;
+    const weights = [Math.max(0.05, 1 - p * 0.9), 0.12 + p * 0.9, this.level.finalStage >= 3 ? Math.max(0, (p - 0.4) * 1.6) : 0];
+    let r = this.rnd() * weights.reduce((a, b) => a + b, 0), stage = 1;
+    for (let k = 0; k < 3; k++) { if ((r -= weights[k]) < 0) { stage = k + 1; break; } }
+    const fam = this.families[Math.floor(this.rnd() * this.families.length)];
+    return fam[Math.min(stage, fam.length) - 1];
+  }
+  // Chaos: kleine Gruppe (1–3 Gegner) auf einer Spalte zwischen den großen Wellen
+  trickle() {
+    const F = D().chaos.flow, n = F.group[0] + Math.floor(this.rnd() * (F.group[1] - F.group[0] + 1));
+    const col = Math.floor(this.rnd() * D().grid.cols);
+    let at = this.t;
+    for (let i = 0; i < n; i++) {
+      this.queue.push({ at, dex: this.rollEnemy(), level: this.waveLevel, col, fast: this.endless && this.rnd() < D().chaos.fast.chance });
+      at += this.between(F.groupGap);
+    }
+    this.queue.sort((a, b) => a.at - b.at);
   }
   spawn(q) {
     const st = calcStats(q.dex, q.level, rollIvs('g' + this.nextId, [0, 31]), [0, 0, 0, 0, 0, 0]);
@@ -238,8 +325,7 @@ export class Defense {
     else if (mv?.type === 'Elektro' && !(this.t < e.slowUntil && e.slowFactor < D().elecSlow.factor)) { e.slowUntil = this.t + D().elecSlow.seconds; e.slowFactor = D().elecSlow.factor; }
     if (mv?.type === 'Gift' && from?.dex && e.hp > 0) e.poison = { until: this.t + D().poison.seconds, dps: e.maxHp * D().poison.pctPerSecond, from, tick: 0 };
     const ab = from?.dex ? abilityOf(from.dex) : null;
-    if (ab?.type === 'confuse' && e.hp > 0 && this.rnd() < ab.chance) { e.confusedUntil = this.t + ab.seconds; this.events.push({ type: 'confuse', e }); }
-    if (ab?.type === 'sleep' && e.hp > 0 && this.t >= (e.sleepUntil || 0) && this.rnd() < ab.chance) { e.sleepUntil = this.t + ab.seconds; this.events.push({ type: 'sleep', e }); }
+    if (!this.chaos && e.hp > 0 && this.rnd() < (ab?.chance || 0)) this.applyStatus(e, ab); // Chaos: Status wirkt stattdessen als Fläche
     this.events.push({ type: 'hit', target: e, dmg, eff, move: mv, crit, melee: from?.role === 'nahkampf' });
     if (e.hp <= 0) { this.events.push({ type: 'defeat', e }); if (from?.role && from.hp > 0) this.reward(from, e); }
   }
@@ -256,7 +342,24 @@ export class Defense {
     const evo = levelEvolution(u);
     if (evo) { const from = u.dex; u.dex = evo.to; this.restat(u); this.events.push({ type: 'evolve', u, from, to: evo.to }); }
   }
+  // Schlaf/Verwirrung auf einen Gegner anwenden
+  applyStatus(e, ab) {
+    if (ab?.type === 'confuse') { e.confusedUntil = this.t + ab.seconds; this.events.push({ type: 'confuse', e }); }
+    if (ab?.type === 'sleep' && this.t >= (e.sleepUntil || 0)) { e.sleepUntil = this.t + ab.seconds; this.events.push({ type: 'sleep', e }); }
+  }
+  // Gegner im Quadrat aus (2·a+1)² Feldern um das Pokémon (a = 1: 3×3)
+  inArea(u, a) { return this.enemies.filter((e) => e.hp > 0 && e.y > -0.2 && Math.abs(e.x - u.x) <= a + 0.5 && Math.abs(e.y - u.y) <= a + 0.5); }
   explode(u, rad, damage) {
+    if (this.chaos) { // Chaos: Explosion trifft alles im 3×3-Bereich, in alle Richtungen
+      const a = D().chaos.explosionArea;
+      for (const e of this.inArea(u, a)) {
+        const eff = effectiveness(moveOf(bdata(u.dex).move).type, species(e.dex).types) || 1;
+        this.hurtEnemy(e, Math.round(damage * Math.max(0.5, eff)), eff, u, null);
+      }
+      u.hp = 0;
+      this.events.push({ type: 'explode', u, radius: a + 0.5, square: true });
+      return;
+    }
     for (const e of this.enemies) if (e.hp > 0 && dist(e, u) <= rad + 0.3) {
       const eff = effectiveness(moveOf(bdata(u.dex).move).type, species(e.dex).types) || 1;
       this.hurtEnemy(e, Math.round(damage * Math.max(0.5, eff)), eff, u, null);
@@ -273,7 +376,14 @@ export class Defense {
 
   // ---- Simulation ----
   update(dt) {
-    if (!this.started || this.over) return;
+    if (this.over) return;
+    if (!this.started) { // Chaos: Countdown, danach geht der Angriff los
+      if (this.prepLeft == null) return;
+      this.prepLeft -= dt;
+      if (this.prepLeft > 0) return;
+      this.prepLeft = 0; this.started = true; this.nextWaveAt = this.t;
+      this.events.push({ type: 'go' });
+    }
     this.t += dt;
     const G = D().grid, S = D().stars, R = D().roles, L = D().level;
     if (this.t >= this.weatherNext) { this.weather = pickWeather(this.rnd, this.weather); this.weatherNext = this.t + nextWeatherIn(this.rnd); this.events.push({ type: 'weather', weather: this.weather }); }
@@ -284,7 +394,12 @@ export class Defense {
     }
     this.drops = this.drops.filter((d) => this.t - d.born < S.lifetime + 1.5);
     // Wellen
-    if ((this.endless || this.wave < this.waves.length - 1) && this.t >= this.nextWaveAt && !this.queue.length) {
+    const moreWaves = this.endless || this.wave < this.waves.length - 1;
+    if (this.chaos) { // Chaos: alle bigEvery s eine große Welle, dazwischen kleine Gruppen
+      const F = D().chaos.flow;
+      if (moreWaves && this.t >= this.nextWaveAt) { this.startWave(); this.nextWaveAt = this.t + F.bigEvery; this.nextTrickle = this.t + F.bigSpread; }
+      else if (moreWaves && this.wave >= 0 && this.t >= this.nextTrickle) { this.trickle(); this.nextTrickle = this.t + this.between(F.trickleEvery); }
+    } else if (moreWaves && this.t >= this.nextWaveAt && !this.queue.length) {
       this.startWave();
       const W = this.waves[this.wave];
       this.nextWaveAt = this.t + W.spread + D().waveGap;
@@ -305,46 +420,64 @@ export class Defense {
         for (const o of this.units) if (o.hp > 0 && o.hp < o.maxHp && dist(o, u) <= ab.radius) { const amt = Math.max(1, Math.round(o.maxHp * ab.pct)); o.hp = Math.min(o.maxHp, o.hp + amt); healed.push({ o, amt }); }
         this.events.push({ type: 'heal', u, radius: ab.radius, healed });
       }
+      // Chaos: Schlafpuder & Co. wirken auf alle Gegner im 3×3-Bereich um das Pokémon
+      if (this.chaos && (ab?.type === 'sleep' || ab?.type === 'confuse') && this.t >= (u.nextStatus || 0)) {
+        const SA = D().chaos.statusArea, near = this.inArea(u, SA.area);
+        if (near.length) {
+          u.nextStatus = this.t + SA.every;
+          this.events.push({ type: 'statusArea', u, area: SA.area, kind: ab.type });
+          for (const e of near) if (this.rnd() < ab.chance) this.applyStatus(e, ab);
+        }
+      }
       if (u.role === 'mauer') continue;
       if (u.role === 'explosiv') {
         if (ab?.type === 'reactive') continue; // explodiert erst, wenn es angegriffen wird
         if (this.t < u.armAt) continue;
         const big = evolved(u.dex);
-        const trigger = big || this.enemies.some((e) => e.hp > 0 && e.col === u.col && Math.abs(e.y - u.y) < 0.6);
+        // Chaos: zündet auch, wenn ein Gegner neben ihm vorbeiläuft (Seitenfelder)
+        const trigger = big || this.enemies.some((e) => e.hp > 0 && Math.abs(e.y - u.y) < 0.6 && (this.chaos ? Math.abs(e.x - u.x) < 1.5 : e.col === u.col));
         if (!trigger) continue;
         this.explode(u, big ? R.explosiv.radiusBig : R.explosiv.radiusSmall, R.explosiv.damage);
         continue;
       }
       u.cd -= dt;
       if (u.cd > 0) continue;
-      const melee = u.role === 'nahkampf', range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : R[u.role].range;
-      // nächster Gegner in der eigenen Spalte oberhalb (Nahkampf: direkt davor)
-      let target = null;
+      const mv = moveOf(bdata(u.dex).move), rule = this.chaos ? D().chaos.moves?.[mv.name] : null; // Chaos: durchdringende Attacken
+      const melee = u.role === 'nahkampf', range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : rule ? rule.range : R[u.role].range;
+      // nächster Gegner in Angriffsrichtung (Mitte: die eigene Spalte hinauf, Seitenfeld: quer über die Reihe)
+      let target = null, best = Infinity;
       for (const e of this.enemies) {
-        if (e.hp <= 0 || e.col !== u.col || e.y > u.y + 0.3 || e.y < -0.2) continue;
-        const d = u.y - e.y;
-        if (d <= range && (!target || e.y > target.y)) target = e;
+        if (e.hp <= 0 || e.y < -0.2) continue;
+        const a = aim(u, e);
+        if (a.lat < (rule?.width ? rule.width / 2 : 0.5) && a.fwd >= -0.3 && a.fwd <= range && a.fwd < best) { target = e; best = a.fwd; }
       }
       if (!target) continue;
       const spd = u.stats[5] / refSpeed(u.level);
       u.cd = R[u.role].cooldown / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3)));
       u.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
-      this.events.push({ type: 'shoot', u, moveType: moveOf(bdata(u.dex).move).type, melee });
+      this.events.push({ type: 'shoot', u, moveType: mv.type, melee });
+      const [dx, dy] = u.dir ? [u.dir, 0] : [0, -1], x0 = u.x + dx * 0.3, y0 = u.y + dy * 0.3;
       if (ab?.type === 'beam') { // Strahl: trifft alle Gegner in length Feldern
         this.events.push({ type: 'beam', u, length: ab.length, fx: ab.fx });
-        for (const e of this.enemies) if (e.hp > 0 && e.col === u.col && u.y - e.y > -0.2 && u.y - e.y <= ab.length + 0.3) { const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); }
+        for (const e of this.enemies) { const a = aim(u, e); if (e.hp > 0 && a.lat < 0.5 && a.fwd > -0.2 && a.fwd <= ab.length + 0.3) { const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); } }
       } else if (ab?.type === 'boomerang') {
-        this.projectiles.push({ x: u.x, y: u.y - 0.3, col: u.col, from: u, type: moveOf(bdata(u.dex).move).type, boomerang: true, out: true, startY: u.y - 0.3, range: ab.range, hits: new Set(), left: ab.pierce, ab });
+        this.projectiles.push({ x: x0, y: y0, x0, y0, dx, dy, dist: 0, from: u, type: mv.type, boomerang: true, out: true, range: ab.range, hits: new Set(), left: ab.pierce, ab });
+      } else if (rule?.width) { // Wolke: trifft alle Gegner in der Fläche vor dem Pokémon
+        this.events.push({ type: 'cloud', u, range: rule.range, width: rule.width, moveType: mv.type });
+        for (const e of this.enemies) { const a = aim(u, e); if (e.hp > 0 && a.lat < rule.width / 2 && a.fwd > -0.3 && a.fwd <= rule.range) { const r = this.damage(u, u.level, e, R[u.role].damageMult); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); } }
       } else if (melee) { const r = this.damage(u, u.level, target, R.nahkampf.damageMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); }
-      else this.projectiles.push({ x: u.x, y: u.y - 0.3, col: u.col, from: u, type: moveOf(bdata(u.dex).move).type });
+      else this.projectiles.push({ x: x0, y: y0, vx: dx * 6, vy: dy * 6, dist: 0, from: u, type: mv.type, range: rule ? rule.range : 99, left: rule ? rule.pierce : 1, hits: new Set() });
     }
-    // Geschosse fliegen die Spalte hinauf und treffen den ersten Gegner
+    // Geschosse fliegen in Angriffsrichtung; durchdringende treffen bis zu left Gegner innerhalb ihrer Reichweite
     this.projectiles = this.projectiles.filter((p) => {
       if (p.boomerang) return this.flyBoomerang(p, dt);
-      p.y -= 6 * dt;
-      const hit = this.enemies.find((e) => e.hp > 0 && e.col === p.col && Math.abs(e.y - p.y) < 0.35);
-      if (hit) { const r = this.damage(p.from, p.from.level, hit, R.fernkampf.damageMult); this.hurtEnemy(hit, r.dmg, r.eff, p.from, r.mv, r.crit); return false; }
-      return p.y > -1;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.dist += 6 * dt;
+      for (const e of this.enemies) {
+        if (p.left <= 0 || e.hp <= 0 || p.hits.has(e.id) || Math.abs(e.x - p.x) > 0.45 || Math.abs(e.y - p.y) > 0.35) continue;
+        p.hits.add(e.id); p.left--;
+        const r = this.damage(p.from, p.from.level, e, R.fernkampf.damageMult); this.hurtEnemy(e, r.dmg, r.eff, p.from, r.mv, r.crit);
+      }
+      return p.left > 0 && p.dist <= p.range + 0.3 && p.y > -1 && p.x > -2 && p.x < G.cols + 2;
     });
     // Gegner laufen nach unten, beißen eigene Pokémon, die im Weg stehen
     const E = D().enemy;
@@ -387,7 +520,10 @@ export class Defense {
       e.eating = false;
       const sp = E.tilesPerSecond * (e.pace || 1) * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (this.t < e.slowUntil ? e.slowFactor || D().iceSlow.factor : 1);
       e.y += sp * dt;
-      if (e.y >= G.rows) { this.over = { won: false, t: this.t, by: e }; return; }
+      if (e.y >= G.rows) {
+        if (this.lives > 0) { this.lives--; e.hp = 0; e.hurtT = this.t; this.events.push({ type: 'lifeLost', e }); continue; } // Chaos: ein Leben verloren
+        this.over = { won: false, t: this.t, by: e }; return;
+      }
     }
     this.enemies = this.enemies.filter((e) => e.hp > 0 || this.t - (e.hurtT || 0) < 0.5);
     this.units = this.units.filter((u) => u.hp > 0 || this.t - (u.hurtT || u.placedAt) < 0.5);
@@ -397,15 +533,16 @@ export class Defense {
   // Knochenbumerang: hin bis range, dann zurück; durchschlägt je Richtung pierce Gegner (zurück schwächer)
   flyBoomerang(p, dt) {
     p.spin = (p.spin || 0) + dt * 18;
-    p.y += (p.out ? -5 : 5) * dt;
-    if (p.out && p.startY - p.y >= p.range) { p.out = false; p.hits = new Set(); p.left = p.ab.pierce; }
+    p.dist += (p.out ? 5 : -5) * dt;
+    if (p.out && p.dist >= p.range) { p.out = false; p.hits = new Set(); p.left = p.ab.pierce; }
+    p.x = p.x0 + p.dx * p.dist; p.y = p.y0 + p.dy * p.dist;
     for (const e of this.enemies) {
-      if (p.left <= 0 || e.hp <= 0 || e.col !== p.col || p.hits.has(e.id) || Math.abs(e.y - p.y) > 0.35) continue;
+      if (p.left <= 0 || e.hp <= 0 || p.hits.has(e.id) || Math.abs(e.x - p.x) > 0.45 || Math.abs(e.y - p.y) > 0.35) continue;
       p.hits.add(e.id); p.left--;
       const r = this.damage(p.from, p.from.level, e, p.out ? 1 : p.ab.backMult);
       this.hurtEnemy(e, r.dmg, r.eff, p.from, r.mv, r.crit);
     }
-    return p.out || p.y < p.startY;
+    return p.out || p.dist > 0;
   }
   waveProgress() { return { wave: Math.max(0, this.wave + 1), total: this.endless ? null : this.waves.length }; }
 }

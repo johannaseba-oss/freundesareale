@@ -527,13 +527,13 @@
     "endless": {
       "baseLevel": 8,
       "levelPerWave": 2.5,
-      "base": 5,
+      "base": 4,
       "perWave": 1.45,
       "familyRefresh": 4,
       "_hinweis": "Chaos ist endlos: Gegner aller Typen, alle familyRefresh Wellen neue Familien, Gegneranzahl = (base + Welle × perWave) × countMult, Level = baseLevel + Welle × levelPerWave"
     },
     "boss": {
-      "_hinweis": "Pro Welle ein Boss: hpMult = KP-Faktor, defMult = Vert/SpVert-Faktor, guards = Anzahl Leibwächter [min, max], pace = Tempo-Faktor, scale = Darstellungsgröße, fromWave = ab welcher Welle Bosse kommen",
+      "_hinweis": "Pro Welle ein Boss: hpMult = KP-Faktor, defMult = Vert/SpVert-Faktor, guards = Anzahl Leibwächter [min, max], pace = Tempo-Faktor, scale = Darstellungsgröße, fromWave = ab welcher Welle Bosse kommen, soloWaves = in so vielen ersten Boss-Wellen höchstens ein Boss gleichzeitig und ohne Leibwächter",
       "hpMult": 6,
       "defMult": 1.5,
       "guards": [
@@ -542,10 +542,11 @@
       ],
       "pace": 0.8,
       "scale": 1.45,
-      "fromWave": 2
+      "fromWave": 2,
+      "soloWaves": 3
     },
     "fast": {
-      "_hinweis": "Flinke Gegner: chance je Gegner, pace = Tempo-Faktor",
+      "_hinweis": "Flinke Gegner (nur Infinity Run): chance je Gegner, pace = Tempo-Faktor",
       "chance": 0.18,
       "pace": 1.75
     },
@@ -558,6 +559,66 @@
         "legendaer": 6
       },
       "levelGap": 2
+    },
+    "_hinweis2": "Zwei Varianten: Infinity Run (endlos, endless) und Tournament Run (100 Level aus tournament.json). Eigene Pokémon kommen in beiden zufällig aus Pokébällen.",
+    "prepSeconds": 20,
+    "_prepSeconds": "Countdown vor dem ersten Angriff (Sekunden), währenddessen in Ruhe aufstellen",
+    "flow": {
+      "_hinweis": "Gegnerfluss: alle bigEvery s eine große Welle (über bigSpread s verteilt), dazwischen alle trickleEvery s kleine Gruppen von group Gegnern auf einer Spalte, im Abstand groupGap s",
+      "bigEvery": 30,
+      "bigSpread": 12,
+      "trickleEvery": [
+        9,
+        15
+      ],
+      "group": [
+        1,
+        3
+      ],
+      "groupGap": [
+        0.7,
+        1.6
+      ]
+    },
+    "lives": {
+      "_hinweis": "Leben: start = Extra-Leben zu Beginn. Weitere kauft man im Lauf mit Münzen: prices der Reihe nach, danach jeweils × growth. Erreicht ein Gegner den Trainer, kostet das ein Leben; ohne Leben ist der Run verloren.",
+      "start": 0,
+      "prices": [
+        200,
+        500,
+        1000,
+        2000
+      ],
+      "growth": 2
+    },
+    "side": {
+      "_hinweis": "Seitliche Felder links und rechts vom Spielfeld (Reihen rows, 0 = oben). Pokémon dort greifen quer über das Feld an.",
+      "rows": [
+        2,
+        8
+      ]
+    },
+    "explosionArea": 1,
+    "_explosionArea": "Explosionen treffen alles in (2×explosionArea+1)² Feldern um das Pokémon (1 = 3×3)",
+    "statusArea": {
+      "_hinweis": "Statusattacken (sleep, confuse) wirken als Fläche: area = Felder um das Pokémon (1 = 3×3), every = Sekunden zwischen zwei Wellen",
+      "area": 1,
+      "every": 3
+    },
+    "moves": {
+      "_hinweis": "Durchdringende Attacken (nach Attackenname): range = Reichweite in Feldern, pierce = so viele Gegner trifft der Angriff höchstens; width = Breite in Feldern (Wolke, trifft alle in der Fläche)",
+      "Blubbstrahl": {
+        "range": 3,
+        "pierce": 3
+      },
+      "Rasierblatt": {
+        "range": 3.5,
+        "pierce": 3
+      },
+      "Giftwolke": {
+        "range": 2,
+        "width": 3
+      }
     }
   },
   "levelGap": 5,

@@ -1,5 +1,5 @@
 // Lädt die anpassbaren Spieldaten aus public/config und public/data.
-export const CFG = { balance: null, areas: [], dex: [], dexById: new Map(), bonuses: null, social: null, grooming: null, types: null, berryProducers: new Map(), battle: null, battleData: null, contest: null, achievements: null, balls: null, defense: null, defenseLevels: null, defenseThemes: null, music: null };
+export const CFG = { balance: null, areas: [], dex: [], dexById: new Map(), bonuses: null, social: null, grooming: null, types: null, berryProducers: new Map(), battle: null, battleData: null, contest: null, achievements: null, balls: null, defense: null, defenseLevels: null, defenseThemes: null, music: null, tournament: null };
 
 export async function loadConfig() {
   const base = import.meta.env.BASE_URL;
@@ -7,7 +7,7 @@ export async function loadConfig() {
     if (!r.ok) throw new Error(`${p}: ${r.status}`);
     return r.json();
   });
-  const [balance, areas, dex, bonuses, social, grooming, types, battle, battleData, contest, achievements, balls, defense, defenseLevels, defenseThemes, music] = await Promise.all([get('config/balance.json'), get('config/areas.json'), get('data/pokedex.json'), get('config/bonuses.json'), get('config/social.json'), get('config/grooming.json'), get('config/types.json'), get('config/battle.json'), get('data/battle.json'), get('config/contest.json'), get('config/achievements.json'), get('config/balls.json'), get('config/defense.json'), get('config/defense_levels.json'), get('config/defense_themes.json'), get('config/music.json')]);
+  const [balance, areas, dex, bonuses, social, grooming, types, battle, battleData, contest, achievements, balls, defense, defenseLevels, defenseThemes, music, tournament] = await Promise.all([get('config/balance.json'), get('config/areas.json'), get('data/pokedex.json'), get('config/bonuses.json'), get('config/social.json'), get('config/grooming.json'), get('config/types.json'), get('config/battle.json'), get('data/battle.json'), get('config/contest.json'), get('config/achievements.json'), get('config/balls.json'), get('config/defense.json'), get('config/defense_levels.json'), get('config/defense_themes.json'), get('config/music.json'), get('config/tournament.json')]);
   CFG.balance = balance;
   CFG.areas = areas.areas;
   CFG.areaAliases = areas.aliases || {};
@@ -26,6 +26,7 @@ export async function loadConfig() {
   CFG.defenseLevels = defenseLevels;
   CFG.defenseThemes = defenseThemes;
   CFG.music = music;
+  CFG.tournament = tournament;
   CFG.berryProducers = new Map();
   for (const g of balance.berryProduction.producers) for (const d of g.dex) CFG.berryProducers.set(d, g.berries);
 }

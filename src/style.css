@@ -642,3 +642,14 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 /* Chaos: Rekord am Knopf, Karte löschen */
 .chaos-btn .chaos-best { display: block; font-size: 12px; opacity: .85; }
 .d-card-del { position: absolute; top: 1px; right: 1px; width: 20px; height: 20px; line-height: 17px; border-radius: 50%; background: #ef5d5d; color: #fff; border: 2px solid var(--line); font-size: 15px; font-weight: 700; text-align: center; z-index: 2; }
+
+/* Chaos-Modus: Varianten, Countdown, Leben, Karte ziehen */
+.chaos-modes { display: grid; gap: 10px; margin: 10px 0; }
+.chaos-mode { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; background: #f3ecff; border-color: #7a46b0; color: #4a1f70; padding: 12px 14px; }
+.chaos-mode b { font-size: 17px; }
+.chaos-mode small { font-size: 13px; color: #6a4a86; }
+.d-countdown { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); font: 600 64px 'Ziffern', 'Pixelify Sans', sans-serif; color: #fff; text-shadow: 0 3px 0 rgba(40, 25, 20, .9), 0 0 12px rgba(0, 0, 0, .4); pointer-events: none; z-index: 3; }
+.d-lives { color: #e0404a; font-weight: 700; padding: 0 8px; width: auto; }
+.d-card { touch-action: none; }
+.d-ghost { position: fixed; left: 0; top: 0; width: 52px; height: 52px; image-rendering: pixelated; border-radius: 10px; border: 3px solid #fff; background: rgba(255, 251, 234, .85); z-index: 60; pointer-events: none; box-shadow: 0 4px 10px rgba(0, 0, 0, .3); }
+.road-node.legend { box-shadow: 0 0 0 3px #ffd23f, 0 0 10px #ffd23f; }
