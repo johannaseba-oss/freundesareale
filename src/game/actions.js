@@ -114,13 +114,16 @@ export function feedAllInventory(s, t) {
 // ---- Route: EP-Konto und dauerhaftes Training ----
 export function addRouteEp(s, n) { s.route ||= { ep: 0, cleared: 0 }; s.route.ep += Math.max(0, Math.round(n)); return { ok: true }; }
 export function routeCleared(s, n) { s.route ||= { ep: 0, cleared: 0 }; const first = n > (s.route.cleared || 0); s.route.cleared = Math.max(s.route.cleared || 0, n); return { ok: true, first }; }
-// Route: Pokémon als Favorit markieren (oben in der Auswahl)
-export function toggleRouteFav(s, uid) {
-  s.route ||= { ep: 0, cleared: 0 };
-  const f = (s.route.favs ||= []), i = f.indexOf(uid);
-  if (i >= 0) f.splice(i, 1); else f.push(uid);
-  return { ok: true, fav: i < 0 };
+// Favorit (p.fav): steht in allen Auswahllisten und Minispielen oben
+export function toggleFav(s, uid) {
+  const p = s.pokemon.find((x) => x.uid === uid);
+  if (!p) return fail();
+  p.fav = !p.fav; if (!p.fav) delete p.fav;
+  return { ok: true, fav: !!p.fav };
 }
+export const toggleRouteFav = toggleFav;
+// Favoriten zuerst, sonst Reihenfolge beibehalten
+export const favFirst = (list) => [...list].sort((a, b) => !!b.fav - !!a.fav);
 // +1 Level gegen EP: Kosten steigen mit dem Level, höchstens dailyPerPokemon Aufstiege pro Pokémon und Tag
 export function trainLevel(s, p, t, cost, dayKey) {
   const U = CFG.route.upgrade;

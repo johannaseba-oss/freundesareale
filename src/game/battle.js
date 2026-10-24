@@ -2,6 +2,7 @@
 // Gekämpft wird ausschließlich mit Kampfversionen ("Fighter"): Sie starten auf Level 5, sammeln EP, steigen auf und
 // entwickeln sich – aber nur bis zum Kampfende. Das gespeicherte Pokémon (Art, Level) wird nie verändert;
 // einzig die EVs aus besiegten Gegnern werden am Ende übernommen (battle.json stats.evsPersist).
+import { itemDamageMult, itemCritChance } from './items.js';
 import { CFG, species } from '../config.js';
 import { effectiveness } from './types.js';
 import { hashString, mulberry32 } from '../rng.js';
@@ -48,7 +49,7 @@ export function makeFighter(src, side) {
   const f = {
     id: nextId++, side, uid: src.uid ?? null, nick: src.nick || null, dex: src.dex, origDex: src.dex, gender: src.gender ?? null,
     ivs: src.ivs, evs: [...src.evs], evGain: [0, 0, 0, 0, 0, 0], extraMoves: src.moves || [],
-    level: B().startLevel, tower: !!src.tower, pbuff: src.pbuff || 1, state: 'deck', x: 0, y: 0, dir: side === 'p' ? 4 : 0, cd: 0, anim: null, kos: 0,
+    level: B().startLevel, tower: !!src.tower, pbuff: src.pbuff || 1, item: src.item || null, state: 'deck', x: 0, y: 0, dir: side === 'p' ? 4 : 0, cd: 0, anim: null, kos: 0,
   };
   f.exp = expForLevel(f.dex, f.level);
   recalc(f, true);
@@ -71,7 +72,7 @@ export function damageOf(att, def, mv, rnd, atkMult = 1, defMult = 1) {
   const stab = species(att.dex).types.includes(mv.type) ? C().stab : 1;
   const eff = effectiveness(mv.type, species(def.dex).types);
   const [r0, r1] = C().damageRandom;
-  return { dmg: eff ? Math.max(1, Math.floor(base * stab * eff * (r0 + rnd() * (r1 - r0)))) : 0, eff };
+  return { dmg: eff ? Math.max(1, Math.floor(base * stab * eff * itemDamageMult(att.item, mv, eff) * (r0 + rnd() * (r1 - r0)))) : 0, eff };
 }
 
 // Offizielle EP-Formel (5. Generation), beschleunigt durch xp.multiplier
@@ -258,6 +259,8 @@ export class Battle {
         this.events.push({ type: 'heal', f: u, amt, from: t });
       }
     }
+    // Überreste: heilt Pokémon auf dem Feld nach und nach
+    for (const u of this.units) if (u.item?.regen && u.hp > 0 && u.hp < u.maxHp && (u.state === 'field' || u.tower) && this.t >= (u.regenAt || 0)) { u.regenAt = this.t + (CFG.items.regenEvery || 2); u.hp = Math.min(u.maxHp, u.hp + Math.round(u.maxHp * u.item.regen)); }
     // Reihenfolge jede Runde mischen, damit keine Seite durch die Rechenreihenfolge im Vorteil ist
     const fighters = this.units.filter((u) => u.state === 'field' && u.hp > 0);
     for (let i = fighters.length - 1; i > 0; i--) { const j = Math.floor(this.rnd() * (i + 1)); [fighters[i], fighters[j]] = [fighters[j], fighters[i]]; }
@@ -335,7 +338,8 @@ export class Battle {
     const choice = this.bestMove(f, target);
     if (!choice) return;
     const [c0, c1] = C().cooldownClamp;
-    f.cd = C().attackCooldown * Math.max(c0, Math.min(c1, Math.pow(refStat(f.level) / f.stats[5], C().cooldownSpeedExp)));
+    f.cd = C().attackCooldown * Math.max(c0, Math.min(c1, Math.pow(refStat(f.level) / f.stats[5], C().cooldownSpeedExp))) / (f.item?.speedMult || 1); // Wahlschal
+    if (f.item?.quick && this.rnd() < f.item.quick) f.cd *= 0.3; // Flinkklaue
     const melee = choice.m.range === 'nah';
     f.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
     f.lastMove = choice.k;
@@ -349,8 +353,12 @@ export class Battle {
     const mv = moveOf(moveKey);
     if (C().useAccuracy && this.rnd() * 100 >= mv.acc) { this.events.push({ type: 'miss', f: to }); return; }
     const a = this.auraOf(from), d = this.auraOf(to);
-    const { dmg, eff } = damageOf(from, to, mv, this.rnd, a.atk * this.weatherBoost(from), d.def);
+    let { dmg, eff } = damageOf(from, to, mv, this.rnd, a.atk * this.weatherBoost(from), d.def);
+    if (to.item?.sash && !to.sashUsed && dmg >= to.hp && to.hp > 1) { dmg = to.hp - 1; to.sashUsed = true; } // Fokusgurt
     to.hp = Math.max(0, to.hp - dmg);
+    if (from.item?.lifesteal && from.hp > 0) from.hp = Math.min(from.maxHp, from.hp + Math.round(dmg * from.item.lifesteal)); // Muschelglocke
+    if (from.item?.flinch && this.rnd() < from.item.flinch) to.cd += 0.6; // King-Stein
+    if (to.item?.helmet && mv.range === 'nah' && from.hp > 0) { from.hp = Math.max(0, from.hp - Math.round(from.maxHp * to.item.helmet)); if (from.hp <= 0) this.faint(from, to); } // Beulenhelm
     to.hurtT = this.t;
     this.events.push({ type: 'hit', f: to, from, dmg, eff, move: moveKey });
     if (to.hp <= 0) this.faint(to, from);
@@ -364,7 +372,7 @@ export class Battle {
     if (killer.hp <= 0) return;
     killer.kos++;
     addEvs(killer, bdata(f.dex).ev);
-    this.gainExp(killer, Math.floor(expYield(killer, f) * (killer.tower ? B().tower.expMultiplier ?? 1 : 1)));
+    this.gainExp(killer, Math.floor(expYield(killer, f) * (killer.tower ? B().tower.expMultiplier ?? 1 : 1) * (killer.item?.expMult || 1)));
   }
 
   gainExp(f, amount) {

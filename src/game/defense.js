@@ -1,6 +1,7 @@
 // PokeDefense: Tower Defense wie Plants vs. Zombies, vertikal.
 // Eigene Pokémon werden mit Sternen auf das untere Feld gesetzt, Gegner laufen in ihren Spalten von oben nach unten.
 // Erreicht ein Gegner die untere Linie (Trainer), ist die Runde verloren; nach fünf abgewehrten Wellen gewonnen.
+import { itemDamageMult, itemCritChance } from './items.js';
 import { CFG, species } from '../config.js';
 import { effectiveness } from './types.js';
 import { calcStats, bdata, moveOf, rollIvs, expForLevel, levelEvolution, fromCpu } from './battle.js';
@@ -192,7 +193,7 @@ export class Defense {
     const hpMult = this.hpMultOf(src.dex, card.role);
     // dir: 0 = greift die eigene Spalte hinauf an, ±1 = Seitenfeld, greift quer über das Feld an
     const dir = col < 0 ? 1 : col >= D().grid.cols ? -1 : 0;
-    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: keep ? keep.level : L, exp: keep ? keep.exp : expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t, pbuff: this.buffOf?.(src) || 1 };
+    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: keep ? keep.level : L, exp: keep ? keep.exp : expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t, pbuff: this.buffOf?.(src) || 1, item: this.itemOf?.(src) || null };
     u.hp = u.maxHp;
     if (card.role === 'produzent') u.nextStar = this.t + this.between(R.produzent.every) * 0.5;
     if (card.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
@@ -379,8 +380,8 @@ export class Defense {
     const stab = species(att.dex).types.includes(mv.type) ? 1.5 : 1;
     const eff = effectiveness(mv.type, species(def.dex).types);
     const base = (Math.floor((2 * attLevel) / 5 + 2) * mv.power * A / Dv) / 50 + 2;
-    const crit = eff > 0 && this.rnd() < D().crit.chance; // Volltreffer
-    const w = weatherBoost(att.dex, this.weather);
+    const crit = eff > 0 && this.rnd() < itemCritChance(att.item, D().crit.chance); // Volltreffer (Scope-Linse erhöht)
+    const w = weatherBoost(att.dex, this.weather) * itemDamageMult(att.item, mv, eff); // getragenes Item
     return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * w * (crit ? D().crit.mult : 1) * (0.9 + this.rnd() * 0.1))) : 0, eff, mv, crit };
   }
   // Schadensstatistik (Pause-Übersicht): je Pokémon und je Feld, von dem aus angegriffen wurde
@@ -392,6 +393,8 @@ export class Defense {
   hurtEnemy(e, dmg, eff, from, mv, crit = false) {
     if (e.hp <= 0) return;
     this.logDamage(from, Math.min(dmg, e.hp));
+    if (from?.item?.lifesteal && from.hp > 0) from.hp = Math.min(from.maxHp, from.hp + Math.min(dmg, e.hp) * from.item.lifesteal); // Muschelglocke
+    if (from?.item?.flinch && this.rnd() < from.item.flinch) e.sleepUntil = Math.max(e.sleepUntil || 0, this.t + 0.6); // King-Stein: stockt kurz
     e.hp -= dmg; e.hurtT = this.t;
     if (mv?.type === 'Eis') { e.slowUntil = this.t + D().iceSlow.seconds; e.slowFactor = D().iceSlow.factor; }
     else if (mv?.type === 'Elektro' && !(this.t < e.slowUntil && e.slowFactor < D().elecSlow.factor)) { e.slowUntil = this.t + D().elecSlow.seconds; e.slowFactor = D().elecSlow.factor; }
@@ -407,7 +410,7 @@ export class Defense {
   // EP für den Angreifer (offizielle Formel × xp.multiplier), Levelaufstieg und Entwicklung – nur für diese Runde
   reward(u, e) {
     const b = bdata(e.dex).exp, Ld = e.level, Lp = u.level;
-    u.exp += Math.floor((Math.floor(((b * Ld) / 5) * Math.pow((2 * Ld + 10) / (Ld + Lp + 10), 2.5)) + 1) * (D().xp?.multiplier || 1));
+    u.exp += Math.floor((Math.floor(((b * Ld) / 5) * Math.pow((2 * Ld + 10) / (Ld + Lp + 10), 2.5)) + 1) * (D().xp?.multiplier || 1) * (u.item?.expMult || 1));
     let up = false;
     while (u.exp >= expForLevel(u.dex, u.level + 1)) { u.level++; up = true; }
     if (!up) return;
@@ -488,6 +491,7 @@ export class Defense {
     // eigene Pokémon
     for (const u of this.units) {
       if (u.hp <= 0) continue;
+      if (u.item?.regen && u.hp < u.maxHp && this.t >= (u.regenAt || 0)) { u.regenAt = this.t + (CFG.items.regenEvery || 2); u.hp = Math.min(u.maxHp, u.hp + u.maxHp * u.item.regen); } // Überreste
       if (u.role === 'produzent') {
         if (this.t >= u.nextStar) { u.nextStar = this.t + this.between(R.produzent.every); this.dropStar(u.x, u.y - 0.3, u.y, evolved(u.dex) ? R.produzent.valueEvolved : R.produzent.value); u.anim = { name: 'Hop', t0: this.t }; }
         continue;
@@ -533,7 +537,8 @@ export class Defense {
       }
       if (!target) continue;
       const spd = u.stats[5] / refSpeed(u.level);
-      u.cd = (R[u.role].cooldown * tempoOf(u.dex)) / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3)));
+      u.cd = (R[u.role].cooldown * tempoOf(u.dex)) / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3))) / (u.item?.speedMult || 1); // Wahlschal
+      if (u.item?.quick && this.rnd() < u.item.quick) u.cd *= 0.3; // Flinkklaue: gleich noch einmal
       u.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
       this.events.push({ type: 'shoot', u, moveType: mv.type, melee });
       const [dx, dy] = u.dir ? [u.dir, 0] : [0, -1], x0 = u.x + dx * 0.3, y0 = u.y + dy * 0.3;
@@ -595,7 +600,9 @@ export class Defense {
         if (e.cd <= 0) {
           e.cd = E.biteCooldown * tempoOf(e.dex); e.anim = { name: 'Attack', t0: this.t };
           const r = this.damage(e, e.level, block);
+          if (block.item?.sash && !block.sashUsed && r.dmg >= block.hp) { r.dmg = block.hp - 1; block.sashUsed = true; } // Fokusgurt
           block.hp -= r.dmg; block.hurtT = this.t;
+          if (block.item?.helmet) this.hurtEnemy(e, Math.max(1, Math.round(e.maxHp * block.item.helmet)), 1, block, null); // Beulenhelm
           this.events.push({ type: 'hit', target: block, dmg: r.dmg, eff: r.eff, move: r.mv, mine: true, crit: r.crit });
           if (block.hp <= 0) this.events.push({ type: 'lost', u: block });
         }

@@ -19,7 +19,7 @@ export function render(force = false) {
   const root = $('#scr-collection');
   if (!s || root.classList.contains('hidden')) return;
   const filters = { alle: () => true, frei: (p) => !p.area, wohnt: (p) => !!p.area };
-  const list = s.pokemon.filter(filters[filter]).sort((a, b) => b.level - a.level || a.dex - b.dex);
+  const list = s.pokemon.filter(filters[filter]).sort((a, b) => !!b.fav - !!a.fav || b.level - a.level || a.dex - b.dex);
   const key = filter + list.map((p) => `${p.uid}:${p.level}:${p.area}:${emotionOf(p)}:${p.nick || ''}`).join();
   if (!force && key === lastKey) return;
   lastKey = key;

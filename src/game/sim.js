@@ -4,6 +4,7 @@
 // (Wer in welchem Areal wohnt, ändert sich nur durch Aktionen – die Boni sind also während eines Laufs konstant.)
 import { CFG, isHairy, species } from '../config.js';
 import { HOUR } from '../time.js';
+import { itemById } from './items.js';
 import { hashString } from '../rng.js';
 import { allMods, modsFor } from './bonuses.js';
 import { habitatFit, suitsArea } from './habitat.js';
@@ -29,7 +30,7 @@ export function coinRatePerHour(p, t, m) {
   if (CFG.berryProducers.has(p.dex)) return 0; // Beeren-Pokémon produzieren Beeren statt Münzen
   let rate = (60 / cycleMinutes(p)) * levelFactor(p) * tierFactor(c.satisfactionFactor, mood(p, t));
   for (const e of p.effects) if (e.type === 'produktion' && e.until > t) rate *= e.factor;
-  return rate * (m?.coin ?? 1);
+  return rate * (m?.coin ?? 1) * (p.held ? itemById(p.held)?.fx.coinMult || 1 : 1); // Münzamulett
 }
 
 export function berryRatePerHour(p, m, t = Date.now()) {

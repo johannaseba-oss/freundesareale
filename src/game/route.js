@@ -2,6 +2,7 @@
 // eigene Pokémon stehen auf festen Bauplätzen und greifen je nach Angriffsform an:
 // adjacent (direkt angrenzend), line (ganze gerade Strecke in Blickrichtung), circle (Radius), cross (Kreuz).
 // Besiegte Gegner bringen EP; damit steigen die eigenen Pokémon dauerhaft im Level (siehe actions.trainLevel).
+import { itemDamageMult, itemCritChance } from './items.js';
 import { CFG, species } from '../config.js';
 import { effectiveness } from './types.js';
 import { calcStats, bdata, moveOf, rollIvs } from './battle.js';
@@ -96,7 +97,7 @@ export class Route {
     const m = this.team.find((x) => x.uid === uid);
     if (!m || this.over || !this.slotFree(slot) || !this.slotAllows(slot, m.dex) || this.placed(uid) || this.units.length >= this.max) return false;
     const [c, r] = this.level.slots[slot];
-    const u = { id: this.nextId++, uid, dex: m.dex, gender: m.gender, nick: m.nick, ivs: m.ivs, evs: m.evs, level: m.level, slot, x: c + 0.5, y: r + 0.5, shape: shapeOf(m.dex), cd: 0.6, placedAt: this.t, pbuff: this.buffOf?.(m) || 1 };
+    const u = { id: this.nextId++, uid, dex: m.dex, gender: m.gender, nick: m.nick, ivs: m.ivs, evs: m.evs, level: m.level, slot, x: c + 0.5, y: r + 0.5, shape: shapeOf(m.dex), cd: 0.6, placedAt: this.t, pbuff: this.buffOf?.(m) || 1, item: this.itemOf?.(m) || null };
     u.face = this.bestFacing(u);
     this.restat(u);
     this.units.push(u);
@@ -191,8 +192,8 @@ export class Route {
     const A = u.stats[phys ? 1 : 3] * (phys && u.pbuff ? u.pbuff : 1), Dv = e.stats[phys ? 2 : 4]; // pbuff: Felsbrecher-Training
     const stab = species(u.dex).types.includes(mv.type) ? 1.5 : 1, eff = effectiveness(mv.type, species(e.dex).types);
     const base = (Math.floor((2 * u.level) / 5 + 2) * (mv.power || 40) * A / Dv) / 50 + 2;
-    const crit = eff > 0 && this.rnd() < R().crit.chance;
-    return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * (crit ? R().crit.mult : 1) * (0.9 + this.rnd() * 0.1))) : 0, eff, mv, crit };
+    const crit = eff > 0 && this.rnd() < itemCritChance(u.item, R().crit.chance);
+    return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * itemDamageMult(u.item, mv, eff) * (crit ? R().crit.mult : 1) * (0.9 + this.rnd() * 0.1))) : 0, eff, mv, crit };
   }
   // Schadensstatistik (Pause-Übersicht): je Pokémon und je Bauplatz
   logDamage(u, dmg) {
@@ -208,7 +209,8 @@ export class Route {
     this.events.push({ type: 'hit', e, dmg: r.dmg, eff: r.eff, crit: r.crit, move: r.mv });
     const S = R().status?.byType?.[r.mv.type];
     if (S && r.dmg > 0 && e.hp > 0 && this.rnd() < S.chance) this.applyStatus(e, S, u);
-    if (e.hp <= 0) this.defeat(e);
+    if (u.item?.flinch && e.hp > 0 && this.rnd() < u.item.flinch) e.stunUntil = Math.max(e.stunUntil || 0, this.t + 0.6); // King-Stein
+    if (e.hp <= 0) this.defeat(e, u);
   }
 
   // Statuseffekte: Verbrennung/Gift (Schaden über Zeit), Paralyse und Schlaf (steht still), Verlangsamung
@@ -220,9 +222,9 @@ export class Route {
     else if (S.kind === 'slow') { e.slowUntil = until; e.slowFactor = Math.min(e.slowUntil > this.t ? e.slowFactor || 1 : 1, S.factor); }
     this.events.push({ type: 'status', e, kind: S.kind, name: S.name });
   }
-  defeat(e) {
+  defeat(e, by = null) {
     const P = R().ep, lucky = P.bonus?.[e.dex] || 1; // EP-Glückspokémon (z. B. Chaneira) geben ein Vielfaches
-    const ep = Math.round((P.perEnemy + e.level * P.perEnemyLevel) * lucky) + (e.boss ? P.boss : 0);
+    const ep = Math.round(((P.perEnemy + e.level * P.perEnemyLevel) * lucky + (e.boss ? P.boss : 0)) * (by?.item?.expMult || 1)); // Glücks-Ei
     this.ep += ep;
     this.events.push({ type: 'defeat', e, ep, lucky: lucky > 1 });
   }
@@ -260,7 +262,8 @@ export class Route {
       const inRange = this.enemies.filter((e) => e.hp > 0 && e.s >= 0 && this.inReach(u, e));
       if (!inRange.length) continue;
       const S = R().shapes[u.shape], spd = Math.max(0.75, Math.min(1.3, Math.pow(u.stats[5] / refSpeed(u.level), 0.3)));
-      u.cd = S.cooldown / (levelSpeed(u.level) * spd);
+      u.cd = S.cooldown / (levelSpeed(u.level) * spd) / (u.item?.speedMult || 1); // Wahlschal
+      if (u.item?.quick && this.rnd() < u.item.quick) u.cd *= 0.3; // Flinkklaue
       u.anim = { name: u.shape === 'adjacent' ? 'Attack' : 'Shoot', t0: this.t };
       const lead = inRange.reduce((a, b) => (b.s > a.s ? b : a));
       if (u.shape === 'line' || u.shape === 'cross' || u.shape === 'circle' || u.shape === 'ring') {

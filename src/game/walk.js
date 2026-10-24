@@ -1,6 +1,7 @@
 // Spaziergang (wie bei Nintendogs): Zufallskarte, eingezeichnete Route (Start → … → Start), umherwandernde wilde Pokémon
 // und klassische Rundenkämpfe mit den Attacken, die die Pokémon auf ihrem Level offiziell beherrschen. Werte in walk.json.
 import { CFG, species } from '../config.js';
+import { itemDamageMult, itemById } from './items.js';
 import { bdata, calcStats } from './battle.js';
 import { effectiveness } from './types.js';
 import { speedOf } from './rocks.js';
@@ -88,7 +89,7 @@ export function movesAtLevel(dex, level) {
 // Kämpfer für den Rundenkampf (offizielle Werteformel; Statusstufen −6…+6, Zustand, Verwirrung)
 export function makeFighter(src, level) {
   const stats = calcStats(src.dex, level, src.ivs || [15, 15, 15, 15, 15, 15], src.evs || [0, 0, 0, 0, 0, 0]);
-  return { uid: src.uid ?? null, dex: src.dex, gender: src.gender ?? null, nick: src.nick || null, level, stats, hp: stats[0], maxHp: stats[0], moves: movesAtLevel(src.dex, level), pbuff: src.pbuff || 1,
+  return { uid: src.uid ?? null, dex: src.dex, gender: src.gender ?? null, nick: src.nick || null, level, stats, hp: stats[0], maxHp: stats[0], moves: movesAtLevel(src.dex, level), pbuff: src.pbuff || 1, item: src.item || null, itemName: src.itemName || null,
     stage: [0, 0, 0, 0, 0, 0, 0, 0, 0], status: null, sleep: 0, confused: 0 };
 }
 
@@ -140,7 +141,7 @@ const AIL = { 1: 'par', 2: 'slp', 3: 'frz', 4: 'brn', 5: 'psn', 6: 'conf' };
 const AIL_TEXT = { par: 'ist paralysiert! Es kann eventuell nicht angreifen.', slp: 'ist eingeschlafen!', frz: 'wurde eingefroren!', brn: 'hat sich verbrannt!', psn: 'wurde vergiftet!', conf: 'ist verwirrt!' };
 const IMMUNE = { par: ['Elektro'], brn: ['Feuer'], frz: ['Eis'], psn: ['Gift', 'Stahl'] };
 export const STATUS_TAG = { par: 'PAR', slp: 'SLF', frz: 'GFR', brn: 'BRT', psn: 'GIF' };
-const speedOfF = (f) => f.stats[5] * stageMult(f.stage[5]) * (f.status === 'par' ? 0.5 : 1);
+const speedOfF = (f) => f.stats[5] * stageMult(f.stage[5]) * (f.status === 'par' ? 0.5 : 1) * (f.item?.speedMult || 1);
 const nameOf = (f, who) => (who === 'w' ? 'Das wilde ' : '') + (f.nick || species(f.dex).name);
 const other = (who) => (who === 'p' ? 'w' : 'p');
 const ofName = (f, who) => (who === 'w' ? 'des wilden ' : 'von ') + (f.nick || species(f.dex).name); // „Angriff des wilden Bisasam“
@@ -174,7 +175,7 @@ export function battleTurn(me, foe, choice, rnd) {
     const A = a.stats[ai] * stageMult(as) * (phys ? a.pbuff || 1 : 1), D = d.stats[di] * stageMult(ds);
     const eff = mv.type === '???' ? 1 : effectiveness(mv.type, species(d.dex).types);
     let dmg = Math.floor(Math.floor((Math.floor((2 * a.level) / 5 + 2) * mv.power * A) / D) / 50) + 2;
-    dmg *= (crit ? 1.5 : 1) * (0.85 + rnd() * 0.15) * (species(a.dex).types.includes(mv.type) ? 1.5 : 1) * eff * (phys && a.status === 'brn' ? 0.5 : 1);
+    dmg *= itemDamageMult(a.item, mv, eff) * (crit ? 1.5 : 1) * (0.85 + rnd() * 0.15) * (species(a.dex).types.includes(mv.type) ? 1.5 : 1) * eff * (phys && a.status === 'brn' ? 0.5 : 1);
     return { dmg: eff ? Math.max(1, Math.floor(dmg)) : 0, eff };
   };
   // eine Aktion; first = hat zuerst gehandelt (für Zurückschrecken)
@@ -199,11 +200,14 @@ export function battleTurn(me, foe, choice, rnd) {
       const hits = m.hits ? m.hits[0] + Math.floor(rnd() * (m.hits[1] - m.hits[0] + 1)) : 1;
       let total = 0, n = 0, lastEff = 1;
       for (let i = 0; i < hits && d.hp > 0; i++) {
-        const crit = rnd() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, m.crit || 0)];
+        const crit = rnd() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, (m.crit || 0) + (a.item?.critAdd || 0))];
         const r = damage(a, d, mv, crit); lastEff = r.eff;
         if (!r.eff) { say(`Es hat keine Wirkung auf ${inName(d, dw)} …`); return; }
-        d.hp = Math.max(0, d.hp - r.dmg); total += r.dmg; n++;
-        say(crit ? 'Ein Volltreffer!' : null, { hit: dw, dmg: r.dmg, eff: r.eff, hp: d.hp });
+        let dmg = r.dmg;
+        if (d.item?.sash && !d.sashUsed && d.hp === d.maxHp && dmg >= d.hp) { dmg = d.hp - 1; d.sashUsed = true; }
+        d.hp = Math.max(0, d.hp - dmg); total += dmg; n++;
+        say(crit ? 'Ein Volltreffer!' : null, { hit: dw, dmg, eff: r.eff, hp: d.hp });
+        if (d.sashUsed === true && d.hp === 1) { d.sashUsed = 'done'; say(`${nameOf(d, dw)} hält mit dem Fokusgurt durch!`); }
       }
       if (lastEff > 1) say('Das ist sehr effektiv!'); else if (lastEff < 1) say('Das ist nicht sehr effektiv …');
       if (hits > 1) say(`Getroffen: ${n}-mal!`);
@@ -212,9 +216,13 @@ export function battleTurn(me, foe, choice, rnd) {
         a.hp = m.drain > 0 ? Math.min(a.maxHp, a.hp + ch) : Math.max(0, a.hp - ch);
         say(m.drain > 0 ? `${inName(d, dw).replace(/^./, (c) => c.toUpperCase())} wurde Energie abgesaugt!` : `${nameOf(a, who)} wird durch den Rückstoß getroffen!`, { set: who, hp: a.hp });
       }
+      // Items: Muschelglocke heilt, Leben-Orb kostet KP, Beulenhelm trifft Angreifer bei Körperkontakt
+      if (a.item?.lifesteal && total > 0 && a.hp > 0 && a.hp < a.maxHp) { a.hp = Math.min(a.maxHp, a.hp + Math.max(1, Math.floor(total * a.item.lifesteal))); say(`${nameOf(a, who)} wird durch ${a.itemName || 'sein Item'} geheilt.`, { set: who, hp: a.hp }); }
+      if (a.item?.recoil && total > 0 && a.hp > 0) { a.hp = Math.max(0, a.hp - Math.max(1, Math.floor(a.maxHp * a.item.recoil))); say(`${nameOf(a, who)} verliert durch ${a.itemName || 'sein Item'} etwas KP.`, { hit: who, dmg: 1, eff: 1, hp: a.hp }); }
+      if (d.item?.helmet && mv.cat === 'phys' && a.hp > 0) { a.hp = Math.max(0, a.hp - Math.max(1, Math.floor(a.maxHp * d.item.helmet))); say(`${nameOf(a, who)} verletzt sich am ${d.itemName || 'Item'}!`, { hit: who, dmg: 1, eff: 1, hp: a.hp }); }
       if (faintCheck(dw)) { if (a.hp <= 0) faintCheck(who); return; }
       if (a.hp <= 0 && faintCheck(who)) return;
-      if (m.flinch && first && rnd() * 100 < m.flinch) d.flinch = true;
+      if (first && ((m.flinch && rnd() * 100 < m.flinch) || (a.item?.flinch && rnd() < a.item.flinch))) d.flinch = true;
       if (m.ail && (m.c === 4 || m.c === 0) && rnd() * 100 < (m.ailP || 0)) applyAilment(dw, m.ail, false);
       if (m.stats && (m.c === 6 || m.c === 7) && rnd() * 100 < (m.statP || 100)) applyStats(m.c === 7 ? who : dw, m.stats);
       return;
@@ -229,6 +237,7 @@ export function battleTurn(me, foe, choice, rnd) {
   const endOfTurn = () => {
     for (const who of ['p', 'w']) {
       const f = F[who];
+      if (f.hp > 0 && f.item?.regen && f.hp < f.maxHp) { f.hp = Math.min(f.maxHp, f.hp + Math.max(1, Math.floor(f.maxHp * f.item.regen))); say(`${nameOf(f, who)} wird durch ${f.itemName || 'sein Item'} ein wenig geheilt.`, { set: who, hp: f.hp }); }
       if (f.hp <= 0 || (f.status !== 'brn' && f.status !== 'psn')) continue;
       const dmg = Math.max(1, Math.floor(f.maxHp / (f.status === 'brn' ? 16 : 8)));
       f.hp = Math.max(0, f.hp - dmg);
@@ -245,7 +254,8 @@ export function battleTurn(me, foe, choice, rnd) {
     return steps;
   }
   const myMove = me.moves[choice], pm = moveData(myMove)?.prio || 0, pf = moveData(foeMove)?.prio || 0;
-  const meFirst = pm !== pf ? pm > pf : speedOfF(me) !== speedOfF(foe) ? speedOfF(me) > speedOfF(foe) : rnd() < 0.5;
+  const qm = me.item?.quick && rnd() < me.item.quick, qf = foe.item?.quick && rnd() < foe.item.quick; // Flinkklaue
+  const meFirst = pm !== pf ? pm > pf : qm !== qf ? qm : speedOfF(me) !== speedOfF(foe) ? speedOfF(me) > speedOfF(foe) : rnd() < 0.5;
   const order = meFirst ? [['p', myMove], ['w', foeMove]] : [['w', foeMove], ['p', myMove]];
   order.forEach(([who, id], i) => { if (me.hp > 0 && foe.hp > 0) act(who, id, i === 0); });
   if (me.hp > 0 && foe.hp > 0) endOfTurn();

@@ -2,6 +2,8 @@
 import { CFG, species, areaById, isHairy } from '../config.js';
 import { openGrooming } from './groom.js';
 import { app } from '../app.js';
+import { haptic } from '../haptics.js';
+import { itemById, itemSprite, heldOf, takeItem } from '../game/items.js';
 import { now, fmtDuration } from '../time.js';
 import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol, nameOf } from '../game/state.js';
@@ -62,9 +64,25 @@ export function openSheet(p) {
   const title = h('h2.nick-title', { onclick: () => editNick(p, () => { title.firstChild.textContent = nameOf(p); species2.textContent = p.nick ? sp.name : ''; }) },
     nameOf(p), h('span.gender.' + p.gender, genderSymbol(p)), h('span.nick-edit', '✎'));
   const species2 = h('small.nick-species', p.nick ? sp.name : '');
+  // Favorit: steht in allen Auswahllisten und Minispielen oben
+  const favBtn = h('button.fav-btn' + (p.fav ? '.on' : ''), { title: 'Favorit', onclick: () => { const r = app.act((s) => A.toggleFav(s, p.uid), true); favBtn.classList.toggle('on', !!r.fav); favBtn.textContent = r.fav ? '★' : '☆'; haptic('tick'); } }, p.fav ? '★' : '☆');
   const head = h('div.sheet-head', portrait,
     h('div', title, species2, sub),
+    favBtn,
     h('button.btn.small.close', { onclick: closeSheet }, '✕'));
+  // getragenes Item (wirkt für die ganze Art)
+  const itemRow = h('div.sheet-item');
+  const renderItem = () => {
+    const own = p.held ? itemById(p.held) : null, eff = heldOf(app.state, { uid: p.uid, dex: p.dex });
+    const key = (own?.id || '') + '|' + (eff?.id || '') + '|' + Object.keys(app.state.items?.held || {}).length;
+    if (itemRow.dataset.k === key) return;
+    itemRow.dataset.k = key;
+    const bag = () => import('./slots.js').then((m) => m.openBag(null, { tab: 'items', uid: p.uid }));
+    if (own) itemRow.replaceChildren(h('img.item-ico', { src: itemSprite(own), alt: '' }), h('div', h('b', own.name), h('small', own.desc + ' (gilt für alle ' + sp.name + ')')),
+      h('button.btn.small', { onclick: () => { app.act((s) => takeItem(s, p.uid), true); haptic('tick'); } }, 'Abnehmen'), h('button.btn.small', { onclick: bag }, 'Ändern'));
+    else if (eff) itemRow.replaceChildren(h('img.item-ico', { src: itemSprite(eff), alt: '' }), h('div', h('b', eff.name), h('small', `Ein anderes ${sp.name} trägt es – der Effekt gilt auch hier.`)), h('button.btn.small', { onclick: bag }, 'Eigenes geben'));
+    else itemRow.replaceChildren(h('div', h('b', 'Kein Item'), h('small', 'Items gibt es nur im Spielautomaten (🍒🍒🍒).')), h('button.btn.small', { onclick: bag }, 'Item geben'));
+  };
 
   // ---- Bühne zum Streicheln / Füttern ----
   const cv = h('canvas');
@@ -254,11 +272,12 @@ export function openSheet(p) {
       closeSheet();
       openGrooming(p, () => openSheet(p));
     } }, '🧽 Fell putzen')) : null,
+    itemRow,
     contestBox,
     moveRow));
 
-  current = { update, raf: 0 };
-  update();
-  app.views.add(update);
+  current = { update: () => { update(); renderItem(); }, raf: 0 };
+  current.update();
+  app.views.add(current.update);
   current.raf = requestAnimationFrame(drawStage);
 }

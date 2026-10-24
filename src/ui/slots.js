@@ -4,9 +4,13 @@
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import { SYMBOLS, chances, spin, claim, stoneTargets, useStone } from '../game/slots.js';
+import { itemById, itemSprite, giveItem, takeItem } from '../game/items.js';
+import { favFirst } from '../game/actions.js';
+import { canBattle } from '../game/battle.js';
 import { stoneName } from '../game/battle.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import { $, h, toast, modal, confirmDialog } from './dom.js';
+import { iconImg } from '../gfx/icons.js';
 import { reveal } from './gacha.js';
 import { sfx, setMusic } from '../audio.js';
 import { haptic } from '../haptics.js';
@@ -62,13 +66,15 @@ export function openSlots() {
   loadStones();
   const canvas = h('canvas.sl-canvas');
   const btn = (cls, label, title, fn) => h('button.sl-fab' + cls, { onclick: fn, title, 'aria-label': title }, label);
-  const root = h('div.sl-full', canvas,
+  // große Münzanzeige oben: zählt beim Einsatz sichtbar herunter
+  const coinNum = h('b'), coinBox = h('div.sl-coins', iconImg('coin', 3), coinNum);
+  const root = h('div.sl-full', canvas, coinBox,
     btn('.left', '?', 'Gewinne', showHelp), btn('.left2', '🎒', 'Beutel', () => openBag()), btn('.right', '✕', 'Schließen', close));
   document.body.append(root);
   document.body.classList.add('in-battle');
   setMusic('arena');
   ui = { root, canvas, ctx: canvas.getContext('2d'), bet: 0, reels: [0, 1, 2].map((i) => ({ strip: strip(i), pos: i * 3, spinning: false })),
-    phase: 'idle', t: 0, time: 0, last: performance.now(), raf: 0, flash: 0, puffs: [], sparks: [], pippi: 'idle', pippiT: 0, hop: 0, press: 0, win: null, confetti: [], fireworks: [], shake: 0, msg: '', msgT: 0 };
+    phase: 'idle', t: 0, time: 0, last: performance.now(), raf: 0, flash: 0, puffs: [], sparks: [], pippi: 'idle', pippiT: 0, hop: 0, press: 0, win: null, confetti: [], fireworks: [], shake: 0, msg: '', msgT: 0, coinBox, coinNum, coinShown: app.state.coins, tickAt: 0 };
   ui.ro = new ResizeObserver(layout); ui.ro.observe(root);
   canvas.addEventListener('pointerdown', onTap);
   layout();
@@ -116,6 +122,7 @@ function startSpin() {
   }, true);
   if (r.ok === false) return;
   sfx.coin(); haptic('medium');
+  payFx(r.bet || SL().bets[betIdx]);
   ui.result = r; ui.phase = 'spin'; ui.t = 0; ui.pippi = 'spin'; ui.pippiT = 0; ui.msg = ''; ui.press = 0.25;
   // Zielsymbole: Gewinn = dreimal dasselbe, Niete = nie drei gleiche (manchmal zwei gleiche als Spannung)
   let targets;
@@ -155,6 +162,15 @@ function onTap(e) {
 function frame(dt) {
   if (!ui) return;
   ui.t += dt; ui.time += dt; ui.pippiT += dt;
+  // Münzanzeige rollt zum echten Stand (beim Einsatz schnell herunter, mit Klicken)
+  const target = app.state.coins;
+  if (ui.coinShown !== target) {
+    const d = target - ui.coinShown, step = Math.sign(d) * Math.max(1, Math.ceil(Math.abs(d) * Math.min(1, dt * 3.2)));
+    ui.coinShown = Math.abs(step) >= Math.abs(d) ? target : ui.coinShown + step;
+    if (d < 0 && ui.time >= ui.tickAt) { ui.tickAt = ui.time + 0.06; sfx.coin(); }
+    ui.coinBox.classList.toggle('drop', d < 0);
+  } else ui.coinBox.classList.remove('drop');
+  ui.coinNum.textContent = ui.coinShown.toLocaleString('de-DE');
   for (const [i, rl] of ui.reels.entries()) {
     if (!rl.spinning) continue;
     if (rl.ease) {
@@ -188,11 +204,13 @@ function afterStop() {
   if (big) setTimeout(() => { if (ui) { sfx.win(); burstConfetti(90); haptic('strong'); } }, 900);
   WIN.forEach(([wx, wy], i) => setTimeout(() => ui?.puffs.push({ x: wx + WIN_W / 2, y: wy + 48, t: 0 }), i * 160));
   const p = r.prize;
-  ui.msg = p.kind === 'stone' ? `${p.name}!` : r.outcome.symbol === 'seven' ? 'JACKPOT!!!' : 'POKéMON!'; ui.msgT = 0;
+  if (p.kind === 'held') { ui.itemImg = new Image(); ui.itemImg.src = itemSprite(p.item); }
+  ui.msg = p.kind === 'stone' || p.kind === 'held' ? `${p.name}!` : r.outcome.symbol === 'seven' ? 'JACKPOT!!!' : 'POKéMON!'; ui.msgT = 0;
   setTimeout(() => {
     if (!ui) return;
     if (p.kind === 'pokemon') reveal({ pokemon: p.pokemon, ball: { ball: p.ball, key: Math.floor(Math.random() * 1e9), dex: p.pokemon.dex } });
     else if (p.kind === 'stone') stoneWon(p.stone);
+    else if (p.kind === 'held') itemWon(p.item);
     ui.phase = 'idle'; ui.pippi = 'idle'; ui.msg = ''; ui.win = null;
   }, big ? 3300 : 2500);
 }
@@ -268,6 +286,7 @@ function draw(dt) {
   for (const p of ui.puffs) { p.t += dt; const k = p.t / 0.7, r = k < 0.35 ? RECT.cloudS : RECT.cloudL; x.globalAlpha = Math.max(0, 1 - Math.max(0, k - 0.5) * 2); B(r, p.x - r[2] / 2, p.y - r[3] / 2 - k * 10); x.globalAlpha = 1; }
   ui.puffs = ui.puffs.filter((p) => p.t < 0.7);
   const won = ui.phase === 'result' && ui.result?.prize?.kind === 'stone' ? STONE_ORDER.indexOf(ui.result.prize.stone) : -1;
+  if (ui.phase === 'result' && ui.result?.prize?.kind === 'held' && ui.itemImg?.complete) { const k = Math.min(1, ui.msgT * 3), bob = Math.sin(T * 5) * 3, sz = 20 + k * 30; x.globalAlpha = k; x.drawImage(ui.itemImg, 130 - sz / 2, 82 - sz / 2 + bob, sz, sz); x.globalAlpha = 1; }
   if (won >= 0 && stonesImg?.complete) { const k = Math.min(1, ui.msgT * 3), bob = Math.sin(T * 5) * 3, sz = 26 + k * 30; x.globalAlpha = k; x.drawImage(stonesImg, won * 52, 0, 52, 52, 130 - sz / 2, 82 - sz / 2 + bob, sz, sz); x.globalAlpha = 1; }
   if (ui.flash > 0 && Math.random() < 0.5) ui.sparks.push({ x: 20 + Math.random() * 220, y: 20 + Math.random() * 110, t: 0 });
   for (const s of ui.sparks) { s.t += dt; s.y -= dt * 20; const a = 1 - s.t / 0.6; x.fillStyle = `rgba(255,236,120,${a})`; x.fillRect(s.x - 1, s.y - 3, 2, 6); x.fillRect(s.x - 3, s.y - 1, 6, 2); }
@@ -338,6 +357,23 @@ function drawPippi(x, B, dt, T) {
   B(fr, -(fr[2] * k) / 2, -fr[3] * k, k);
   x.restore();
 }
+// ---- Einsatz: Münzen fliegen von der Anzeige in den Automaten, „−100“ schwebt davon ----
+function payFx(bet) {
+  const box = ui.coinBox.getBoundingClientRect(), cr = ui.canvas.getBoundingClientRect();
+  const tx = cr.left + ui.ox + 130 * ui.S, ty = cr.top + ui.oy + 182 * ui.S; // CREDIT-Anzeige
+  const n = Math.min(12, 4 + Math.round(bet / 60));
+  for (let i = 0; i < n; i++) {
+    const c = iconImg('coin', 3, 'sl-fly');
+    document.body.append(c);
+    const sx = box.left + box.width * (0.25 + Math.random() * 0.2), sy = box.top + box.height / 2, mx = (sx + tx) / 2 + (Math.random() - 0.5) * 120, my = Math.min(sy, ty) - 40 - Math.random() * 40;
+    c.animate([{ transform: `translate(${sx}px, ${sy}px) scale(1.2)`, opacity: 1 }, { transform: `translate(${mx}px, ${my}px) scale(1.4) rotate(180deg)`, opacity: 1, offset: 0.45 }, { transform: `translate(${tx + (Math.random() - 0.5) * 30}px, ${ty}px) scale(.6) rotate(400deg)`, opacity: 0.2 }],
+      { duration: 650 + i * 45, delay: i * 55, easing: 'cubic-bezier(.4,.1,.5,1)', fill: 'backwards' }).onfinish = () => c.remove();
+  }
+  const minus = h('div.sl-minus', `−${bet}`);
+  ui.root.append(minus);
+  setTimeout(() => minus.remove(), 1100);
+  ui.coinBox.classList.remove('bump'); void ui.coinBox.offsetWidth; ui.coinBox.classList.add('bump');
+}
 // ---- Gewinn-Feier ----
 const CONF_COL = ['#ffe066', '#ff6b8b', '#6bd3ff', '#8dff7a', '#ffffff', '#c58bff', '#ffa94d'];
 function burstConfetti(n) {
@@ -367,7 +403,7 @@ function drawCelebration(x, dt, T) {
   // großer Gewinntext mitten über den Walzen: springt herein, Regenbogenfarben
   if (ui.win && ui.msg) {
     const t = ui.win.t, k = Math.min(1, t * 4), z = (0.4 + k * 0.8) * (1 + Math.sin(T * 8) * 0.05), hue = (T * 240) % 360;
-    x.save(); x.translate(130, ui.result?.prize?.kind === 'stone' ? 118 : 84); x.scale(z, z); x.rotate(Math.sin(T * 5) * 0.04); // beim Stein schwebt dieser in der Mitte
+    x.save(); x.translate(130, ['stone', 'held'].includes(ui.result?.prize?.kind) ? 118 : 84); x.scale(z, z); x.rotate(Math.sin(T * 5) * 0.04); // beim Stein schwebt dieser in der Mitte
     x.font = "700 24px 'Ziffern', sans-serif"; x.textAlign = 'center'; x.textBaseline = 'middle';
     x.lineWidth = 6; x.strokeStyle = '#3a0c1e'; x.strokeText(ui.msg, 0, 0);
     x.fillStyle = `hsl(${hue}, 100%, 70%)`; x.fillText(ui.msg, 0, 0);
@@ -390,7 +426,7 @@ function drawStart(x, T, dt) {
   x.strokeText('START', cx, cy + 3 + d); x.fillText('START', cx, cy + 3 + d);
 }
 
-// ================= Steine =================
+// ================= Beutel: Steine & Items =================
 function stoneWon(stone) {
   const targets = stoneTargets(app.state, stone);
   modal((m, close) => {
@@ -399,22 +435,35 @@ function stoneWon(stone) {
       h('div.row', h('button.btn', { onclick: close }, 'Später'), targets.length ? h('button.btn.primary', { onclick: () => { close(); openBag(stone); } }, 'Jetzt benutzen') : null));
   });
 }
-// Beutel: Entwicklungssteine benutzen (dauerhafte Entwicklung)
-export function openBag(focus = null) {
+function itemWon(it) {
   modal((m, close) => {
-    const body = h('div');
-    const render = (sel) => {
+    m.append(h('div.stone-big', h('img.item-ico', { src: itemSprite(it), alt: '', style: { width: '72px', height: '72px' } })), h('h3', `${it.name}!`),
+      h('p.note', it.desc, ' Gib es einem Pokémon zum Tragen – alle Pokémon dieser Art bekommen den Effekt.'),
+      h('div.row', h('button.btn', { onclick: close }, 'Später'), h('button.btn.primary', { onclick: () => { close(); openBag(null, { tab: 'items', item: it.id }); } }, 'Jetzt geben')));
+  });
+}
+const pname = (p) => p.nick || species(p.dex).name;
+// Beutel: Entwicklungssteine benutzen (dauerhafte Entwicklung) und Items zum Tragen geben/abnehmen
+// opts.tab = 'stones' | 'items', opts.item = vorausgewähltes Item, opts.uid = nur dieses Pokémon (aus der Pokémon-Ansicht)
+export function openBag(focus = null, opts = {}) {
+  let tab = opts.tab || (focus ? 'stones' : Object.keys(app.state.items?.held || {}).length && !Object.keys(app.state.items?.stones || {}).length ? 'items' : 'stones');
+  modal((m, close) => {
+    const body = h('div'), tabs = h('div.rk-tabs');
+    const renderTabs = () => tabs.replaceChildren(
+      h('button.btn.small' + (tab === 'stones' ? '.primary' : ''), { onclick: () => { tab = 'stones'; renderTabs(); renderStones(focus); } }, '💎 Steine'),
+      h('button.btn.small' + (tab === 'items' ? '.primary' : ''), { onclick: () => { tab = 'items'; renderTabs(); renderItems(opts.item); } }, '🎒 Items'));
+    const renderStones = (sel) => {
       const stones = Object.entries(app.state.items?.stones || {}).filter(([, n]) => n > 0);
       if (!stones.length) { body.replaceChildren(h('p.note', 'Noch keine Entwicklungssteine. Gewinne welche am Spielautomaten (💎💎💎)!')); return; }
       sel = sel && stones.some(([k]) => k === sel) ? sel : stones[0][0];
-      const targets = stoneTargets(app.state, sel);
+      const targets = favFirst(stoneTargets(app.state, sel));
       body.replaceChildren(
-        h('div.rk-tabs.wrap', stones.map(([k, n]) => h('button.btn.small.stone-tab' + (k === sel ? '.primary' : ''), { onclick: () => render(k) }, stoneIcon(k, 22), `${stoneName(k)} ×${n}`))),
+        h('div.rk-tabs.wrap', stones.map(([k, n]) => h('button.btn.small.stone-tab' + (k === sel ? '.primary' : ''), { onclick: () => renderStones(k) }, stoneIcon(k, 22), `${stoneName(k)} ×${n}`))),
         targets.length ? h('div.inv', targets.map((p) => h('div.stone-row',
           h('img', { src: portraitUrl(p.dex), alt: '' }),
-          h('div', h('b', p.nick || species(p.dex).name), h('small', `Lv ${p.level}`)),
+          h('div', h('b', p.fav ? '★ ' : '', pname(p)), h('small', `Lv ${p.level}`)),
           h('button.btn.primary.small', { onclick: async () => {
-            if (!(await confirmDialog(`${p.nick || species(p.dex).name} mit dem ${stoneName(sel)} dauerhaft entwickeln?`, 'Entwickeln'))) { openBag(sel); return; }
+            if (!(await confirmDialog(`${pname(p)} mit dem ${stoneName(sel)} dauerhaft entwickeln?`, 'Entwickeln'))) { openBag(sel); return; }
             const r = app.act((s) => useStone(s, p.uid, sel), true);
             if (r.ok === false) return;
             sfx.evolve(); haptic('strong');
@@ -422,7 +471,33 @@ export function openBag(focus = null) {
             openBag(sel);
           } }, 'Entwickeln')))) : h('p.note', 'Keines deiner Pokémon kann sich damit entwickeln.'));
     };
-    render(focus);
-    m.append(h('div.row', h('h3', { style: { margin: 0, flex: 1 } }, '🎒 Entwicklungssteine'), h('button.btn.small', { onclick: close, style: { flex: 'none' } }, '✕')), body);
+    const renderItems = (sel) => {
+      const inv = Object.entries(app.state.items?.held || {}).filter(([, n]) => n > 0).map(([id, n]) => [itemById(id), n]).filter(([it]) => it);
+      const holders = favFirst(app.state.pokemon.filter((p) => p.held && (!opts.uid || p.uid === opts.uid)));
+      const parts = [];
+      if (!inv.length) parts.push(h('p.note', 'Keine freien Items. Gewinne welche am Spielautomaten (🍒🍒🍒)!'));
+      else {
+        sel = sel && inv.some(([it]) => it.id === sel) ? sel : inv[0][0].id;
+        const it = itemById(sel);
+        const mons = favFirst((opts.uid ? app.state.pokemon.filter((p) => p.uid === opts.uid) : app.state.pokemon.filter((p) => canBattle(p.dex))).sort((a, b) => a.dex - b.dex));
+        parts.push(h('div.rk-tabs.wrap', inv.map(([x, n]) => h('button.btn.small.stone-tab' + (x.id === sel ? '.primary' : ''), { onclick: () => renderItems(x.id) }, h('img.item-ico', { src: itemSprite(x), alt: '' }), `${x.name} ×${n}`))),
+          h('p.note', h('b', it.name + ': '), it.desc, ' Gilt für alle Pokémon dieser Art.'),
+          h('div.inv', mons.map((p) => h('div.stone-row',
+            h('img', { src: portraitUrl(p.dex), alt: '' }),
+            h('div', h('b', p.fav ? '★ ' : '', pname(p)), h('small', p.held ? `trägt ${itemById(p.held)?.name}` : `Lv ${p.level}`)),
+            h('button.btn.primary.small', { onclick: () => {
+              const r = app.act((s) => giveItem(s, p.uid, sel), true);
+              if (r.ok === false) return;
+              haptic('medium'); sfx.place(); toast(`${pname(p)} trägt jetzt ${it.name}.`); opts.uid ? close() : renderItems(sel);
+            } }, 'Geben')))));
+      }
+      if (holders.length) parts.push(h('b.ds-h', 'Getragen'), h('div.inv', holders.map((p) => { const x = itemById(p.held); return h('div.stone-row',
+        h('img', { src: portraitUrl(p.dex), alt: '' }),
+        h('div', h('b', pname(p)), h('small', h('img.item-ico.small', { src: itemSprite(x), alt: '' }), x.name)),
+        h('button.btn.small', { onclick: () => { app.act((s) => takeItem(s, p.uid), true); haptic('tick'); renderItems(sel); } }, 'Abnehmen')); })));
+      body.replaceChildren(...parts);
+    };
+    renderTabs(); tab === 'items' ? renderItems(opts.item) : renderStones(focus);
+    m.append(h('div.row', h('h3', { style: { margin: 0, flex: 1 } }, '🎒 Beutel'), h('button.btn.small', { onclick: close, style: { flex: 'none' } }, '✕')), tabs, body);
   });
 }

@@ -13,6 +13,7 @@ import { teamPicker } from './teampick.js';
 import { damageStats } from './dmgstats.js';
 import { renderTerrain, tilesImage, themeForType } from '../gfx/tiles2.js';
 import { physBuff } from '../game/rocks.js';
+import { fxOf } from '../game/items.js';
 import { haptic } from '../haptics.js';
 import { sfx, setMusic, musicForLevel } from '../audio.js';
 import { now, dayKey } from '../time.js';
@@ -29,17 +30,16 @@ const WATER_ONLY = 'Auf die Seerosen im Teich dürfen nur Wasser-Pokémon.';
 export function renderRouteSetup(el, back) {
   if (!chosen) { renderLevels(el, back); return; }
   // Favoriten immer oben, danach nach Level oder Angriffsform
-  const favs = st().favs || [], SH = ['adjacent', 'line', 'circle', 'cross'];
-  const mons = app.state.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => (favs.includes(b.uid) - favs.includes(a.uid))
+  const SH = ['adjacent', 'line', 'circle', 'cross'];
+  const mons = app.state.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => (!!b.fav - !!a.fav)
     || (sortBy === 'shape' ? SH.indexOf(shapeOf(a.dex)) - SH.indexOf(shapeOf(b.dex)) : 0) || b.level - a.level || a.dex - b.dex);
   const N = Math.min(maxUnits(st().cleared || 0), mons.length);
   if (!N) { toast('Du brauchst Pokémon – zieh welche am Automaten!'); chosen = null; renderLevels(el, back); return; }
   const rec = recommendRouteTeam(mons, chosen.types, N);
   if (!pickSel) pickSel = rec;
   const hint = (p) => {
-    const sh = R().shapes[shapeOf(p.dex)], fav = favs.includes(p.uid);
-    const star = h('span.bs-fav' + (fav ? '.on' : ''), { title: 'Favorit', onclick: (e) => { e.stopPropagation(); app.act((s) => A.toggleRouteFav(s, p.uid), true); haptic('tick'); renderRouteSetup(el, back); } }, fav ? '★' : '☆');
-    return [h('span.role-tag.route-shape', `${sh.icon} ${sh.name}`), h('span.d-price', `Lv ${p.level}`), star];
+    const sh = R().shapes[shapeOf(p.dex)];
+    return [h('span.role-tag.route-shape', `${sh.icon} ${sh.name}`), h('span.d-price', `Lv ${p.level}`)];
   };
   const picker = teamPicker({ mons, N, hint, initial: pickSel, recommend: rec, selectedFirst: true, onFull: (uids) => confirmTeam(uids) });
   pickSel = picker.sel; // gleiche Liste – Änderungen bleiben beim Neuzeichnen erhalten
@@ -83,6 +83,7 @@ function start() {
     .map((p) => ({ uid: p.uid, dex: p.dex, ivs: p.ivs, evs: p.evs, level: p.level, nick: p.nick, gender: p.gender }));
   game = new Route({ level: chosen, team: members, cleared: st().cleared || 0 });
   game.buffOf = (m) => physBuff(app.state, { uid: m.uid, dex: m.dex }, now()); // Felsbrecher-Buff
+  game.itemOf = (m) => fxOf(app.state, { uid: m.uid, dex: m.dex }); // getragenes Item
   openField();
 }
 

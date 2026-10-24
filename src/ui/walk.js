@@ -3,6 +3,7 @@ import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import { canBattle } from '../game/battle.js';
 import { speedOf, physBuff } from '../game/rocks.js';
+import { heldOf } from '../game/items.js';
 import { makeMap, walkable, spawnWild, moveWild, maxSteps, walkSpeed, walkedToday, makeFighter, battleTurn, walkWin, walkDone, cellOf, loadLearnsets, moveData, STATUS_TAG } from '../game/walk.js';
 import { renderTerrain, tilesImage, themeOf } from '../gfx/tiles2.js';
 import { typeColor } from '../game/types.js';
@@ -22,7 +23,7 @@ let ui = null, setupEl = null, setupBack = null;
 // ================= Auswahl =================
 export function renderWalkSetup(el, back) {
   setupEl = el; setupBack = back;
-  const mons = (app.state.pokemon || []).filter((p) => canBattle(p.dex)).sort((a, b) => maxSteps(b) - maxSteps(a) || speedOf(b).value - speedOf(a).value);
+  const mons = (app.state.pokemon || []).filter((p) => canBattle(p.dex)).sort((a, b) => !!b.fav - !!a.fav || maxSteps(b) - maxSteps(a) || speedOf(b).value - speedOf(a).value);
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '🐾 Spaziergang')),
@@ -31,7 +32,7 @@ export function renderWalkSetup(el, back) {
       const done = walkedToday(app.state, p.uid, now()), sp = speedOf(p);
       return h('button.bs-row.rk-row' + (done ? '.done' : ''), { onclick: () => (done ? toast(`${name(p)} war heute schon spazieren.`) : startWalk(p)) },
         h('img.rk-por', { src: portraitUrl(p.dex), alt: '' }),
-        h('div.bs-row-text', h('b', name(p), h('small.wk-lv', ` Lv ${p.level}`), done ? h('span.rk-done', '✓ heute gelaufen') : null),
+        h('div.bs-row-text', h('b', p.fav ? '★ ' : '', name(p), h('small.wk-lv', ` Lv ${p.level}`), done ? h('span.rk-done', '✓ heute gelaufen') : null),
           h('div.rk-stat', h('span.k', 'Ausdauer'), h('span.rk-dots', dots(p.stamina || 1)), h('small', `${maxSteps(p)} Schritte`)),
           h('div.rk-stat', h('span.k', 'Tempo'), h('span.rk-dots', dots(sp.level)), h('small', `${walkSpeed(p)} Felder/s`))),
         h('span.bs-go', done ? '' : '›'));
@@ -58,7 +59,8 @@ async function startWalk(p) {
   document.body.append(root);
   document.body.classList.add('in-battle');
   setMusic('menu');
-  const me = makeFighter({ ...p, pbuff: physBuff(app.state, { uid: p.uid, dex: p.dex }, now()) }, p.level);
+  const it = heldOf(app.state, { uid: p.uid, dex: p.dex });
+  const me = makeFighter({ ...p, pbuff: physBuff(app.state, { uid: p.uid, dex: p.dex }, now()), item: it?.fx || null, itemName: it?.name }, p.level);
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`;
   ui = { p, me, map, rnd, root, canvas, ctx: canvas.getContext('2d'), lcd, go, walker, hint, trainer: tr, phase: 'plan', route: [], drawing: false,
     wild: spawnWild(map, rnd, p.level), t: 0, s: 0, wins: 0, ep: 0, evs: [0, 0, 0, 0, 0, 0], last: performance.now(), raf: 0, max: maxSteps(p), speed: walkSpeed(p), cam: null, bang: [] };
@@ -102,6 +104,8 @@ const toWorld = (e) => { const r = ui.canvas.getBoundingClientRect(), c = ui.cam
 const cellAt = (e) => toWorld(e).map((v) => Math.floor(v / TS));
 const same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
 const isHome = (c) => same(c, ui.map.home);
+// im hohen Gras verdeckt nur, wenn auch das Feld darunter Gras ist (am unteren Rand des Flecks endet das Gras sichtbar)
+const deepGrass = (x, y) => { const cx = Math.round(x), cy = Math.round(y); return cellOf(ui.map, cx, cy) === 'T' && cellOf(ui.map, cx, cy + 1) === 'T'; };
 
 // ---- Route zeichnen ----
 function onDown(e) {
@@ -213,7 +217,7 @@ function drawTrainer(x, wx, wy, dir, moving, t) {
   const X = (wx + 0.5) * TS, Y = (wy + 0.5) * TS;
   x.fillStyle = 'rgba(20,30,10,.3)'; x.beginPath(); x.ellipse(X, Y + TS * 0.34, TS * 0.3, TS * 0.1, 0, 0, 7); x.fill();
   x.drawImage(im, fr * 64, row * 64, 64, 64, X - 32 * s, Y + TS * 0.38 - 58 * s, 64 * s, 64 * s);
-  if (cellOf(ui.map, Math.round(wx), Math.round(wy)) === 'T') grassOver(x, X, Y);
+  if (deepGrass(wx, wy)) grassOver(x, X, Y);
 }
 function draw() {
   const U = ui, x = U.ctx, t = performance.now(), c = U.cam, M = U.map;
@@ -245,9 +249,9 @@ function draw() {
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
     if (o.trainer) drawTrainer(x, tp.x, tp.y, U.phase === 'walk' ? tp.dir : 0, walking, t / 1000);
-    else if (o.mon) drawMon(x, U.p.dex, U.p.gender, pp.x, pp.y, U.phase === 'walk' ? pp.dir : 0, walking ? 'Walk' : 'Idle', t, cellOf(M, Math.round(pp.x), Math.round(pp.y)) === 'T');
+    else if (o.mon) drawMon(x, U.p.dex, U.p.gender, pp.x, pp.y, U.phase === 'walk' ? pp.dir : 0, walking ? 'Walk' : 'Idle', t, deepGrass(pp.x, pp.y));
     else {
-      const w = o.w, inG = cellOf(M, Math.round(w.x), Math.round(w.y)) === 'T';
+      const w = o.w, inG = deepGrass(w.x, w.y);
       if (w.ignore > U.t) x.globalAlpha = 0.5;
       drawMon(x, w.dex, null, w.x, w.y, w.dir, w.k < 1 ? 'Walk' : 'Idle', t, inG);
       x.globalAlpha = 1;

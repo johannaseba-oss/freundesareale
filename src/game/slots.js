@@ -5,6 +5,7 @@ import { CFG, species } from '../config.js';
 import { bdata, calcStats, stonesFor, stoneEvolution, stoneName } from './battle.js';
 import { addCaught } from './actions.js';
 import { staminaOf } from './contest.js';
+import { winItem } from './items.js';
 
 const S = () => CFG.slots;
 export const SYMBOLS = ['seven', 'g', 'replay', 'cherry', 'pika', 'gem'];
@@ -45,6 +46,7 @@ export function claim(s, t, outcome, rnd = Math.random) {
   s.slots.wins[outcome.id] = (s.slots.wins[outcome.id] || 0) + 1;
   if (pr.type === 'ep') { s.route ||= { ep: 0, cleared: 0 }; s.route.ep += pr.amount; return { ok: true, kind: 'ep', amount: pr.amount }; }
   if (pr.type === 'replay') return { ok: true, kind: 'replay' };
+  if (pr.type === 'held') { const it = winItem(s, rnd); return { ok: true, kind: 'held', item: it, name: it.name }; }
   if (pr.type === 'stone') {
     const all = Object.keys(CFG.battleData.stones);
     const useful = all.filter((st) => stoneTargets(s, st).length);

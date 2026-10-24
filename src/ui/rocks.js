@@ -24,7 +24,7 @@ export function renderRocksSetup(el, back) {
   setupEl = el; setupBack = back;
   const mons = (app.state.pokemon || []).filter((p) => canBattle(p.dex))
     .map((p) => ({ p, pw: powerOf(p), sp: speedOf(p) }))
-    .sort((a, b) => b.pw.level + b.sp.level - (a.pw.level + a.sp.level) || b.pw.value + b.sp.value - (a.pw.value + a.sp.value));
+    .sort((a, b) => !!b.p.fav - !!a.p.fav || b.pw.level + b.sp.level - (a.pw.level + a.sp.level) || b.pw.value + b.sp.value - (a.pw.value + a.sp.value));
   const st = app.state.rocks || {}, today = st.day === dayKey(now()) ? st.coinsToday || 0 : 0;
   const best = st.best ? app.state.pokemon.find((p) => p.uid === st.bestUid) : null;
   el.replaceChildren(h('div.bs',
@@ -37,7 +37,7 @@ export function renderRocksSetup(el, back) {
       const done = trainedToday(app.state, p.uid, now()), b = physBuff(app.state, { uid: p.uid, dex: p.dex }, now());
       return h('button.bs-row.rk-row' + (done ? '.done' : ''), { onclick: () => (done ? toast(`${name(p)} hat heute schon trainiert – morgen wieder.`) : startRun(p)) },
         h('img.rk-por', { src: portraitUrl(p.dex), alt: '' }),
-        h('div.bs-row-text', h('b', name(p), b > 1 ? h('span.rk-buff', `💪 +${Math.round((b - 1) * 100)} %`) : null, done ? h('span.rk-done', '✓ heute trainiert') : null), statLine('Kraft', pw), statLine('Tempo', sp)),
+        h('div.bs-row-text', h('b', p.fav ? '★ ' : '', name(p), b > 1 ? h('span.rk-buff', `💪 +${Math.round((b - 1) * 100)} %`) : null, done ? h('span.rk-done', '✓ heute trainiert') : null), statLine('Kraft', pw), statLine('Tempo', sp)),
         h('span.bs-go', done ? '' : '›'));
     })) : h('p.note.warn', 'Du brauchst Pokémon – zieh welche am Automaten!')));
 }
@@ -49,7 +49,7 @@ export function openItemShop(onClose = null) {
     const body = h('div');
     const render = () => {
       const mons = (app.state.pokemon || []).filter((p) => canBattle(p.dex))
-        .sort((a, b) => (item.stat === R().power.stat ? powerOf(b).value - powerOf(a).value : speedOf(b).value - speedOf(a).value));
+        .sort((a, b) => !!b.fav - !!a.fav || (item.stat === R().power.stat ? powerOf(b).value - powerOf(a).value : speedOf(b).value - speedOf(a).value));
       body.replaceChildren(
         h('div.rk-tabs', shopItems().map((it) => h('button.btn.small' + (it === item ? '.primary' : ''), { onclick: () => { item = it; render(); } }, `${it.icon} ${it.name}`))),
         h('p.note', item.desc, ' ', `+${item.ev} Fleißpunkte (EV) – gilt dauerhaft und auch im Kampf. Mit Items bis ${R().shop.vitaminCap} EV je Wert.`),

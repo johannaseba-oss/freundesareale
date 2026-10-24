@@ -12,6 +12,7 @@ import { renderRouteSetup } from './route.js';
 import { renderRocksSetup, openItemShop } from './rocks.js';
 import { renderWalkSetup } from './walk.js';
 import { physBuff } from '../game/rocks.js';
+import { fxOf } from '../game/items.js';
 import { now } from '../time.js';
 import { teamPicker } from './teampick.js';
 import { drawWeather } from './weatherfx.js';
@@ -160,7 +161,7 @@ function startBattle(o) {
 }
 
 // Felsbrecher-Buff für physische Treffer
-const withBuff = (p) => ({ ...fromPokemon(p), pbuff: physBuff(app.state, { uid: p.uid, dex: p.dex }, now()) });
+const withBuff = (p) => ({ ...fromPokemon(p), pbuff: physBuff(app.state, { uid: p.uid, dex: p.dex }, now()), item: fxOf(app.state, { uid: p.uid, dex: p.dex }) });
 
 function openArena(o) {
   closeArena();

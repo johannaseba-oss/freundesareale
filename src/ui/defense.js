@@ -14,6 +14,7 @@ import { drawWeather } from './weatherfx.js';
 import { sfx, setMusic, musicForLevel, nextTrack } from '../audio.js';
 import { damageStats } from './dmgstats.js';
 import { physBuff } from '../game/rocks.js';
+import { fxOf } from '../game/items.js';
 import { now } from '../time.js';
 import { weatherInfo, weatherText, weatherBoost } from '../game/weather.js';
 
@@ -212,6 +213,7 @@ function openField(themeId = null) {
   closeField();
   // Felsbrecher-Buff: eigene Pokémon über uid, Chaos-Bälle über die Art
   game.buffOf = (src) => physBuff(app.state, { uid: src.uid ?? null, dex: src.dex }, now());
+  game.itemOf = (src) => fxOf(app.state, { uid: src.uid ?? null, dex: src.dex }); // getragenes Item (gilt für die ganze Art)
   const canvas = h('canvas.arena-canvas');
   const cards = h('div.d-cards');
   const starsEl = h('div.d-stars');

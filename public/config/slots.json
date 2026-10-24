@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Spielautomat (Automat-Seite): Einsatz mindestens bets[0] Münzen, Münzen gibt es nie zurück. Gewinne nur: Pokémon oder Entwicklungssteine. weight = Chance in % pro Spiel beim kleinsten Einsatz; höhere Einsätze multiplizieren die Chancen (betMult). Alles andere ist eine Niete.",
+  "_hinweis": "Spielautomat (Automat-Seite): Einsatz mindestens bets[0] Münzen, Münzen gibt es nie zurück. Gewinne nur: Pokémon, Entwicklungssteine oder Items zum Tragen (config/items.json). weight = Chance in % pro Spiel beim kleinsten Einsatz; höhere Einsätze multiplizieren die Chancen (betMult). Alles andere ist eine Niete.",
   "bets": [
     100,
     250,
@@ -41,6 +41,15 @@
         "type": "stone"
       },
       "label": "Entwicklungsstein"
+    },
+    {
+      "id": "item",
+      "symbol": "cherry",
+      "weight": 3,
+      "prize": {
+        "type": "held"
+      },
+      "label": "Item zum Tragen (Überreste, Wahlband …)"
     }
   ],
   "maxWinChance": 0.25,

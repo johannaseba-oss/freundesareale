@@ -6,12 +6,15 @@ import { portraitUrl } from '../gfx/sprites.js';
 import { typeChip } from '../game/types.js';
 import { h, toast } from './dom.js';
 import { haptic } from '../haptics.js';
+import { app } from '../app.js';
+import { toggleFav, favFirst } from '../game/actions.js';
 
 // mons: Pokémon-Liste; N: Teamgröße; hint(p): kleine Zusatzinfo (Attacke/Rolle); onFull(uids): Team vollständig
 // initial: vorausgewählte uids (Empfehlung) – dann gibt es die Leiste mit „Empfehlung“, „Leeren“ und „Weiter“
 // recommend: empfohlene uids (Knopf „Empfehlung“, kleines ✦ auf der Karte) – ohne Angabe = initial
 // selectedFirst: Ausgewählte stehen immer oben (in Auswahl-Reihenfolge), Abgewählte rutschen an ihren Platz in der Sortierung zurück
 export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = null, selectedFirst = false }) {
+  mons = favFirst(mons); // Favoriten immer oben
   const rec = recommend || initial;
   const sel = initial ? [...initial] : [];
   const count = h('span.bs-count');
@@ -42,6 +45,7 @@ export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = 
       if (sel.length === N) setTimeout(() => onFull([...sel]), 180);
     } },
     h('span.bs-num'),
+    h('span.bs-fav' + (p.fav ? '.on' : ''), { title: 'Favorit', onclick: (e) => { e.stopPropagation(); const r = app.act((s) => toggleFav(s, p.uid), true); e.currentTarget.classList.toggle('on', !!r.fav); e.currentTarget.textContent = r.fav ? '★' : '☆'; haptic('tick'); } }, p.fav ? '★' : '☆'),
     h('img.bs-por', { src: portraitUrl(p.dex), alt: '', loading: 'lazy' }),
     h('b', p.nick || species(p.dex).name, recommend?.includes(p.uid) ? h('span.bs-rec', { title: 'Empfohlen' }, ' ✦') : null),
     h('span.type-chips.mini', species(p.dex).types.map((ty) => typeChip(ty))),
