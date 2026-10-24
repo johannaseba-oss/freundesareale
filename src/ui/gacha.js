@@ -344,7 +344,9 @@ export function reveal(r) {
   document.body.append(el);
   const c = cv.getContext('2d');
   const sprites = loadSprites(p.dex, p.gender);
-  const t0 = performance.now();
+  let t0 = performance.now();
+  // Antippen, solange der Ball noch wackelt: sofort öffnen
+  el.addEventListener('pointerdown', () => { const t = (performance.now() - t0) / 1000; if (t < 2.1) t0 = performance.now() - 2.1 * 1000; });
   let raf;
   const sparkles = Array.from({ length: 24 }, () => ({ a: Math.random() * Math.PI * 2, s: 60 + Math.random() * 140, r: Math.random() }));
   const frame = () => {

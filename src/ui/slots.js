@@ -1,6 +1,6 @@
 // Spielautomat-Oberfläche (Vollbild): Einsatz-Bälle antippen, START drücken, Walzen mit Y/B/A stoppen.
 // Das Ergebnis steht schon beim Start fest (und ist sofort gutgeschrieben) – die Walzen rutschen beim Stoppen bis zum passenden Symbol.
-// Piepi steht vor dem Automaten, Pikachu sitzt mit dem Rücken zu dir davor und schaut zu.
+// Piepi steht vor dem Automaten und fiebert mit; Gewinne werden groß gefeiert (Strahlen, Konfetti, Feuerwerk).
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import { SYMBOLS, chances, spin, claim, stoneTargets, useStone } from '../game/slots.js';
@@ -17,7 +17,7 @@ const base = import.meta.env.BASE_URL;
 const RECT = {
   machine: [2, 11, 256, 183],
   seven: [265, 5, 44, 26], g: [268, 36, 38, 28], replay: [266, 69, 42, 26], cherry: [269, 99, 35, 30], pika: [263, 132, 48, 28], gem: [267, 167, 38, 26],
-  cloudS: [93, 204, 53, 46], cloudL: [87, 260, 64, 61], pikachu: [87, 332, 64, 56],
+  cloudS: [93, 204, 53, 46], cloudL: [87, 260, 64, 61],
   pippi: [[155, 199, 58, 60], [220, 199, 58, 60], [152, 263, 64, 60], [217, 263, 64, 60], [155, 326, 58, 61], [220, 326, 58, 61], [152, 389, 65, 62], [217, 389, 65, 62], [152, 453, 65, 62], [217, 453, 65, 62]],
   ball: (c, r) => [3 + 17 * c, 196 + 16 * r, 14, 14],
   digit: (d) => [290, 202 + 32 * d, 16, 26],
@@ -68,7 +68,7 @@ export function openSlots() {
   document.body.classList.add('in-battle');
   setMusic('arena');
   ui = { root, canvas, ctx: canvas.getContext('2d'), bet: 0, reels: [0, 1, 2].map((i) => ({ strip: strip(i), pos: i * 3, spinning: false })),
-    phase: 'idle', t: 0, time: 0, last: performance.now(), raf: 0, flash: 0, puffs: [], sparks: [], pippi: 'idle', pippiT: 0, hop: 0, pikaHop: 0, press: 0, msg: '', msgT: 0 };
+    phase: 'idle', t: 0, time: 0, last: performance.now(), raf: 0, flash: 0, puffs: [], sparks: [], pippi: 'idle', pippiT: 0, hop: 0, press: 0, win: null, confetti: [], fireworks: [], shake: 0, msg: '', msgT: 0 };
   ui.ro = new ResizeObserver(layout); ui.ro.observe(root);
   canvas.addEventListener('pointerdown', onTap);
   layout();
@@ -180,8 +180,12 @@ function afterStop() {
     setTimeout(() => { if (ui) { ui.phase = 'idle'; ui.pippi = 'idle'; ui.msg = ''; } }, 1300);
     return;
   }
-  // Gewinn: Lampen blinken, Sterne-Wolken über den Walzen, Piepi und Pikachu hüpfen vor Freude
-  ui.flash = 2.4; ui.pippi = 'win'; ui.pippiT = 0; ui.hop = 0.01; ui.pikaHop = 0.15; sfx.win(); haptic('strong');
+  // Gewinn: Lampen blinken, Lichtstrahlen, Konfetti, Feuerwerk, pulsierende Gewinnsymbole, Piepi hüpft vor Freude
+  const big = r.outcome.symbol === 'seven' || r.prize.kind === 'pokemon';
+  ui.win = { t: 0, big, dur: big ? 3.2 : 2.4 };
+  ui.flash = ui.win.dur; ui.pippi = 'win'; ui.pippiT = 0; ui.hop = 0.01; ui.shake = big ? 9 : 5; sfx.win(); haptic('strong');
+  burstConfetti(big ? 150 : 80);
+  if (big) setTimeout(() => { if (ui) { sfx.win(); burstConfetti(90); haptic('strong'); } }, 900);
   WIN.forEach(([wx, wy], i) => setTimeout(() => ui?.puffs.push({ x: wx + WIN_W / 2, y: wy + 48, t: 0 }), i * 160));
   const p = r.prize;
   ui.msg = p.kind === 'stone' ? `${p.name}!` : r.outcome.symbol === 'seven' ? 'JACKPOT!!!' : 'POKéMON!'; ui.msgT = 0;
@@ -189,8 +193,8 @@ function afterStop() {
     if (!ui) return;
     if (p.kind === 'pokemon') reveal({ pokemon: p.pokemon, ball: { ball: p.ball, key: Math.floor(Math.random() * 1e9), dex: p.pokemon.dex } });
     else if (p.kind === 'stone') stoneWon(p.stone);
-    ui.phase = 'idle'; ui.pippi = 'idle'; ui.msg = '';
-  }, p.kind === 'pokemon' ? 1900 : 1500);
+    ui.phase = 'idle'; ui.pippi = 'idle'; ui.msg = ''; ui.win = null;
+  }, big ? 3300 : 2500);
 }
 
 // ================= Zeichnen =================
@@ -209,11 +213,25 @@ function draw(dt) {
     if (!flip) return x.drawImage(sheet, rect[0], rect[1], rect[2], rect[3], dx, dy, rect[2] * k, rect[3] * k);
     x.save(); x.translate(dx + rect[2] * k, dy); x.scale(-1, 1); x.drawImage(sheet, rect[0], rect[1], rect[2], rect[3], 0, 0, rect[2] * k, rect[3] * k); x.restore();
   };
-  x.save(); x.translate(ox, oy); x.scale(S, S); // ab hier Sheet-Koordinaten
+  if (ui.shake > 0.1) ui.shake *= Math.pow(0.02, dt); else ui.shake = 0;
+  const shx = ui.shake ? (Math.random() - 0.5) * ui.shake : 0, shy = ui.shake ? (Math.random() - 0.5) * ui.shake : 0;
+  x.save(); x.translate(ox + shx, oy + shy); x.scale(S, S); // ab hier Sheet-Koordinaten
   // Boden (Bühne) unter dem Automaten
   x.fillStyle = '#3a2148'; x.fillRect(SCENE.x0 - 40, 192, SCENE.x1 - SCENE.x0 + 80, FLOOR - 192 + 30);
   x.fillStyle = '#4b2c5c'; x.fillRect(SCENE.x0 - 40, 192, SCENE.x1 - SCENE.x0 + 80, 3);
   x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(130, 196, 132, 6, 0, 0, 7); x.fill();
+  // Gewinn: drehende Lichtstrahlen hinter dem Automaten
+  if (ui.win) {
+    ui.win.t += dt;
+    const k = Math.min(1, ui.win.t * 3), n = 16;
+    x.save(); x.translate(130, 90); x.rotate(T * (ui.win.big ? 0.9 : 0.5));
+    for (let i = 0; i < n; i++) {
+      x.rotate((Math.PI * 2) / n);
+      x.fillStyle = i % 2 ? `rgba(255,226,120,${0.22 * k})` : `rgba(255,150,200,${0.16 * k})`;
+      x.beginPath(); x.moveTo(0, 0); x.lineTo(-22, -330); x.lineTo(22, -330); x.closePath(); x.fill();
+    }
+    x.restore();
+  }
   // Leuchtschild über dem Automaten mit Lauflicht
   drawMarquee(x, T);
   // Automat mit Walzen
@@ -221,6 +239,16 @@ function draw(dt) {
   for (const [i, rl] of ui.reels.entries()) drawReel(x, B, i, rl);
   x.fillStyle = ui.flash > 0 && Math.floor(ui.flash * 8) % 2 ? 'rgba(255,60,60,.9)' : 'rgba(255,60,60,.45)';
   x.fillRect(40, 34 + 48 - 0.5, 180, 1); // Gewinnlinie
+  if (ui.win && ui.result?.outcome) {
+    const sym = RECT[ui.result.outcome.symbol], z = 1.12 + Math.sin(T * 10) * 0.12;
+    WIN.forEach(([wx, wy], i) => {
+      const cx = wx + WIN_W / 2, cy = wy + 48, hue = (T * 300 + i * 60) % 360;
+      x.strokeStyle = `hsl(${hue}, 95%, 65%)`; x.lineWidth = 2.5; x.strokeRect(wx + 1.5, wy + 32.5, WIN_W - 3, 31);
+      x.fillStyle = 'rgba(255,255,220,.55)'; x.fillRect(wx + 3, wy + 34, WIN_W - 6, 28);
+      const zz = z + (i === Math.floor(T * 6) % 3 ? 0.08 : 0);
+      x.drawImage(sheet, sym[0], sym[1], sym[2], sym[3], cx - (sym[2] * zz) / 2, cy - (sym[3] * zz) / 2, sym[2] * zz, sym[3] * zz);
+    });
+  }
   if (ui.flash > 0) ui.flash -= dt;
   LAMPS.forEach((ly, i) => {
     const on = ui.flash > 0 ? Math.floor(ui.flash * 10 + i) % 2 === 0 : ui.phase === 'spin' ? Math.floor(T * 6 + i) % 5 === 0 : i === 2;
@@ -244,16 +272,16 @@ function draw(dt) {
   if (ui.flash > 0 && Math.random() < 0.5) ui.sparks.push({ x: 20 + Math.random() * 220, y: 20 + Math.random() * 110, t: 0 });
   for (const s of ui.sparks) { s.t += dt; s.y -= dt * 20; const a = 1 - s.t / 0.6; x.fillStyle = `rgba(255,236,120,${a})`; x.fillRect(s.x - 1, s.y - 3, 2, 6); x.fillRect(s.x - 3, s.y - 1, 6, 2); }
   ui.sparks = ui.sparks.filter((s) => s.t < 0.6);
-  // vorne auf dem Boden: Piepi links, START-Knopf + Einsatz-Bälle in der Mitte, Pikachu rechts (Rücken zu dir)
+  // vorne auf dem Boden: Piepi links, START-Knopf + Einsatz-Bälle in der Mitte
   drawPippi(x, B, dt, T);
   drawStart(x, T, dt);
+  drawCelebration(x, dt, T);
   BETS.forEach(([bx, by], i) => {
     const on = ui.bet === i, r = RECT.ball(i, on ? 0 : 2), k = on ? 1.25 + Math.sin(T * 5) * 0.06 : 1;
     if (on) { x.fillStyle = 'rgba(255,220,120,.35)'; x.beginPath(); x.arc(bx, by, 11, 0, 7); x.fill(); }
     B(r, bx - 7 * k, by - 7 * k, k);
     x.font = "7px 'Ziffern', monospace"; x.textAlign = 'center'; x.fillStyle = on ? '#ffe066' : '#bba8c8'; x.fillText(String(SL().bets[i]), bx, by + 15);
   });
-  drawPikachu(x, B, dt, T);
   x.restore();
 }
 function drawMarquee(x, T) {
@@ -310,15 +338,42 @@ function drawPippi(x, B, dt, T) {
   B(fr, -(fr[2] * k) / 2, -fr[3] * k, k);
   x.restore();
 }
-// Pikachu sitzt mit dem Rücken zu dir vor dem Automaten: wippt beim Drehen mit, springt beim Gewinn, sackt bei Nieten etwas zusammen
-function drawPikachu(x, B, dt, T) {
-  if (ui.pikaHop > 0) { ui.pikaHop += dt; if (ui.pikaHop > 1.7) ui.pikaHop = 0; }
-  const jump = ui.pikaHop > 0.15 ? Math.abs(Math.sin((ui.pikaHop - 0.15) * Math.PI * 2.5)) * 10 : 0;
-  const bob = ui.phase === 'spin' ? Math.abs(Math.sin(T * 9)) * 2 : Math.sin(T * 1.8) * 0.6;
-  const sad = ui.pippi === 'lose' ? 2 : 0;
-  const r = RECT.pikachu, k = 0.78, foot = FLOOR + 4;
-  x.fillStyle = 'rgba(0,0,0,.35)'; x.beginPath(); x.ellipse(222, foot, 22 - jump * 0.4, 4, 0, 0, 7); x.fill();
-  B(r, 222 - (r[2] * k) / 2, foot - r[3] * k - jump - bob + sad, k, true);
+// ---- Gewinn-Feier ----
+const CONF_COL = ['#ffe066', '#ff6b8b', '#6bd3ff', '#8dff7a', '#ffffff', '#c58bff', '#ffa94d'];
+function burstConfetti(n) {
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.4, v = 120 + Math.random() * 220;
+    ui.confetti.push({ x: 130 + (Math.random() - 0.5) * 60, y: 60, vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: Math.random() * 6, vr: (Math.random() - 0.5) * 16,
+      c: CONF_COL[Math.floor(Math.random() * CONF_COL.length)], s: 2 + Math.random() * 3, star: Math.random() < 0.25, t: 0, life: 2.2 + Math.random() * 1.2 });
+  }
+}
+function star(x, cx, cy, r) { x.beginPath(); for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4, rr = i % 2 ? r * 0.4 : r; x.lineTo(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } x.closePath(); x.fill(); }
+function drawCelebration(x, dt, T) {
+  // Feuerwerk über dem Automaten, solange gefeiert wird
+  if (ui.win && Math.random() < dt * (ui.win.big ? 4 : 2.2)) {
+    const fx = 30 + Math.random() * 200, fy = -20 + Math.random() * 70, c = CONF_COL[Math.floor(Math.random() * CONF_COL.length)];
+    for (let i = 0; i < 22; i++) { const a = (i / 22) * Math.PI * 2; ui.fireworks.push({ x: fx, y: fy, vx: Math.cos(a) * 70, vy: Math.sin(a) * 70, c, t: 0 }); }
+    sfx.place();
+  }
+  for (const p of ui.fireworks) { p.t += dt; p.vy += 60 * dt; p.vx *= 0.97; p.vy *= 0.97; p.x += p.vx * dt; p.y += p.vy * dt; x.globalAlpha = Math.max(0, 1 - p.t / 0.9); x.fillStyle = p.c; x.fillRect(p.x - 1, p.y - 1, 2, 2); }
+  ui.fireworks = ui.fireworks.filter((p) => p.t < 0.9);
+  for (const p of ui.confetti) {
+    p.t += dt; p.vy += 260 * dt; p.vx *= 0.99; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt;
+    x.globalAlpha = Math.max(0, Math.min(1, (p.life - p.t) * 2)); x.fillStyle = p.c;
+    if (p.star) star(x, p.x, p.y, p.s + 1); else { x.save(); x.translate(p.x, p.y); x.rotate(p.r); x.fillRect(-p.s / 2, -p.s * 0.3, p.s, p.s * 0.6 * Math.abs(Math.cos(p.r))); x.restore(); }
+  }
+  x.globalAlpha = 1;
+  ui.confetti = ui.confetti.filter((p) => p.t < p.life && p.y < 330);
+  // großer Gewinntext mitten über den Walzen: springt herein, Regenbogenfarben
+  if (ui.win && ui.msg) {
+    const t = ui.win.t, k = Math.min(1, t * 4), z = (0.4 + k * 0.8) * (1 + Math.sin(T * 8) * 0.05), hue = (T * 240) % 360;
+    x.save(); x.translate(130, ui.result?.prize?.kind === 'stone' ? 118 : 84); x.scale(z, z); x.rotate(Math.sin(T * 5) * 0.04); // beim Stein schwebt dieser in der Mitte
+    x.font = "700 24px 'Ziffern', sans-serif"; x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.lineWidth = 6; x.strokeStyle = '#3a0c1e'; x.strokeText(ui.msg, 0, 0);
+    x.fillStyle = `hsl(${hue}, 100%, 70%)`; x.fillText(ui.msg, 0, 0);
+    x.fillStyle = 'rgba(255,255,255,.55)'; x.fillText(ui.msg, 0, -1.5);
+    x.restore(); x.textBaseline = 'alphabetic';
+  }
 }
 // großer runder START-Knopf (gedrückt, solange die Walzen laufen)
 function drawStart(x, T, dt) {
