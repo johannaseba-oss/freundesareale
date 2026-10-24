@@ -3,8 +3,8 @@
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import * as A from '../game/actions.js';
-import { Route, routeLevels, shapeOf, radiusOf, maxUnits, upgradeCost, recommendRouteTeam, pathCells } from '../game/route.js';
-import { canBattle, moveOf, bdata } from '../game/battle.js';
+import { Route, routeLevels, shapeOf, radiusOf, maxUnits, upgradeCost, recommendRouteTeam, pathCells, levelSpeed } from '../game/route.js';
+import { canBattle, moveOf, bdata, calcStats } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl, dirFromVector } from '../gfx/sprites.js';
 import { $, h, toast, confirmDialog, modal } from './dom.js';
@@ -133,18 +133,33 @@ function onField(e) {
   if (game.units.length >= game.max) { toast(`Höchstens ${game.max} Pokémon gleichzeitig auf dem Feld.`); return; }
   if (game.place(ui.sel, si)) { haptic('medium'); sfx.place(); ui.sel = null; buildBar(); renderInfo(); }
 }
+// Kann dieses Pokémon gerade trainiert werden? (genug EP, Tageslimit nicht erreicht)
+function trainState(m) {
+  const cost = upgradeCost(m.level), have = (st().ep || 0) + (game?.ep || 0);
+  const today = st().day === dayKey(now()) ? st().today?.[m.uid] || 0 : 0, left = Math.max(0, R().upgrade.dailyPerPokemon - today);
+  return { cost, have, left, ok: have >= cost && left > 0 && m.level < CFG.balance.level.max };
+}
+// Was ein Level mehr bringt: Tempo, Wucht (Angriffswert × Levelfaktor der Schadensformel), Radius
+function trainPreview(m) {
+  const L = m.level, mv = moveOf(bdata(m.dex).move), k = mv.cat === 'phys' ? 1 : 3;
+  const wucht = (lv) => Math.floor((2 * lv) / 5 + 2) * calcStats(m.dex, lv, m.ivs, m.evs)[k];
+  const pct = (a, b) => `+${Math.max(0, Math.round((b / a - 1) * 100))} %`;
+  const rows = [['Tempo', pct(levelSpeed(L), levelSpeed(L + 1))], ['Wucht', pct(wucht(L), wucht(L + 1))]];
+  if (shapeOf(m.dex) === 'circle') rows.push(['Radius', `${radiusOf(L).toFixed(2)} → ${radiusOf(L + 1).toFixed(2)} Felder`]);
+  return h('div.r-preview', h('b', `Lv ${L} → ${L + 1}`), ...rows.map(([a, b]) => h('span', h('i', a), b)));
+}
 // Platziertes Pokémon: trainieren (EP, dauerhaft) oder zurück in die Leiste
 function unitMenu(u) {
-  const p = app.state.pokemon.find((q) => q.uid === u.uid), cost = upgradeCost(u.level), have = (st().ep || 0) + game.ep;
-  const today = st().day === dayKey(now()) ? st().today?.[u.uid] || 0 : 0, lim = R().upgrade.dailyPerPokemon;
+  const p = app.state.pokemon.find((q) => q.uid === u.uid), T = trainState(u), cost = T.cost;
   const sh = R().shapes[u.shape];
   modal((m, close) => {
     m.append(h('h3', `${u.nick || species(u.dex).name} · Lv ${u.level}`),
       h('p.note', `${sh.icon} ${sh.name}: ${SHAPE_TEXT[u.shape]}${u.shape === 'circle' ? ` (Radius ${radiusOf(u.level).toFixed(1)} Felder)` : ''}.`),
-      h('p.note', `Training +1 Level: schneller, mehr Wucht${u.shape === 'circle' ? ', größerer Radius' : ''}. Das Level bleibt dauerhaft – auch in den Arealen. Kosten: ${cost} EP (du hast ${have}). Heute noch ${Math.max(0, lim - today)}× möglich.`),
+      trainPreview(u),
+      h('p.note', `Das Level bleibt dauerhaft – auch in den Arealen. Kosten: ${cost} EP (du hast ${T.have}). Heute noch ${T.left}× möglich.`),
       h('div.row',
         h('button.btn', { onclick: () => { close(); if (game.unplace(u)) { ui.selUnit = null; buildBar(); renderInfo(); } } }, 'Zurück in die Leiste'),
-        h('button.btn.primary', { onclick: () => { close(); train(u, p, cost); } }, `⬆ Trainieren (${cost} EP)`)));
+        h('button.btn.primary' + (T.ok ? '' : '.dim'), { onclick: () => { close(); train(u, p, cost); } }, `⬆ Trainieren (${cost} EP)`)));
   });
 }
 function commitEp() {
@@ -158,6 +173,7 @@ function train(u, p, cost) {
   const r = app.act((s, t) => A.trainLevel(s, s.pokemon.find((q) => q.uid === p.uid), t, cost, dayKey(now())), true);
   if (r.ok === false) return;
   game.levelUp(u);
+  buildBar();
   haptic('medium'); sfx.levelUp();
   message(`${u.nick || species(u.dex).name} ist jetzt Level ${u.level}!`);
 }
@@ -167,11 +183,43 @@ function buildBar() {
   ui.bar.replaceChildren(...game.team.map((m) => {
     const placed = !!game.placed(m.uid), sh = R().shapes[shapeOf(m.dex)];
     const el = h('button.r-mon' + (placed ? '.placed' : '') + (ui.sel === m.uid ? '.sel' : ''), { onclick: () => {
-      if (placed) { toast('Schon auf dem Feld – tippe es dort an.'); return; }
+      if (performance.now() - (ui.dragEnd || 0) < 300) return;
+      if (placed) { unitMenu(game.placed(m.uid)); return; }
       ui.sel = ui.sel === m.uid ? null : m.uid; ui.selUnit = null; haptic('tick'); buildBar(); renderInfo();
-    } }, h('img', { src: portraitUrl(m.dex), alt: '' }), h('span.r-shape', sh.icon), h('small', `Lv ${m.level}`));
+    } }, h('img', { src: portraitUrl(m.dex), alt: '' }), h('span.r-shape', sh.icon), h('small', `Lv ${m.level}`),
+    trainState(m).ok ? h('span.r-up', { title: 'Genug EP zum Trainieren' }, '⬆') : null);
+    if (!placed) el.addEventListener('pointerdown', (e) => dragFromBar(e, m));
     return el;
   }), h('span.r-count', `${game.units.length}/${game.max}`));
+}
+// Pokémon aus der Leiste aufs Feld ziehen: über einem freien Bauplatz zeigt das Feld, wo es angreifen wird
+function dragFromBar(e, m) {
+  if (!game || game.over) return;
+  const sx = e.clientX, sy = e.clientY;
+  let ghost = null;
+  const move = (ev) => {
+    if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 12) return;
+    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(m.dex), alt: '' }); document.body.append(ghost); ui.sel = m.uid; ui.selUnit = null; renderInfo(); }
+    ghost.style.transform = `translate(${ev.clientX - 26}px, ${ev.clientY - 40}px)`;
+    const c = cellAt(ev.clientX, ev.clientY), si = c ? slotAt(c) : -1;
+    ui.drag = si >= 0 && game.slotFree(si) ? previewUnit(m, si) : null;
+  };
+  const up = (ev) => {
+    window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    if (!ghost || !ui) return;
+    ghost.remove(); ui.dragEnd = performance.now();
+    const d = ui.drag; ui.drag = null;
+    if (ev.type !== 'pointerup' || !d) { ui.sel = null; buildBar(); renderInfo(); return; }
+    if (game.units.length >= game.max) { toast(`Höchstens ${game.max} Pokémon gleichzeitig auf dem Feld.`); return; }
+    if (game.place(m.uid, d.slot)) { haptic('medium'); sfx.place(); ui.sel = null; buildBar(); renderInfo(); }
+  };
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
+// gedachtes Pokémon auf einem Bauplatz (für die Reichweiten-Vorschau)
+function previewUnit(m, slot) {
+  const [c, r] = game.level.slots[slot], u = { x: c + 0.5, y: r + 0.5, shape: shapeOf(m.dex), level: m.level, slot };
+  u.face = game.bestFacing(u);
+  return u;
 }
 function renderInfo() {
   const m = ui.sel ? game.team.find((x) => x.uid === ui.sel) : ui.selUnit;
@@ -181,8 +229,9 @@ function renderInfo() {
     h('small', `${R().shapes[sh].icon} ${R().shapes[sh].name}: ${SHAPE_TEXT[sh]} · ${mv.name} (${mv.cat === 'phys' ? 'physisch' : 'speziell'})`));
 }
 function renderTop() {
-  const w = game.progress(), k = `${game.lives}|${w.wave}|${game.ep}|${st().ep}`;
+  const w = game.progress(), k = `${game.lives}|${w.wave}|${game.ep}|${(st().ep || 0) + game.ep}`;
   if (ui.topKey === k) return;
+  if (ui.topKey && ui.topKey.split('|')[3] !== String(st().ep)) buildBar(); // EP-Stand geändert: ⬆-Zeichen aktualisieren
   ui.topKey = k;
   ui.livesEl.textContent = `♥ ${game.lives}`;
   ui.epEl.textContent = `EP ${(st().ep || 0) + game.ep}`;
@@ -192,42 +241,70 @@ function renderTop() {
 function message(text) { const el = h('div', text); ui.msg.append(el); setTimeout(() => el.remove(), 2600); }
 
 // ---------- Zeichnen ----------
+// Hintergrund in Original-Pixelgröße (24 px je Feld) zeichnen und danach ganzzahlig vergrößern:
+// Boden aus dem Tileset, sandige Route mit eingesunkener Kante, Kieseln und runden Ecken, Bauplätze als Holzpodeste
 function buildBackground() {
   const U = ui, G = R().grid, th = CFG.defenseThemes.themes[U.themeId], S = 24;
   const c = document.createElement('canvas');
   c.width = Math.round(U.w * U.dpr); c.height = Math.round(U.h * U.dpr);
-  const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
-  const Dp = Math.round(U.tile * U.dpr), ox = Math.round(U.ox * U.dpr), oy = Math.round(U.oy * U.dpr), px = Math.max(1, Math.round(Dp / 24));
-  const X = (col) => ox + col * Dp, Y = (r) => oy + r * Dp;
-  const hash = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 997;
+  const Dp = Math.round(U.tile * U.dpr), ox = Math.round(U.ox * U.dpr), oy = Math.round(U.oy * U.dpr);
   const c0 = Math.floor(-ox / Dp) - 1, r0 = Math.floor(-oy / Dp) - 1, c1 = Math.ceil((c.width - ox) / Dp), r1 = Math.ceil((c.height - oy) / Dp);
+  const lo = document.createElement('canvas'); lo.width = (c1 - c0 + 1) * S; lo.height = (r1 - r0 + 1) * S;
+  const x = lo.getContext('2d'); x.imageSmoothingEnabled = false;
+  const X = (col) => (col - c0) * S, Y = (r) => (r - r0) * S;
+  const hash = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0);
   const inGrid = (col, r) => col >= 0 && col < G.cols && r >= 0 && r < G.rows;
-  for (let r = r0; r <= r1; r++) for (let col = c0; col <= c1; col++) x.drawImage(U.tiles, (inGrid(col, r) ? th.wall : hash(col, r) % th.wall) * S, 0, S, S, X(col), Y(r), Dp, Dp);
-  // Route: sandiger Pfad mit Pixelrand (auch Ein- und Ausgang bis zum Rand)
+  for (let r = r0; r <= r1; r++) for (let col = c0; col <= c1; col++) x.drawImage(U.tiles, (inGrid(col, r) ? th.wall : hash(col, r) % 997 % th.wall) * S, 0, S, S, X(col), Y(r), S, S);
+  // Route (inkl. Eingang oben und Ausgang unten bis zum Bildrand)
   const cells = pathCells(game.level.path), on = new Set(cells.map(([a, b]) => a + ',' + b));
   const first = game.level.path[0], last = game.level.path[game.level.path.length - 1];
-  const all = [...cells, [first[0], -1], [last[0], G.rows]];
   const isP = (a, b) => on.has(a + ',' + b) || (a === first[0] && b < 0) || (a === last[0] && b >= G.rows);
+  const all = [...cells]; for (let r = r0; r < 0; r++) all.push([first[0], r]); for (let r = G.rows; r <= r1; r++) all.push([last[0], r]);
+  const P = (col, r, X0, Y0, color) => { x.fillStyle = color; x.fillRect(X0 + col, Y0 + r, 1, 1); };
   for (const [a, b] of all) {
-    x.fillStyle = '#c9a46a'; x.fillRect(X(a), Y(b), Dp, Dp);
-    x.fillStyle = '#d8b67c'; for (let i = 0; i < 10; i++) { const hx = hash(a * 13 + i, b * 7 + i); x.fillRect(X(a) + (hx % 22) * px, Y(b) + ((hx >> 3) % 22) * px, px * 2, px); }
-    x.fillStyle = '#a9824c';
-    if (!isP(a, b - 1)) x.fillRect(X(a), Y(b), Dp, px * 2);
-    if (!isP(a, b + 1)) x.fillRect(X(a), Y(b) + Dp - px * 2, Dp, px * 2);
-    if (!isP(a - 1, b)) x.fillRect(X(a), Y(b), px * 2, Dp);
-    if (!isP(a + 1, b)) x.fillRect(X(a) + Dp - px * 2, Y(b), px * 2, Dp);
+    const X0 = X(a), Y0 = Y(b), n = isP(a, b - 1), sth = isP(a, b + 1), w = isP(a - 1, b), e = isP(a + 1, b);
+    x.fillStyle = '#c99c5d'; x.fillRect(X0, Y0, S, S);
+    for (let yy = 0; yy < S; yy++) for (let xx = 0; xx < S; xx++) { // Erdkörnung
+      const hv = hash(a * S + xx, b * S + yy) % 211;
+      if (hv < 14) P(xx, yy, X0, Y0, '#b88a4f'); else if (hv < 22) P(xx, yy, X0, Y0, '#d9b277'); else if (hv === 23) { P(xx, yy, X0, Y0, '#8f6a3e'); P(xx + 1, yy, X0, Y0, '#8f6a3e'); P(xx, yy - 1, X0, Y0, '#e6c891'); }
+    }
+    // Kanten: oben/links Schatten (Weg liegt etwas tiefer), unten/rechts heller Rand, außen dunkle Kontur
+    if (!n) { x.fillStyle = '#6e4c2a'; x.fillRect(X0, Y0, S, 1); x.fillStyle = '#9e7340'; x.fillRect(X0, Y0 + 1, S, 2); }
+    if (!w) { x.fillStyle = '#6e4c2a'; x.fillRect(X0, Y0, 1, S); x.fillStyle = '#9e7340'; x.fillRect(X0 + 1, Y0, 2, S); }
+    if (!sth) { x.fillStyle = '#6e4c2a'; x.fillRect(X0, Y0 + S - 1, S, 1); x.fillStyle = '#e2c38c'; x.fillRect(X0, Y0 + S - 2, S, 1); }
+    if (!e) { x.fillStyle = '#6e4c2a'; x.fillRect(X0 + S - 1, Y0, 1, S); x.fillStyle = '#e2c38c'; x.fillRect(X0 + S - 2, Y0, 1, S); }
+    // runde Außenecken: Bodenpixel aus dem Tileset zurückholen
+    const fx = th.wall * S, back = (cx, cy) => x.drawImage(U.tiles, fx + cx, cy, 1, 1, X0 + cx, Y0 + cy, 1, 1);
+    if (!n && !w) { back(0, 0); back(1, 0); back(0, 1); P(1, 1, X0, Y0, '#6e4c2a'); }
+    if (!n && !e) { back(S - 1, 0); back(S - 2, 0); back(S - 1, 1); P(S - 2, 1, X0, Y0, '#6e4c2a'); }
+    if (!sth && !w) { back(0, S - 1); back(1, S - 1); back(0, S - 2); P(1, S - 2, X0, Y0, '#6e4c2a'); }
+    if (!sth && !e) { back(S - 1, S - 1); back(S - 2, S - 1); back(S - 1, S - 2); P(S - 2, S - 2, X0, Y0, '#6e4c2a'); }
+    // Innenecken: kleiner Schattenpunkt, wo zwei Wegstücke um eine Ecke laufen
+    if (n && w && !isP(a - 1, b - 1)) { P(0, 0, X0, Y0, '#6e4c2a'); P(1, 0, X0, Y0, '#9e7340'); P(0, 1, X0, Y0, '#9e7340'); }
+    if (n && e && !isP(a + 1, b - 1)) { P(S - 1, 0, X0, Y0, '#6e4c2a'); }
+    if (sth && w && !isP(a - 1, b + 1)) { P(0, S - 1, X0, Y0, '#6e4c2a'); }
+    if (sth && e && !isP(a + 1, b + 1)) { P(S - 1, S - 1, X0, Y0, '#6e4c2a'); }
   }
-  // Bauplätze: helle Steinplatten
+  // Bauplätze: Holzpodeste aus Brettern mit Nägeln, Kontur und Schatten
   for (const [a, b] of game.level.slots) {
-    const L = X(a) + px * 2, T = Y(b) + px * 2, W = Dp - px * 4;
-    x.fillStyle = 'rgba(0,0,0,.25)'; x.fillRect(L + px, T + px * 2, W, W);
-    x.fillStyle = '#b8b2a6'; x.fillRect(L, T, W, W);
-    x.fillStyle = '#d9d4c8'; x.fillRect(L + px, T + px, W - px * 2, W - px * 3);
-    x.fillStyle = '#8c8578'; x.fillRect(L, T + W - px, W, px); x.fillRect(L + W - px, T, px, W);
+    const L = X(a) + 2, T0 = Y(b) + 2, W = 20, H = 19;
+    x.fillStyle = 'rgba(20,30,10,.35)'; x.fillRect(L + 1, T0 + 3, W, H); // Schatten
+    x.fillStyle = '#4a2f1c'; x.fillRect(L, T0, W, H); // Kontur
+    for (let k = 0; k < 4; k++) { // vier Bretter
+      const by = T0 + 1 + k * 4 + (k > 0 ? 0 : 0), col = k % 2 ? '#b07842' : '#c08a4e';
+      x.fillStyle = col; x.fillRect(L + 1, by, W - 2, 4);
+      x.fillStyle = '#d7a466'; x.fillRect(L + 1, by, W - 2, 1); // Lichtkante
+      x.fillStyle = '#7b4e29'; x.fillRect(L + 1, by + 3, W - 2, 1); // Fuge
+      x.fillStyle = '#5c3a20'; x.fillRect(L + 3 + ((k * 7 + a * 3) % 9), by + 1, 1, 1); // Maserung
+      x.fillStyle = '#e8d2a6'; x.fillRect(L + 2, by + 1, 1, 1); x.fillRect(L + W - 3, by + 1, 1, 1); // Nägel
+    }
+    x.fillStyle = '#8a5a30'; x.fillRect(L + 1, T0 + 17, W - 2, 1); // untere Kante
   }
   // Rahmen um das Spielfeld
-  x.fillStyle = 'rgba(0,0,0,.3)'; x.fillRect(X(0) - px * 2, Y(0) - px * 2, G.cols * Dp + px * 4, px * 2); x.fillRect(X(0) - px * 2, Y(G.rows), G.cols * Dp + px * 4, px * 2);
-  x.fillRect(X(0) - px * 2, Y(0), px * 2, G.rows * Dp); x.fillRect(X(G.cols), Y(0), px * 2, G.rows * Dp);
+  x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(X(0) - 1, Y(0) - 1, G.cols * S + 2, 1); x.fillRect(X(0) - 1, Y(G.rows), G.cols * S + 2, 1); x.fillRect(X(0) - 1, Y(0), 1, G.rows * S); x.fillRect(X(G.cols), Y(0), 1, G.rows * S);
+  // ganzzahlig vergrößert aufs Bild
+  const out = c.getContext('2d'); out.imageSmoothingEnabled = false;
+  out.drawImage(lo, 0, 0, lo.width, lo.height, ox + c0 * Dp, oy + r0 * Dp, lo.width * (Dp / S), lo.height * (Dp / S));
   return c;
 }
 // Felder, die ein Pokémon erreicht (Vorschau)
@@ -248,10 +325,13 @@ function draw(dt) {
     x.strokeStyle = '#fff'; x.lineWidth = 2;
     game.level.slots.forEach(([a, b], i) => { if (game.slotFree(i)) { const k = 1 + Math.sin(now2 / 180) * 1.5; x.strokeRect(U.ox + a * T + 3 - k, U.oy + b * T + 3 - k, T - 6 + 2 * k, T - 6 + 2 * k); } });
   }
-  // Reichweite des angetippten Pokémon
-  if (U.selUnit && game.units.includes(U.selUnit)) {
-    x.fillStyle = 'rgba(255,240,150,.22)';
-    for (const [a, b] of reachCells(U.selUnit)) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
+  // Reichweite: beim Ziehen (Vorschau) bzw. des angetippten Pokémon
+  const show = U.drag || (U.selUnit && game.units.includes(U.selUnit) ? U.selUnit : null);
+  if (show) {
+    x.fillStyle = U.drag ? 'rgba(130,220,255,.32)' : 'rgba(255,240,150,.26)';
+    for (const [a, b] of reachCells(show)) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
+    if (show.shape === 'circle') { x.strokeStyle = U.drag ? 'rgba(160,230,255,.9)' : 'rgba(255,240,150,.9)'; x.lineWidth = 2; x.setLineDash([4, 3]); x.beginPath(); x.arc(U.ox + show.x * T, U.oy + show.y * T, radiusOf(show.level) * T, 0, 7); x.stroke(); x.setLineDash([]); }
+    if (U.drag) { const [a, b] = game.level.slots[U.drag.slot]; x.strokeStyle = '#fff'; x.lineWidth = 3; x.strokeRect(U.ox + a * T + 1.5, U.oy + b * T + 1.5, T - 3, T - 3); }
   }
   const all = [...game.units.map((o) => ({ o, mine: true })), ...game.enemies.map((o) => ({ o, mine: false }))].sort((a, b) => a.o.y - b.o.y);
   for (const { o, mine } of all) drawMon(x, o, mine, P(o), T, now2);
@@ -285,7 +365,7 @@ function drawMon(x, o, mine, [X, Y], T, now2) {
   // Blickrichtung: Gegner in Laufrichtung, eigene zur Strecke (Gerade) bzw. zum letzten Ziel
   const dir = mine ? (o.shape === 'line' ? dirFromVector(o.face[0], o.face[1]) : o.lookAt ? dirFromVector(o.lookAt.x - o.x, o.lookAt.y - o.y) : 0) : dirFromVector(o.dx || 0, o.dy || 1);
   const f = frameOf(e, name, dir, ms, once);
-  let s = T / 28; if (e.anims.Idle.fh * s > T * 1.5) s = (T * 1.5) / e.anims.Idle.fh;
+  let s = T / 34; if (e.anims.Idle.fh * s > T * 1.3) s = (T * 1.3) / e.anims.Idle.fh; // etwas kleiner als im PokeDefense
   if (o.boss) s *= 1.35;
   if (o.hp <= 0) x.globalAlpha = 0.4;
   x.fillStyle = 'rgba(30,40,20,.28)'; x.beginPath(); x.ellipse(X, Y + T * 0.25, T * 0.3, T * 0.1, 0, 0, 7); x.fill();
@@ -294,11 +374,19 @@ function drawMon(x, o, mine, [X, Y], T, now2) {
   if (mine) { // Level-Schild
     x.font = `600 ${Math.round(T * 0.2)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; x.lineWidth = 3; x.strokeStyle = 'rgba(40,25,20,.9)';
     x.strokeText('Lv' + o.level, X, Y + T * 0.46); x.fillStyle = '#fff6c0'; x.fillText('Lv' + o.level, X, Y + T * 0.46);
+    if (trainState(o).ok) upArrow(x, X + T * 0.34, Y - T * 0.34, T, now2); // genug EP zum Trainieren
   } else if (o.hp > 0 && (o.hp < o.maxHp || o.boss)) {
     const bw = T * (o.boss ? 1 : 0.6), bh = Math.max(3, T / 14), by = Y - T * 0.5;
     x.fillStyle = '#2f2622'; x.fillRect(X - bw / 2 - 1, by - 1, bw + 2, bh + 2);
     x.fillStyle = o.boss ? '#ffb02e' : '#ef5d5d'; x.fillRect(X - bw / 2, by, (bw * o.hp) / o.maxHp, bh);
   }
+}
+// kleiner grüner Pixel-Pfeil (pulsiert): dieses Pokémon kann trainiert werden
+function upArrow(x, X, Y, T, now2) {
+  const q = Math.max(2, Math.round(T / 16)), b = Math.round(Math.sin(now2 / 220) * q * 0.6);
+  const px = [[0, -2], [-1, -1], [0, -1], [1, -1], [-2, 0], [-1, 0], [0, 0], [1, 0], [2, 0], [0, 1], [0, 2]];
+  x.fillStyle = 'rgba(25,40,20,.9)'; for (const [i, j] of px) x.fillRect(Math.round(X + i * q - q), Math.round(Y + b + j * q - q), q * 3, q * 3);
+  x.fillStyle = '#7dff6a'; for (const [i, j] of px) x.fillRect(Math.round(X + i * q), Math.round(Y + b + j * q), q, q);
 }
 const say = (o, text, color, size = 0.3, dur = 0.8) => ui.texts.push({ x: o.x, y: o.y - 0.4, text, color, size, dur, t: 0 });
 const burst = (o, color, n) => { for (let i = 0; i < n; i++) { const a = Math.random() * 6.3, v = 1 + Math.random() * 2; ui.fx.push({ x: o.x, y: o.y - 0.1, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, color, life: 0.4 + Math.random() * 0.3 }); } };
