@@ -10,12 +10,12 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(audioSetting
 // Musik je Bereich (public/config/music.json): 'areas' (Playlist), 'menu', 'arena', 'chaos' oder ein Level-Stück 'track:<name>'.
 // Wechsel werden kurz übergeblendet; null = Stille (z. B. App im Hintergrund).
 import { CFG } from './config.js';
-let music = null, musicGain = null, want = null, playing = null, unlocked = false, areaIdx = 0, fadeTimer = 0;
+let music = null, musicGain = null, want = null, playing = null, unlocked = false, lastFile = null, fadeTimer = 0;
 function player() {
   if (!music) {
     music = new Audio();
     music.preload = 'auto';
-    music.addEventListener('ended', () => { if (playing === 'areas') { areaIdx++; start(want, true); } });
+    music.addEventListener('ended', () => { if (playing === 'areas' || Array.isArray(CFG.music?.[playing])) start(want, true); }); // Playlist: nächstes Zufallsstück
     // über WebAudio leiten, damit die Lautstärke überall wirkt (Safari/iPhone ignoriert audio.volume)
     if (ctx()) { musicGain = ac.createGain(); ac.createMediaElementSource(music).connect(musicGain); musicGain.connect(bus); }
   }
@@ -29,9 +29,12 @@ export const musicState = () => ({ routed: !!musicGain, level: getVol(), playing
 function fileFor(key) {
   const M = CFG.music;
   if (!key || !M) return null;
-  if (key === 'areas') return M.areas[areaIdx % M.areas.length];
   if (key.startsWith('track:')) return key.slice(6);
-  return M[key] || null;
+  const v = M[key];
+  if (!Array.isArray(v)) return v || null;
+  // Liste: zufälliges Stück – möglichst nicht dasselbe wie gerade eben
+  const pool = v.length > 1 ? v.filter((f) => f !== lastFile) : v;
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 function start(key, force = false) {
   const m = player(), file = fileFor(key);
@@ -40,7 +43,8 @@ function start(key, force = false) {
   if (!force && playing === key && !m.paused) return;
   // sofort umschalten (noch innerhalb des Antippens – sonst blockiert Safari auf dem iPhone den Start) und weich einblenden
   m.src = `${base}audio/${file}.mp3`;
-  m.loop = key !== 'areas'; // Level- und Menü-Stücke laufen in Schleife, die Areale wechseln ab
+  lastFile = file;
+  m.loop = !Array.isArray(CFG.music?.[key]); // einzelne Stücke laufen in Schleife, Listen wechseln zufällig
   playing = key;
   if (musicGain) { musicGain.gain.cancelScheduledValues(ac.currentTime); musicGain.gain.setValueAtTime(0.0001, ac.currentTime); musicGain.gain.setTargetAtTime(audioSettings.music, ac.currentTime, 0.25); }
   else setVol(audioSettings.music);

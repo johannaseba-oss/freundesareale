@@ -512,11 +512,17 @@
   },
   "_waves": "Wellen und Gegner-Typen kommen aus public/config/defense_levels.json",
   "loaner": {
-    "_hinweis": "Leihteam, wenn man weniger als teamSize Pokémon hat: so viele schwache (Grundform, günstig), Sternensammler, mittlere und starke (Endentwicklung, keine Legendären)",
-    "weak": 2,
-    "producers": 2,
-    "medium": 1,
-    "strong": 1
+    "_hinweis": "Leihteam, wenn man weniger als teamSize Pokémon hat: aus einem Zufallspool (poolProducers Sternensammler, poolSupport Mauern/Minen, poolRanged Fernkämpfer, poolMelee Nahkämpfer – Kämpfer ab 1. Entwicklung) wird das ausgewogene Empfehlungs-Team gegen die Gegner-Typen gebildet.",
+    "poolProducers": 4,
+    "poolSupport": 4,
+    "poolRanged": 8,
+    "poolMelee": 6,
+    "mix": {
+      "producers": 2,
+      "walls": 1,
+      "mines": 0
+    },
+    "_mix": "Zusammensetzung des Leihteams: so viele Sammler, Mauern und Minen, der Rest Kämpfer (abwechselnd Fern- und Nahkampf)"
   },
   "chaos": {
     "_hinweis": "Chaos-Modus: statt Sternen fallen Pokébälle (alle dropEvery s, Sammler werfen auch welche). Jeder Ball = ein zufälliges Pokémon, einmal einsetzbar, kostenlos. handMax = Karten gleichzeitig, countMult = mehr Gegner als im normalen Level.",

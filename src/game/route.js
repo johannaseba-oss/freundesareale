@@ -103,6 +103,15 @@ export class Route {
     this.events.push({ type: 'place', u });
     return true;
   }
+  // platziertes Pokémon auf einen anderen freien Bauplatz ziehen
+  moveUnit(u, slot) {
+    if (this.over || !this.slotFree(slot) || !this.slotAllows(slot, u.dex)) return false;
+    const [c, r] = this.level.slots[slot];
+    u.slot = slot; u.x = c + 0.5; u.y = r + 0.5; u.placedAt = this.t;
+    u.face = this.bestFacing(u);
+    this.events.push({ type: 'place', u });
+    return true;
+  }
   unplace(u) {
     const i = this.units.indexOf(u);
     if (i < 0 || this.over) return false;

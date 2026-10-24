@@ -145,7 +145,7 @@ function onField(e) {
   const si = slotAt(c);
   if (si < 0) { ui.sel = null; ui.selUnit = null; renderInfo(); return; }
   const u = game.units.find((x) => x.slot === si);
-  if (u) { ui.sel = null; ui.selUnit = u; renderInfo(); unitMenu(u); return; }
+  if (u) { ui.sel = null; dragPlaced(e, u); return; } // ziehen = verschieben, antippen = Trainieren/Zurücknehmen
   if (!ui.sel) { toast('Wähle unten ein Pokémon und tippe dann auf einen Bauplatz.'); return; }
   if (game.units.length >= game.max) { toast(`Höchstens ${game.max} Pokémon gleichzeitig auf dem Feld.`); return; }
   const sm = game.team.find((x) => x.uid === ui.sel);
@@ -234,6 +234,31 @@ function dragFromBar(e, m) {
     if (ev.type !== 'pointerup' || !d) { ui.sel = null; buildBar(); renderInfo(); return; }
     if (game.units.length >= game.max) { toast(`Höchstens ${game.max} Pokémon gleichzeitig auf dem Feld.`); return; }
     if (game.place(m.uid, d.slot)) { haptic('medium'); sfx.place(); ui.sel = null; buildBar(); renderInfo(); }
+  };
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
+// platziertes Pokémon auf einen anderen Bauplatz ziehen (mit Reichweiten-Vorschau); nur antippen öffnet das Menü
+function dragPlaced(e, u) {
+  const sx = e.clientX, sy = e.clientY;
+  let ghost = null;
+  const move = (ev) => {
+    if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 12) return;
+    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(u.dex), alt: '' }); document.body.append(ghost); ui.selUnit = null; ui.moving = u; }
+    ghost.style.transform = `translate(${ev.clientX - 26}px, ${ev.clientY - 40}px)`;
+    const c = cellAt(ev.clientX, ev.clientY), si = c ? slotAt(c) : -1;
+    const m = { dex: u.dex, level: u.level };
+    ui.drag = si >= 0 && game.slotFree(si) && game.slotAllows(si, u.dex) ? previewUnit(m, si) : null;
+    ui.dragBad = si >= 0 && game.slotFree(si) && !game.slotAllows(si, u.dex) ? si : -1;
+  };
+  const up = (ev) => {
+    window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+    if (!ui) return;
+    if (!ghost) { if (ev.type === 'pointerup') { ui.selUnit = u; renderInfo(); unitMenu(u); } return; } // nur angetippt
+    ghost.remove(); ui.moving = null;
+    const d = ui.drag, bad = ui.dragBad; ui.drag = null; ui.dragBad = -1;
+    if (ev.type !== 'pointerup') return;
+    if (bad >= 0) { toast(WATER_ONLY); return; }
+    if (d && game.moveUnit(u, d.slot)) { haptic('medium'); sfx.place(); ui.selUnit = u; renderInfo(); }
   };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
 }
@@ -360,9 +385,9 @@ function draw(dt) {
   if (U.bg) x.drawImage(U.bg, 0, 0, U.w, U.h);
   const P = (o) => [U.ox + o.x * T, U.oy + o.y * T];
   // freie Bauplätze hervorheben, wenn ein Pokémon gewählt ist
-  if (U.sel) {
+  if (U.sel || U.moving) {
     x.strokeStyle = '#fff'; x.lineWidth = 2;
-    const selDex = game.team.find((m) => m.uid === U.sel)?.dex;
+    const selDex = U.moving ? U.moving.dex : game.team.find((m) => m.uid === U.sel)?.dex;
     game.level.slots.forEach(([a, b], i) => { if (game.slotFree(i) && game.slotAllows(i, selDex)) { const k = 1 + Math.sin(now2 / 180) * 1.5; x.strokeRect(U.ox + a * T + 3 - k, U.oy + b * T + 3 - k, T - 6 + 2 * k, T - 6 + 2 * k); } });
   }
   if (U.dragBad >= 0) { const [a, b] = game.level.slots[U.dragBad]; x.strokeStyle = 'rgba(255,80,80,.95)'; x.lineWidth = 3; x.strokeRect(U.ox + a * T + 1.5, U.oy + b * T + 1.5, T - 3, T - 3); }

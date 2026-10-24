@@ -201,6 +201,24 @@ export class Defense {
     this.events.push({ type: 'place', u });
     return true;
   }
+  // Vorschau beim Platzieren: Felder, die ein Pokémon von (col,row) aus angreift (attack),
+  // und Felder, die seine Effekte erreichen (area: Schlafpuder/Konfustrahl, Explosion, Heilende Aura)
+  previewCells(dex, role, col, row) {
+    const G = D().grid, R = D().roles, ab = abilityOf(dex), mv = moveOf(bdata(dex).move);
+    const u = { x: col + 0.5, y: row + 0.5, dir: col < 0 ? 1 : col >= G.cols ? -1 : 0 };
+    const rule = this.chaos ? D().chaos.moves?.[mv.name] : null, attack = [], area = [];
+    const each = (fn, out, field = true) => { for (let r = 0; r < G.rows; r++) for (let c = field ? 0 : -1; c < (field ? G.cols : G.cols + 1); c++) if (fn({ x: c + 0.5, y: r + 0.5 })) out.push([c, r]); };
+    const box = (a) => (e) => Math.abs(e.x - u.x) <= a + 0.5 && Math.abs(e.y - u.y) <= a + 0.5;
+    if (role === 'explosiv') each(this.chaos ? box(D().chaos.explosionArea) : (e) => dist(e, u) <= (ab?.type === 'reactive' ? ab.radius : evolved(dex) ? R.explosiv.radiusBig : R.explosiv.radiusSmall) + 0.3, area);
+    else if (role === 'nahkampf' || role === 'fernkampf') {
+      const range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : rule ? rule.range : R[role].range;
+      const lat = rule?.width ? rule.width / 2 : 0.5;
+      each((e) => { const a = aim(u, e); return a.lat < lat && a.fwd >= -0.3 && a.fwd <= range && (u.dir || e.y < u.y + 0.3); }, attack);
+    }
+    if (this.chaos && (ab?.type === 'sleep' || ab?.type === 'confuse')) each(box(D().chaos.statusArea.area), area);
+    if (ab?.type === 'heal') each((e) => dist(e, u) <= ab.radius, area, false);
+    return { attack, area };
+  }
   // eigenes Pokémon auf ein anderes freies Feld verschieben (Drag & Drop)
   moveUnit(u, col, row) {
     if (u.hp <= 0 || this.over || (u.col === col && u.row === row) || !this.canPlace(col, row)) return false;
@@ -643,25 +661,23 @@ export function randomDex(rnd = Math.random, filter = () => true, weights = null
   const any = CFG.dex.filter((p) => bdata(p.dex) && filter(p));
   return any[Math.floor(rnd() * any.length)].dex;
 }
-// Leihteam für Spieler mit zu wenigen Pokémon: schwache, Sammler, mittlere und starke gemischt
-export function loanerTeam(rnd = Math.random) {
-  const L = D().loaner, out = [];
-  const take = (n, test) => {
-    const pool = CFG.dex.filter((p) => bdata(p.dex) && p.rarity !== 'legendaer' && !out.includes(p.dex) && test(p));
-    for (let i = 0; i < n && pool.length; i++) out.push(pool.splice(Math.floor(rnd() * pool.length), 1)[0].dex);
-  };
-  const fighter = (p) => ['nahkampf', 'fernkampf'].includes(roleOf(p.dex));
-  take(L.producers, (p) => roleOf(p.dex) === 'produzent');
-  take(L.weak, (p) => fighter(p) && p.stage === 1 && costOf(p.dex) <= 50);
-  take(L.medium, (p) => fighter(p) && p.stage === 2);
-  take(L.strong, (p) => fighter(p) && p.stage >= 3);
-  return out.map((dex, i) => fromCpu(dex, { id: 'leih' + Math.floor(rnd() * 1e9), ivs: [5, 25], evs: 0 }, i));
+// Leihteam für Spieler mit zu wenigen Pokémon: aus einem Zufallspool (keine Legendären) das ausgewogene
+// Empfehlungs-Team gegen die Gegner-Typen – Sternensammler, Mauer, Mine und gemischt Fern- und Nahkampf
+export function loanerTeam(rnd = Math.random, theme = ['Normal']) {
+  const L = D().loaner, all = CFG.dex.filter((p) => bdata(p.dex) && p.rarity !== 'legendaer'), pool = [];
+  const take = (n, test) => { const l = all.filter((p) => test(p) && !pool.some((q) => q.dex === p.dex)); for (let i = 0; i < n && l.length; i++) pool.push(l.splice(Math.floor(rnd() * l.length), 1)[0]); };
+  take(L.poolProducers, (p) => roleOf(p.dex) === 'produzent');
+  take(L.poolSupport, (p) => ['mauer', 'explosiv'].includes(roleOf(p.dex)));
+  take(L.poolRanged, (p) => roleOf(p.dex) === 'fernkampf' && p.stage >= 2);
+  take(L.poolMelee, (p) => roleOf(p.dex) === 'nahkampf' && p.stage >= 2);
+  const mons = pool.map((p, i) => ({ uid: i + 1, dex: p.dex, level: 1 }));
+  return recommendTeam(mons, theme, D().teamSize, L.mix).map((uid, i) => fromCpu(mons[uid - 1].dex, { id: 'leih' + Math.floor(rnd() * 1e9), ivs: [5, 25], evs: 0 }, i));
 }
 
 // Empfohlenes, ausgewogenes Team: 2 Sternensammler, 1 Mauer, 1 Mine (falls vorhanden), dazu die stärksten Kämpfer
 // gegen die Gegner-Typen – gemischt aus Nah- und Fernkampf. mons: eigene Pokémon, theme: Gegner-Typen.
-export function recommendTeam(mons, theme, N = D().teamSize) {
-  const R = D().teamRecommend || { producers: 2, walls: 1, mines: 1 };
+export function recommendTeam(mons, theme, N = D().teamSize, mix = null) {
+  const R = mix || D().teamRecommend || { producers: 2, walls: 1, mines: 1 };
   const power = (p) => { const mv = moveOf(bdata(p.dex).move); const eff = Math.max(...theme.map((t) => effectiveness(mv.type, [t]))); return eff * (mv.power || 40) * (1 + (p.level || 1) / 50) * Math.sqrt(bst(p.dex)); };
   const by = (role) => mons.filter((p) => roleOf(p.dex) === role).sort((a, b) => bst(b.dex) - bst(a.dex));
   const out = [], seen = new Set();

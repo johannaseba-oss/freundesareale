@@ -114,7 +114,7 @@ function start() {
 
 // Leihteam: zu wenige eigene Pokémon -> zufälliges Team (schwache, Sammler, mittlere, starke), jedes Mal neu
 function offerLoaner(el, back) {
-  let team = loanerTeam();
+  let team = loanerTeam(Math.random, chosen.types);
   modal((m, close) => {
     const list = h('div.confirm-list');
     const render = () => list.replaceChildren(...team.map((src, i) => h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(src.dex), alt: '' }),
@@ -124,7 +124,7 @@ function offerLoaner(el, back) {
       h('p.note', `Du hast noch keine ${D().teamSize} Pokémon – für diese Runde bekommst du ein zufälliges Team geliehen.`),
       h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t)))),
       list,
-      h('div.row', h('button.btn', { onclick: () => { team = loanerTeam(); render(); haptic('tick'); } }, '🎲 Neu würfeln'),
+      h('div.row', h('button.btn', { onclick: () => { team = loanerTeam(Math.random, chosen.types); render(); haptic('tick'); } }, '🎲 Neu würfeln'),
         h('button.btn.primary.big', { onclick: () => { close(); game = new Defense({ team, level: chosen }); openField(); } }, 'Los!')));
   });
 }
@@ -174,9 +174,12 @@ function pauseMenu() {
   ui.paused = true;
   modal((m, close) => {
     const resume = () => { close(); if (ui) ui.paused = false; };
-    m.append(h('h3', '⏸ Pause'),
+    if (game.chaos) m.append(h('h3', '⏸ Pause'),
       h('p.note', 'Die Runde ist angehalten. Beim Verlassen wird sie gespeichert – im Chaos-Menü kannst du sie später genau hier fortsetzen.'),
       h('div.row', h('button.btn', { onclick: () => { close(); saveSuspended(); leaveSuspended(); } }, 'Speichern & verlassen'),
+        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')));
+    else m.append(h('h3', '⏸ Pause'), h('p.note', 'Die Runde ist angehalten.'),
+      h('div.row', h('button.btn', { onclick: () => { close(); if (ui) ui.paused = false; game.over = { won: false, gaveUp: true }; } }, 'Aufgeben'),
         h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')));
     $('#modal').onclick = (e) => { if (e.target === $('#modal')) resume(); };
   });
@@ -188,7 +191,7 @@ function leaveSuspended() {
 }
 // App geht in den Hintergrund: Chaos-Runde anhalten und sichern (nichts geht verloren, wenn die App beendet wird)
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && game?.chaos && ui && !game.over) { saveSuspended(); if (!ui.paused) pauseMenu(); }
+  if (document.hidden && game && ui && !game.over) { if (game.chaos) saveSuspended(); if (!ui.paused && game.started) pauseMenu(); }
 });
 
 // Infinity Run: Gegner aller Typen, endlose Wellen
@@ -209,7 +212,7 @@ function openField(themeId = null) {
   const msg = h('div.b-msg');
   // Chaos: Leben (antippen = weiteres Leben mit Münzen kaufen)
   const livesEl = game.chaos ? h('button.b-btn.d-lives', { onclick: buyLife, title: 'Leben kaufen' }) : null;
-  const pauseBtn = game.chaos ? h('button.b-btn.d-pause', { onclick: pauseMenu, title: 'Pause' }, '⏸') : null;
+  const pauseBtn = h('button.b-btn.d-pause', { onclick: pauseMenu, title: 'Pause' }, '⏸');
   const top = h('div.b-top', starsEl, waveEl, livesEl, h('span.b-weather.d-weather'), pauseBtn, h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
   // Normale Level: Vorbereitung ohne Zeitlimit, erst mit „Los!“ beginnen Sternenregen und Wellen. Chaos: Countdown.
   const go = game.chaos ? h('div.d-countdown') : h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message('Los! Sammle Sterne und verteidige deinen Trainer.'); haptic('medium'); } }, 'Los!');
@@ -498,6 +501,13 @@ function draw(dt) {
     x.strokeStyle = '#ffd23f'; x.lineWidth = 3;
     for (const u of game.units) if (U.sel && game.canUpgrade(U.sel, u)) { const p = 1 + Math.sin(now / 150) * 2; x.strokeRect(U.ox + u.col * T + 2 - p, U.oy + u.row * T + 2 - p, T - 4 + p * 2, T - 4 + p * 2); }
     if (U.hover) {
+      // Reichweiten-Vorschau: wohin das Pokémon von hier aus angreift (rot) bzw. wohin seine Effekte reichen (blau)
+      const pv = U.sel ? { dex: U.sel.dex, role: U.sel.role } : U.moving ? { dex: U.moving.dex, role: U.moving.role } : null;
+      if (pv && game.canPlace(...U.hover)) {
+        const { attack, area } = game.previewCells(pv.dex, pv.role, U.hover[0], U.hover[1]);
+        x.fillStyle = 'rgba(120,200,255,.28)'; for (const [a, b] of area) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
+        x.fillStyle = 'rgba(255,120,80,.30)'; for (const [a, b] of attack) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
+      }
       const there = game.units.find((u) => u.col === U.hover[0] && u.row === U.hover[1] && u.hp > 0);
       x.strokeStyle = game.canPlace(...U.hover) || (there && U.sel && game.canUpgrade(U.sel, there)) ? '#fff' : 'rgba(255,90,90,.9)'; x.lineWidth = 2; x.strokeRect(U.ox + U.hover[0] * T + 1, U.oy + U.hover[1] * T + 1, T - 2, T - 2);
     }

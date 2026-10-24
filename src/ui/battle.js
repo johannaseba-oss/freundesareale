@@ -165,6 +165,7 @@ function openArena(o) {
     count,
     h('span.b-weather'),
     stoneBtn,
+    h('button.b-btn', { onclick: pauseMenu, title: 'Pause', 'aria-label': 'Pause' }, '⏸'),
     h('button.b-btn', { onclick: giveUp, title: 'Aufgeben', 'aria-label': 'Aufgeben' }, '🏳'));
   const root = h('div.battle', top, h('div.b-field', canvas), hand, ghost, msg);
   document.body.append(root);
@@ -647,6 +648,17 @@ function openStoneShop() {
       h('div.row', h('button.btn', { onclick: close }, 'Zurück zum Kampf')));
   });
 }
+
+// Pause: der Kampf läuft erst weiter, wenn das Fenster geschlossen ist (siehe frame)
+function pauseMenu() {
+  if (!battle || battle.over) return;
+  battle.paused = true;
+  modal((m, close) => {
+    m.append(h('h3', '⏸ Pause'), h('p.note', 'Der Kampf ist angehalten.'),
+      h('div.row', h('button.btn', { onclick: () => { close(); giveUp(); } }, 'Aufgeben'), h('button.btn.primary.big', { onclick: close }, '▶ Weiter')));
+  });
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && battle && !battle.over && arena) pauseMenu(); });
 
 async function giveUp() {
   if (!battle || battle.over) return;

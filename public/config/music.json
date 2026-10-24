@@ -1,9 +1,19 @@
 {
-  "_hinweis": "Hintergrundmusik (Dateien in public/audio). areas = abwechselnd in den Arealen, menu = Sammlung/Automat/Kampf-Menüs, arena = Arena-Kampf, chaos = PokeDefense-Chaos, byType = je Level ein Stück nach dem ersten Gegner-Typ (läuft in Schleife).",
-  "areas": ["heartwarming", "schatzstadt"],
+  "_hinweis": "Hintergrundmusik (Dateien in public/audio). Jede Stelle ist ein Stück oder eine Liste; Listen starten mit einem zufälligen Stück und wechseln danach zufällig (nie zweimal dasselbe hintereinander). areas = Areale, menu = Menüs, arena = Arena-Kampf, chaos = PokeDefense-Chaos, byType = je Level ein Stück nach dem ersten Gegner-Typ (läuft in Schleife).",
+  "areas": [
+    "heartwarming",
+    "schatzstadt"
+  ],
   "menu": "gilde",
   "arena": "zeitturm",
-  "chaos": "verborgenes-land",
+  "chaos": [
+    "verborgenes-land",
+    "zeitturm",
+    "dampfhoehle",
+    "kristallhoehle",
+    "horn-berg",
+    "dunkler-huegel"
+  ],
   "byType": {
     "Feuer": "dampfhoehle",
     "Wasser": "wasserfallhoehle",
