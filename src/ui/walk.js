@@ -26,7 +26,7 @@ export function renderWalkSetup(el, back) {
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '🐾 Spaziergang')),
-    h('p.note', 'Zeichne auf der Karte eine Runde vom 🏠 aus und wieder zurück. Ausdauer = wie weit, Tempo = wie schnell. Wilde Pokémon laufen umher – weiche ihnen aus oder kämpfe. Im Kampf kostet jede Attacke Münzen!'),
+    h('p.note', 'Zeichne auf der Karte eine Runde vom 🏠 aus und wieder zurück. Ausdauer = wie weit, Tempo = wie schnell. Wilde Pokémon laufen umher – weiche ihnen aus oder kämpfe. Im Kampf kostet jede Attacke Münzen – wer nicht zahlen kann, dessen Pokémon rennt vor Angst nach Hause!'),
     mons.length ? h('div.bs-list', mons.map((p) => {
       const done = walkedToday(app.state, p.uid, now()), sp = speedOf(p);
       return h('button.bs-row.rk-row' + (done ? '.done' : ''), { onclick: () => (done ? toast(`${name(p)} war heute schon spazieren.`) : startWalk(p)) },
@@ -241,7 +241,7 @@ function openBattle(w) {
   B.el = h('div.wb', h('div.wb-stage', scene, B.fb.el, B.mb.el), B.text, B.moves);
   ui.root.querySelector('.b-field').append(B.el);
   ui.battle = B;
-  say(`Ein wildes ${species(foe.dex).name} (Lv ${foe.level}) greift an!`);
+  say(`Ein wildes ${species(foe.dex).name} (Lv ${foe.level}) greift an! Jede Attacke kostet Münzen – reicht es nicht, rennt ${name(ui.p)} vor Angst nach Hause.`);
   renderMoves(); updateBars(true);
   const loop = () => { if (!ui || ui.battle !== B) return; drawScene(B); requestAnimationFrame(loop); };
   requestAnimationFrame(loop);
@@ -253,7 +253,7 @@ function renderMoves() {
     const mv = moveOf(k), c = moveCost(k);
     return h('button.wb-move', { style: { borderColor: typeColor(mv.type) }, disabled: B.busy, onclick: () => choose(i) },
       h('b', mv.name), h('small', h('i.tdot', { style: { background: typeColor(mv.type) } }), `${mv.type} · ${mv.cat === 'phys' ? 'phys.' : 'spez.'} · Stärke ${mv.power}`),
-      h('span.wb-cost', iconImg('coin', 2), String(c)));
+      h('span.wb-cost' + (app.state.coins < c ? '.poor' : ''), iconImg('coin', 2), String(c)));
   }), h('button.wb-flee', { disabled: B.busy, onclick: () => choose('flee') }, '🏃 Fliehen'));
 }
 function updateBars(instant = false) {
@@ -271,6 +271,8 @@ async function choose(choice) {
   const B = ui?.battle;
   if (!B || B.busy) return;
   if (choice !== 'flee') {
+    // nicht bezahlbar: das Pokémon bekommt Angst und rennt nach Hause
+    if (app.state.coins < moveCost(B.me.moves[choice])) { B.busy = true; renderMoves(); return endBattle('scared'); }
     const r = app.act((s) => payMove(s, B.me.moves[choice]), true);
     if (r.ok === false) return;
     sfx.coin();
@@ -293,6 +295,7 @@ async function choose(choice) {
   if (B.foe.hp <= 0) return endBattle('won');
   if (B.me.hp <= 0) return endBattle('lost');
   B.busy = false; renderMoves(); say(`Was soll ${name(ui.p)} tun?`);
+  if (B.me.moves.every((k) => moveCost(k) > app.state.coins)) say(`Achtung: Du kannst dir keine Attacke mehr leisten – ${name(ui.p)} bekommt Angst, wenn du angreifst. Flieh lieber!`);
 }
 async function endBattle(result) {
   const B = ui.battle;
@@ -303,11 +306,12 @@ async function endBattle(result) {
     const evTxt = r.gained.map((v, i) => (v ? `${['KP', 'Ang', 'Vert', 'SpAng', 'SpVert', 'Init'][i]} +${v}` : null)).filter(Boolean).join(', ');
     say(`Gewonnen! +${r.ep} EP${evTxt ? ' · EV: ' + evTxt : ''}`);
   } else if (result === 'fled') { B.w.ignore = ui.t + WK().wild.fleeIgnore; }
+  else if (result === 'scared') { say(`Zu wenig Münzen! ${name(ui.p)} bekommt Angst und rennt nach Hause …`); sfx.lose(); haptic('strong'); ui.scared = true; }
   else { say(`${name(ui.p)} ist erschöpft …`); sfx.lose(); }
   await wait(result === 'fled' ? 500 : 1600);
   if (!ui) return;
   B.el.remove(); ui.battle = null;
-  if (result === 'lost') finish(false);
+  if (result === 'lost' || result === 'scared') finish(false);
 }
 // Kampfszene: Wiese, Plattformen, Gegner oben rechts (frontal), eigenes Pokémon unten links (Rücken)
 function drawScene(B) {
@@ -345,8 +349,8 @@ function finish(home) {
   if (home) sfx.win();
   const evTxt = ui.evs.map((v, i) => (v ? `${['KP', 'Ang', 'Vert', 'SpAng', 'SpVert', 'Init'][i]} +${v}` : null)).filter(Boolean).join(', ');
   setTimeout(() => modal((m, close) => {
-    m.append(h('h3', home ? '🏠 Wieder zu Hause!' : '😵 Spaziergang abgebrochen'),
-      h('p', home ? `${name(p)} ist ${steps} Schritte gelaufen.` : `${name(p)} musste nach ${steps} Schritten nach Hause.`),
+    m.append(h('h3', home ? '🏠 Wieder zu Hause!' : ui.scared ? '😱 Vor Angst nach Hause gerannt' : '😵 Spaziergang abgebrochen'),
+      h('p', home ? `${name(p)} ist ${steps} Schritte gelaufen.` : ui.scared ? `Du konntest die Attacke nicht bezahlen – ${name(p)} hat Angst bekommen und ist nach ${steps} Schritten nach Hause gerannt. Spaziergang nicht geschafft.` : `${name(p)} musste nach ${steps} Schritten nach Hause.`),
       h('div.rk-rewards', h('div', `⚔ ${ui.wins} ${ui.wins === 1 ? 'Sieg' : 'Siege'}`), h('div', `+${ui.ep + r.ep} EP${r.ep ? ` (davon ${r.ep} fürs Heimkommen)` : ''}`), evTxt ? h('div', `EV: ${evTxt}`) : null),
       h('div.row', h('button.btn.primary.big', { onclick: () => { close(); closeWalk(); renderWalkSetup(setupEl, setupBack); } }, 'Fertig')));
     $('#modal').onclick = null;
