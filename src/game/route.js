@@ -96,7 +96,7 @@ export class Route {
     const m = this.team.find((x) => x.uid === uid);
     if (!m || this.over || !this.slotFree(slot) || !this.slotAllows(slot, m.dex) || this.placed(uid) || this.units.length >= this.max) return false;
     const [c, r] = this.level.slots[slot];
-    const u = { id: this.nextId++, uid, dex: m.dex, gender: m.gender, nick: m.nick, ivs: m.ivs, evs: m.evs, level: m.level, slot, x: c + 0.5, y: r + 0.5, shape: shapeOf(m.dex), cd: 0.6, placedAt: this.t };
+    const u = { id: this.nextId++, uid, dex: m.dex, gender: m.gender, nick: m.nick, ivs: m.ivs, evs: m.evs, level: m.level, slot, x: c + 0.5, y: r + 0.5, shape: shapeOf(m.dex), cd: 0.6, placedAt: this.t, pbuff: this.buffOf?.(m) || 1 };
     u.face = this.bestFacing(u);
     this.restat(u);
     this.units.push(u);
@@ -188,7 +188,7 @@ export class Route {
   // ---- Schaden (offizielle Formel: physisch gegen Verteidigung, speziell gegen Spezial-Verteidigung) ----
   damage(u, e, mult) {
     const mv = moveOf(bdata(u.dex).move), phys = mv.cat === 'phys';
-    const A = u.stats[phys ? 1 : 3], Dv = e.stats[phys ? 2 : 4];
+    const A = u.stats[phys ? 1 : 3] * (phys && u.pbuff ? u.pbuff : 1), Dv = e.stats[phys ? 2 : 4]; // pbuff: Felsbrecher-Training
     const stab = species(u.dex).types.includes(mv.type) ? 1.5 : 1, eff = effectiveness(mv.type, species(e.dex).types);
     const base = (Math.floor((2 * u.level) / 5 + 2) * (mv.power || 40) * A / Dv) / 50 + 2;
     const crit = eff > 0 && this.rnd() < R().crit.chance;

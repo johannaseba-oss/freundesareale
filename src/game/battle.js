@@ -48,7 +48,7 @@ export function makeFighter(src, side) {
   const f = {
     id: nextId++, side, uid: src.uid ?? null, nick: src.nick || null, dex: src.dex, origDex: src.dex, gender: src.gender ?? null,
     ivs: src.ivs, evs: [...src.evs], evGain: [0, 0, 0, 0, 0, 0], extraMoves: src.moves || [],
-    level: B().startLevel, tower: !!src.tower, state: 'deck', x: 0, y: 0, dir: side === 'p' ? 4 : 0, cd: 0, anim: null, kos: 0,
+    level: B().startLevel, tower: !!src.tower, pbuff: src.pbuff || 1, state: 'deck', x: 0, y: 0, dir: side === 'p' ? 4 : 0, cd: 0, anim: null, kos: 0,
   };
   f.exp = expForLevel(f.dex, f.level);
   recalc(f, true);
@@ -63,7 +63,7 @@ function recalc(f, full = false) {
 
 export function damageOf(att, def, mv, rnd, atkMult = 1, defMult = 1) {
   const phys = mv.cat === 'phys';
-  const A = att.stats[phys ? 1 : 3] * atkMult, D = def.stats[phys ? 2 : 4] * defMult;
+  const A = att.stats[phys ? 1 : 3] * atkMult * (phys && att.pbuff ? att.pbuff : 1), D = def.stats[phys ? 2 : 4] * defMult; // pbuff: Felsbrecher-Training
   // Offizielle Formel, aber das ganze Ergebnis (inkl. Grundschaden +2) skaliert mit (Ang/Vert)^defenseExponent,
   // damit Verteidigung schon auf niedrigen Leveln spürbar zählt
   const ratio = Math.pow(A / D, C().defenseExponent ?? 1);

@@ -1,0 +1,111 @@
+{
+  "_hinweis": "Spaziergang (wie bei Nintendogs): Route auf der Karte einzeichnen – vom Zuhause (🏠) los und wieder zurück. Ausdauer (1–5) bestimmt die maximale Länge, Tempo (1–5, wie im Felsbrecher) die Geschwindigkeit. Wilde Pokémon wandern umher; wer ihnen begegnet, kämpft rundenbasiert wie im klassischen Pokémon-Spiel – jede Attacke kostet Münzen.",
+  "grid": {
+    "cols": 15,
+    "rows": 21
+  },
+  "stepsByStamina": [
+    24,
+    32,
+    40,
+    50,
+    62
+  ],
+  "_stepsByStamina": "maximale Schritte (Felder) der Route bei Ausdauer 1–5",
+  "speedBySpeed": [
+    1.6,
+    2,
+    2.5,
+    3,
+    3.6
+  ],
+  "_speedBySpeed": "Felder pro Sekunde bei Tempo 1–5",
+  "walksPerDay": 1,
+  "_walksPerDay": "Spaziergänge je Pokémon und Tag",
+  "map": {
+    "_hinweis": "Zufallskarte: treeBlobs Baumgruppen (Größe blobSize), ponds Teiche; Rand = Bäume. Themen = Tilesets aus route_tiles.json.",
+    "treeBlobs": [
+      7,
+      10
+    ],
+    "blobSize": [
+      3,
+      9
+    ],
+    "ponds": [
+      1,
+      2
+    ],
+    "themes": [
+      "wald",
+      "herbst",
+      "nachtwald",
+      "eis"
+    ]
+  },
+  "wild": {
+    "_hinweis": "count = Anzahl wilder Pokémon [min, max]; stepEvery = Sekunden je Schritt [min, max]; Level = Level deines Pokémon + levelOffset [min, max], mindestens minLevel. maxStage: je nach Gegnerlevel nur Grundformen bzw. erste Entwicklungen. themeTypes: Typen der wilden Pokémon je Kartenthema.",
+    "count": [
+      4,
+      6
+    ],
+    "stepEvery": [
+      0.55,
+      1.1
+    ],
+    "levelOffset": [
+      -1,
+      1
+    ],
+    "minLevel": 2,
+    "fleeIgnore": 3,
+    "themeTypes": {
+      "wald": [
+        "Pflanze",
+        "Käfer",
+        "Normal",
+        "Flug"
+      ],
+      "herbst": [
+        "Normal",
+        "Boden",
+        "Feuer",
+        "Käfer"
+      ],
+      "nachtwald": [
+        "Geist",
+        "Unlicht",
+        "Gift",
+        "Psycho"
+      ],
+      "eis": [
+        "Eis",
+        "Wasser",
+        "Normal",
+        "Stahl"
+      ]
+    },
+    "maxStage": {
+      "0": 1,
+      "18": 2,
+      "36": 3,
+      "_hinweis": "höchste Entwicklungsstufe wilder Pokémon ab Gegnerlevel (Schlüssel)"
+    }
+  },
+  "battle": {
+    "_hinweis": "Attacken-Preis in Münzen = max(minCost, round(Stärke² / coinDiv)) – starke Attacken sind teuer. Fliehen: Chance fleeBase + (eigene Init / gegnerische Init − 1) × fleeSpeed, zwischen fleeMin und fleeMax.",
+    "coinDiv": 1600,
+    "minCost": 1,
+    "fleeBase": 0.5,
+    "fleeSpeed": 0.5,
+    "fleeMin": 0.2,
+    "fleeMax": 0.95
+  },
+  "rewards": {
+    "_hinweis": "EP (Route-EP) je Sieg = epPerWin + Gegnerlevel × epPerLevel; zurück zu Hause: Schritte × epPerStep. Siege geben außerdem Fleißpunkte (EV) wie im Original (Ertrag der Art × evMult).",
+    "epPerWin": 8,
+    "epPerLevel": 0.5,
+    "epPerStep": 0.5,
+    "evMult": 1
+  }
+}

@@ -10,6 +10,9 @@ import { $, h, toast, modal, confirmDialog } from './dom.js';
 import { renderDefenseSetup } from './defense.js';
 import { renderRouteSetup } from './route.js';
 import { renderRocksSetup, openItemShop } from './rocks.js';
+import { renderWalkSetup } from './walk.js';
+import { physBuff } from '../game/rocks.js';
+import { now } from '../time.js';
 import { teamPicker } from './teampick.js';
 import { drawWeather } from './weatherfx.js';
 import { sfx, setMusic } from '../audio.js';
@@ -54,10 +57,12 @@ export function renderBattleSetup() {
       h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
       h('button.mode-card', { onclick: () => { mode = 'route'; renderBattleSetup(); } }, h('b', '🛤 Route'), h('small', 'Tower Defense mit fester Strecke: Pokémon auf Bauplätze setzen, EP verdienen und dauerhaft trainieren.')),
       h('button.mode-card', { onclick: () => { mode = 'arena'; step = 'opponent'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.')),
-      h('button.mode-card', { onclick: () => { mode = 'rocks'; renderBattleSetup(); } }, h('b', '⛏ Felsbrecher'), h('small', 'Wettbewerb wie Piano Tiles: Felsen zertrümmern, bevor sie unten ankommen. Kraft und Tempo deines Pokémon entscheiden.'))));
+      h('button.mode-card', { onclick: () => { mode = 'rocks'; renderBattleSetup(); } }, h('b', '⛏ Felsbrecher'), h('small', 'Wettbewerb wie Piano Tiles: Felsen zertrümmern, bevor sie unten ankommen. Kraft und Tempo deines Pokémon entscheiden.')),
+      h('button.mode-card', { onclick: () => { mode = 'walk'; renderBattleSetup(); } }, h('b', '🐾 Spaziergang'), h('small', 'Route auf der Karte einzeichnen, wilden Pokémon ausweichen oder sie klassisch bekämpfen – Attacken kosten Münzen.'))));
     return;
   }
   if (mode === 'defense') { renderDefenseSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
+  if (mode === 'walk') { renderWalkSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'rocks') { renderRocksSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'route') { renderRouteSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   const mons = owned();
@@ -146,13 +151,16 @@ function startBattle(o) {
   if (sel.length !== N || towers.length !== B().towerCount) { step = 'opponent'; renderBattleSetup(); return; }
   app.act((s) => { s.battle = { team: [...sel], towers: [...towers] }; return { ok: true }; });
   const player = {
-    towers: towers.map((u) => fromPokemon(byUid(u))),
-    team: sel.filter((u) => !towers.includes(u)).map((u) => fromPokemon(byUid(u))),
+    towers: towers.map((u) => withBuff(byUid(u))),
+    team: sel.filter((u) => !towers.includes(u)).map((u) => withBuff(byUid(u))),
   };
   const cpu = { towers: o.towers.map((d, i) => fromCpu(d, o, i)), team: o.team.map((d, i) => fromCpu(d, o, i + 3)) };
   battle = new Battle({ player, cpu, opponent: o });
   openArena(o);
 }
+
+// Felsbrecher-Buff für physische Treffer
+const withBuff = (p) => ({ ...fromPokemon(p), pbuff: physBuff(app.state, { uid: p.uid, dex: p.dex }, now()) });
 
 function openArena(o) {
   closeArena();

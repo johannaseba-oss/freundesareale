@@ -4,17 +4,39 @@
     "_hinweis": "Kraft 1–5 aus dem Angriff, ohne Level: Wert = 2 × Basis-Angriff + DV + EV × evWeight. thresholds = Mindestwert für Kraft 2, 3, 4, 5.",
     "stat": 1,
     "evWeight": 1,
-    "thresholds": [120, 150, 180, 220]
+    "thresholds": [
+      120,
+      150,
+      180,
+      220
+    ]
   },
   "speed": {
     "_hinweis": "Tempo 1–5 aus der Initiative, gleiche Rechnung wie Kraft.",
     "stat": 5,
     "evWeight": 1,
-    "thresholds": [100, 130, 160, 200]
+    "thresholds": [
+      100,
+      130,
+      160,
+      200
+    ]
   },
-  "tapsByPower": [5, 4, 3, 2, 1],
+  "tapsByPower": [
+    5,
+    4,
+    3,
+    2,
+    1
+  ],
   "_tapsByPower": "Tipper je Fels bei Kraft 1, 2, 3, 4, 5",
-  "tapGapBySpeed": [0.3, 0.24, 0.18, 0.13, 0.09],
+  "tapGapBySpeed": [
+    0.3,
+    0.24,
+    0.18,
+    0.13,
+    0.09
+  ],
   "_tapGapBySpeed": "Mindestabstand zwischen zwei Tippern in Sekunden bei Tempo 1–5 (schnellere Tipper zählen nicht)",
   "lanes": 4,
   "rowsVisible": 5,
@@ -32,8 +54,56 @@
     "_hinweis": "Item-Shop (wie die Vitamine in HeartGold/SoulSilver): jedes Item gibt dem Pokémon dauerhaft ev Fleißpunkte (EV) auf einen Statuswert – das zählt auch in allen Kämpfen. Mit Items höchstens vitaminCap EV pro Wert; die allgemeinen EV-Grenzen aus battle.json gelten zusätzlich.",
     "vitaminCap": 100,
     "items": [
-      { "id": "protein", "name": "Protein", "icon": "💪", "stat": 1, "ev": 10, "price": 100, "desc": "Steigert den Angriff – mehr Kraft im Felsbrecher." },
-      { "id": "carbon", "name": "Carbon", "icon": "⚡", "stat": 5, "ev": 10, "price": 100, "desc": "Steigert die Initiative – mehr Tempo im Felsbrecher." }
+      {
+        "id": "protein",
+        "name": "Protein",
+        "icon": "💪",
+        "stat": 1,
+        "ev": 10,
+        "price": 100,
+        "desc": "Steigert den Angriff – mehr Kraft im Felsbrecher."
+      },
+      {
+        "id": "carbon",
+        "name": "Carbon",
+        "icon": "⚡",
+        "stat": 5,
+        "ev": 10,
+        "price": 100,
+        "desc": "Steigert die Initiative – mehr Tempo im Felsbrecher."
+      }
     ]
+  },
+  "special": {
+    "_hinweis": "Besondere Felsen ab der fromRow-ten Reihe: holdChance = langer Fels (gedrückt halten), bombChance = Bombe",
+    "fromRow": 8,
+    "holdChance": 0.12,
+    "bombChance": 0.07
+  },
+  "hold": {
+    "_hinweis": "Lange Felsen: len = [min, max] Reihen. Gedrückt halten lässt sie von unten zerbröseln; secPerRowByPower = Haltezeit je Reihe bei Kraft 1–5",
+    "len": [
+      2,
+      3
+    ],
+    "secPerRowByPower": [
+      0.9,
+      0.75,
+      0.6,
+      0.45,
+      0.3
+    ]
+  },
+  "bomb": {
+    "_hinweis": "Bombe antippen: explodiert und bremst das Band um slowBy Reihen/s (nie unter scroll.start). Durchrollen lassen kostet kein Leben.",
+    "slowBy": 0.6
+  },
+  "training": {
+    "_hinweis": "Jede Runde ist ein Training: 1× pro Pokémon und Tag. Danach EP (Route-EP) = Felsen × epPerRock (max epMax) und ein Angriffs-Buff für physische Treffer in allen Kampf-Minispielen: +Felsen × buffPctPerRock % (max buffMaxPct), gültig buffDays Tage (1 = bis Tagesende). Im Chaos-Modus gilt der Buff für gezogene Pokémon derselben Art.",
+    "epPerRock": 1,
+    "epMax": 150,
+    "buffPctPerRock": 0.2,
+    "buffMaxPct": 25,
+    "buffDays": 1
   }
 }

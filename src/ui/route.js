@@ -11,6 +11,7 @@ import { loadSprites, frameOf, portraitUrl, dirFromVector } from '../gfx/sprites
 import { $, h, toast, confirmDialog, modal } from './dom.js';
 import { teamPicker } from './teampick.js';
 import { damageStats } from './dmgstats.js';
+import { physBuff } from '../game/rocks.js';
 import { haptic } from '../haptics.js';
 import { sfx, setMusic, musicForLevel } from '../audio.js';
 import { now, dayKey } from '../time.js';
@@ -80,6 +81,7 @@ function start() {
   const members = team.map((u) => app.state.pokemon.find((p) => p.uid === u)).filter(Boolean)
     .map((p) => ({ uid: p.uid, dex: p.dex, ivs: p.ivs, evs: p.evs, level: p.level, nick: p.nick, gender: p.gender }));
   game = new Route({ level: chosen, team: members, cleared: st().cleared || 0 });
+  game.buffOf = (m) => physBuff(app.state, { uid: m.uid, dex: m.dex }, now()); // Felsbrecher-Buff
   openField();
 }
 
@@ -307,7 +309,7 @@ function terrainAt() {
   return (x, y) => cells.get(k(x, y)) || ((x === first[0] && y < 0) || (x === last[0] && y >= G.rows) ? 'F' : 'W');
 }
 // erwartete Ränder (N, NO, O, SO, S, SW, W, NW): eigenes Gelände, wenn der Nachbar dazugehört, sonst Boden
-function expectedEdges(tAt, x, y) {
+export function expectedEdges(tAt, x, y) {
   const t = tAt(x, y);
   if (t === 'F') return 'FFFFFFFF';
   const same = (dx, dy) => tAt(x + dx, y + dy) === t;
@@ -315,7 +317,7 @@ function expectedEdges(tAt, x, y) {
   return o(0, -1) + corner(1, -1) + o(1, 0) + corner(1, 1) + o(0, 1) + corner(-1, 1) + o(-1, 0) + corner(-1, -1);
 }
 // passende Kachel: wenigste abweichende Ränder; unter gleich guten zufällig (fest je Feld) – so wiederholt sich nichts sichtbar
-function pickTile(tiles, t, exp, h) {
+export function pickTile(tiles, t, exp, h) {
   let best = [], bs = 99;
   for (const k of tiles) {
     if (k.t !== t || (k.x && exp === t.repeat(8))) continue;

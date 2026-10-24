@@ -13,6 +13,8 @@ import { haptic } from '../haptics.js';
 import { drawWeather } from './weatherfx.js';
 import { sfx, setMusic, musicForLevel, nextTrack } from '../audio.js';
 import { damageStats } from './dmgstats.js';
+import { physBuff } from '../game/rocks.js';
+import { now } from '../time.js';
 import { weatherInfo, weatherText, weatherBoost } from '../game/weather.js';
 
 const D = () => CFG.defense;
@@ -208,6 +210,8 @@ function startInfinity() {
 // ================= Spielfeld =================
 function openField(themeId = null) {
   closeField();
+  // Felsbrecher-Buff: eigene Pokémon über uid, Chaos-Bälle über die Art
+  game.buffOf = (src) => physBuff(app.state, { uid: src.uid ?? null, dex: src.dex }, now());
   const canvas = h('canvas.arena-canvas');
   const cards = h('div.d-cards');
   const starsEl = h('div.d-stars');

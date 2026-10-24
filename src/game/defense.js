@@ -192,7 +192,7 @@ export class Defense {
     const hpMult = this.hpMultOf(src.dex, card.role);
     // dir: 0 = greift die eigene Spalte hinauf an, ±1 = Seitenfeld, greift quer über das Feld an
     const dir = col < 0 ? 1 : col >= D().grid.cols ? -1 : 0;
-    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: keep ? keep.level : L, exp: keep ? keep.exp : expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t };
+    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: keep ? keep.level : L, exp: keep ? keep.exp : expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t, pbuff: this.buffOf?.(src) || 1 };
     u.hp = u.maxHp;
     if (card.role === 'produzent') u.nextStar = this.t + this.between(R.produzent.every) * 0.5;
     if (card.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
@@ -375,7 +375,7 @@ export class Defense {
   // ---- Schaden (offizielle Formel mit Typ-Effektivität und gleichem Typ) ----
   damage(att, attLevel, def, mult = 1) {
     const mv = moveOf(bdata(att.dex).move), phys = mv.cat === 'phys';
-    const A = att.stats[phys ? 1 : 3], Dv = def.stats[phys ? 2 : 4];
+    const A = att.stats[phys ? 1 : 3] * (phys && att.pbuff ? att.pbuff : 1), Dv = def.stats[phys ? 2 : 4]; // pbuff: Felsbrecher-Training
     const stab = species(att.dex).types.includes(mv.type) ? 1.5 : 1;
     const eff = effectiveness(mv.type, species(def.dex).types);
     const base = (Math.floor((2 * attLevel) / 5 + 2) * mv.power * A / Dv) / 50 + 2;
