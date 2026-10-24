@@ -87,7 +87,7 @@ function openField() {
   const bar = h('div.r-bar'), info = h('div.d-info'), msg = h('div.b-msg');
   const livesEl = h('span.r-stat'), epEl = h('span.r-stat'), waveEl = h('div.d-wave', h('span'), h('div.d-wavebar', h('i')));
   const go = h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message('Los! Halte die wilden Pokémon auf.'); haptic('medium'); } }, 'Los!');
-  const top = h('div.b-top', livesEl, waveEl, epEl, h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
+  const top = h('div.b-top', livesEl, waveEl, epEl, h('button.b-btn', { onclick: pauseMenu, title: 'Pause' }, '⏸'), h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
   const root = h('div.battle.defense.route', top, h('div.b-field', canvas, go), info, bar, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
@@ -125,7 +125,7 @@ function layout() {
 }
 function frame(dt) {
   if (!ui || !game) return;
-  game.update(dt);
+  if (!ui.paused) game.update(dt); // Pause: Kampf steht still
   handleEvents();
   draw(dt);
   renderTop();
@@ -443,7 +443,7 @@ function handleEvents() {
       say(ev.e, String(ev.dmg), col, ev.crit || ev.eff > 1 ? 0.38 : 0.3); burst(ev.e, typeColor(ev.move.type), ev.crit ? 10 : 5); sfx.hit();
     } else if (ev.type === 'status') { say(ev.e, ev.name + '!', { burn: '#ffa75c', poison: '#d48ae0', paralysis: '#ffe066', sleep: '#cfe0ff', slow: '#9fd0ff' }[ev.kind], 0.22, 0.9); }
     else if (ev.type === 'dot') { say(ev.e, String(ev.dmg), ev.kind === 'burn' ? '#ffa75c' : '#d48ae0', 0.22, 0.6); }
-    else if (ev.type === 'defeat') { say(ev.e, `+${ev.ep} EP`, '#9fe8ff', 0.26, 1); burst(ev.e, '#ffffff', 12); sfx.ko(); }
+    else if (ev.type === 'defeat') { say(ev.e, `+${ev.ep} EP`, ev.lucky ? '#ffd23f' : '#9fe8ff', ev.lucky ? 0.36 : 0.26, ev.lucky ? 1.4 : 1); burst(ev.e, ev.lucky ? '#ffd23f' : '#ffffff', ev.lucky ? 22 : 12); sfx.ko(); if (ev.lucky) sfx.star(); }
     else if (ev.type === 'leak') { message(`Ein wildes Pokémon ist durchgekommen! Noch ${game.lives} ♥`); haptic('strong'); sfx.lose(); }
     else if (ev.type === 'wave') { message(ev.last ? 'Letzte Welle – mit Boss!' : `Welle ${ev.wave + 1}`); sfx.wave(ev.last); haptic('medium'); }
     else if (ev.type === 'boss') { message('Ein Boss erscheint!'); haptic('strong'); }
@@ -453,6 +453,19 @@ function handleEvents() {
   game.events.length = 0;
 }
 
+// Pause: alles steht still; weiter oder Level verlassen (verdiente EP bleiben)
+function pauseMenu() {
+  if (!game || game.over || !ui || ui.paused) return;
+  ui.paused = true;
+  commitEp();
+  modal((m, close) => {
+    const resume = () => { close(); if (ui) ui.paused = false; };
+    m.append(h('h3', '⏸ Pause'), h('p.note', 'Der Kampf ist angehalten. Deine bisher verdienten EP sind gesichert.'),
+      h('div.row', h('button.btn', { onclick: () => { close(); if (ui) ui.paused = false; game.over = { won: false, gaveUp: true }; } }, 'Level verlassen'),
+        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')));
+    $('#modal').onclick = (e) => { if (e.target === $('#modal')) resume(); };
+  });
+}
 async function giveUp() {
   if (!game || game.over) return;
   if (await confirmDialog('Level aufgeben? Bisher verdiente EP behältst du.', 'Aufgeben')) game.over = { won: false, gaveUp: true };
@@ -478,4 +491,4 @@ function end() {
       won && next ? h('button.btn.primary.big', { onclick: () => leave(next) }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => leave(lv) }, won ? 'Nochmal' : 'Nochmal versuchen'))));
 }
 // App im Hintergrund: verdiente EP sichern
-document.addEventListener('visibilitychange', () => { if (document.hidden && game && !game.over) commitEp(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && game && !game.over) { commitEp(); if (game.started) pauseMenu(); } }); // App im Hintergrund: anhalten

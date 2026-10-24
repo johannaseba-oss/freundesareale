@@ -186,9 +186,10 @@ export class Route {
     this.events.push({ type: 'status', e, kind: S.kind, name: S.name });
   }
   defeat(e) {
-    const P = R().ep, ep = Math.round(P.perEnemy + e.level * P.perEnemyLevel) + (e.boss ? P.boss : 0);
+    const P = R().ep, lucky = P.bonus?.[e.dex] || 1; // EP-Glückspokémon (z. B. Chaneira) geben ein Vielfaches
+    const ep = Math.round((P.perEnemy + e.level * P.perEnemyLevel) * lucky) + (e.boss ? P.boss : 0);
     this.ep += ep;
-    this.events.push({ type: 'defeat', e, ep });
+    this.events.push({ type: 'defeat', e, ep, lucky: lucky > 1 });
   }
 
   // ---- Simulation ----
