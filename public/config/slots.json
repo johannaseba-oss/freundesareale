@@ -1,21 +1,95 @@
 {
-  "_hinweis": "Spielautomat (Automat-Seite): Einsatz mindestens bets[0] Münzen, Münzen gibt es nie zurück. Gewinne: Pokémon, EP, Entwicklungssteine oder ein Freispiel. weight = Chance in % pro Spiel beim kleinsten Einsatz; höhere Einsätze multiplizieren die Gewinnchancen (betMult, Freispiel ausgenommen). Der Rest ist eine Niete.",
-  "bets": [100, 250, 500],
-  "betMult": [1, 2.7, 5.8],
-  "outcomes": [
-    { "id": "jackpot", "symbol": "seven", "weight": 0.3, "prize": { "type": "exclusive" }, "label": "Mysteriöses / legendäres Pokémon (nur hier!)" },
-    { "id": "rare", "symbol": "g", "weight": 1.6, "prize": { "type": "pokemon", "pool": { "sehr_selten": 75, "legendaer": 25 } }, "label": "Seltenes Pokémon (besser als im Automaten)" },
-    { "id": "stone", "symbol": "gem", "weight": 5, "prize": { "type": "stone" }, "label": "Entwicklungsstein" },
-    { "id": "epBig", "symbol": "pika", "weight": 8, "prize": { "type": "ep", "amount": 200 }, "label": "200 EP" },
-    { "id": "epSmall", "symbol": "cherry", "weight": 14, "prize": { "type": "ep", "amount": 60 }, "label": "60 EP" },
-    { "id": "replay", "symbol": "replay", "weight": 10, "prize": { "type": "replay" }, "label": "Freispiel" }
+  "_hinweis": "Spielautomat (Automat-Seite): Einsatz mindestens bets[0] Münzen, Münzen gibt es nie zurück. Gewinne nur: Pokémon oder Entwicklungssteine. weight = Chance in % pro Spiel beim kleinsten Einsatz; höhere Einsätze multiplizieren die Chancen (betMult). Alles andere ist eine Niete.",
+  "bets": [
+    100,
+    250,
+    500
   ],
-  "maxWinChance": 0.85,
+  "betMult": [
+    1,
+    2.5,
+    5
+  ],
+  "outcomes": [
+    {
+      "id": "jackpot",
+      "symbol": "seven",
+      "weight": 0.2,
+      "prize": {
+        "type": "exclusive"
+      },
+      "label": "Mysteriöses / legendäres Pokémon (nur hier!)"
+    },
+    {
+      "id": "rare",
+      "symbol": "g",
+      "weight": 1,
+      "prize": {
+        "type": "pokemon",
+        "pool": {
+          "sehr_selten": 75,
+          "legendaer": 25
+        }
+      },
+      "label": "Seltenes Pokémon (besser als im Automaten)"
+    },
+    {
+      "id": "stone",
+      "symbol": "gem",
+      "weight": 2.5,
+      "prize": {
+        "type": "stone"
+      },
+      "label": "Entwicklungsstein"
+    }
+  ],
+  "maxWinChance": 0.25,
   "_maxWinChance": "Gesamt-Gewinnchance wird höchstens auf diesen Wert begrenzt (auch bei hohem Einsatz)",
   "stoneUsefulChance": 0.8,
   "_stoneUsefulChance": "Wahrscheinlichkeit, dass der Stein zu einem deiner Pokémon passt (falls eines sich damit entwickeln kann)",
   "autoStop": 4,
   "_autoStop": "Sekunden, nach denen eine Walze von selbst stoppt",
-  "exclusive": [151, 251, 385, 386, 489, 490, 491, 492, 493, 494, 647, 648, 649, 144, 145, 146, 243, 244, 245, 377, 378, 379, 382, 383, 384, 480, 481, 482, 483, 484, 487, 638, 639, 640, 641, 642, 645, 643, 644, 646],
+  "exclusive": [
+    151,
+    251,
+    385,
+    386,
+    489,
+    490,
+    491,
+    492,
+    493,
+    494,
+    647,
+    648,
+    649,
+    144,
+    145,
+    146,
+    243,
+    244,
+    245,
+    377,
+    378,
+    379,
+    382,
+    383,
+    384,
+    480,
+    481,
+    482,
+    483,
+    484,
+    487,
+    638,
+    639,
+    640,
+    641,
+    642,
+    645,
+    643,
+    644,
+    646
+  ],
   "_exclusive": "Nur über den Spielautomaten erhältlich (nicht im Pokéball-Automaten): alle Mysteriösen, alle Legendären aus einem Trio und Jirachi"
 }
