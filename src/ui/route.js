@@ -3,7 +3,8 @@
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import * as A from '../game/actions.js';
-import { Route, routeLevels, shapeOf, radiusOf, maxUnits, upgradeCost, recommendRouteTeam, pathCells, levelSpeed } from '../game/route.js';
+import { Route, routeLevels, shapeOf, radiusOf, ringOuter, isWaterMon, maxUnits, upgradeCost, recommendRouteTeam, pathCells, levelSpeed } from '../game/route.js';
+import { burst as typeBurst, drawParticles } from '../gfx/particles.js';
 import { canBattle, moveOf, bdata, calcStats } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl, dirFromVector } from '../gfx/sprites.js';
@@ -18,7 +19,8 @@ const base = import.meta.env.BASE_URL;
 let chosen = null, game = null, ui = null, team = [];
 let sortBy = 'level', pickSel = null; // Sortierung der Teamauswahl, aktuelle Auswahl (bleibt beim Umsortieren)
 const st = () => app.state.route || { ep: 0, cleared: 0 };
-const SHAPE_TEXT = { adjacent: 'trifft direkt angrenzende Felder', line: 'trifft die ganze gerade Strecke in Blickrichtung', circle: 'Welle trifft alle im Radius', cross: 'greift in alle vier Richtungen gleichzeitig an' };
+const SHAPE_TEXT = { adjacent: 'trifft direkt angrenzende Felder', line: 'trifft die ganze gerade Strecke in Blickrichtung', circle: 'Welle trifft alle im Radius', cross: 'greift in alle vier Richtungen gleichzeitig an', ring: 'Ring-Welle trifft alle im Ring, innen bleibt frei (darf auf Seerosen)' };
+const WATER_ONLY = 'Auf die Seerosen im Teich dürfen nur Wasser-Pokémon.';
 
 // ================= Auswahl =================
 export function renderRouteSetup(el, back) {
@@ -36,7 +38,7 @@ export function renderRouteSetup(el, back) {
     const star = h('span.bs-fav' + (fav ? '.on' : ''), { title: 'Favorit', onclick: (e) => { e.stopPropagation(); app.act((s) => A.toggleRouteFav(s, p.uid), true); haptic('tick'); renderRouteSetup(el, back); } }, fav ? '★' : '☆');
     return [h('span.role-tag.route-shape', `${sh.icon} ${sh.name}`), h('span.d-price', `Lv ${p.level}`), star];
   };
-  const picker = teamPicker({ mons, N, hint, initial: pickSel, recommend: rec, onFull: (uids) => confirmTeam(uids) });
+  const picker = teamPicker({ mons, N, hint, initial: pickSel, recommend: rec, selectedFirst: true, onFull: (uids) => confirmTeam(uids) });
   pickSel = picker.sel; // gleiche Liste – Änderungen bleiben beim Neuzeichnen erhalten
   const sortBtn = (id, label) => h('button.btn.small' + (sortBy === id ? '.primary' : ''), { onclick: () => { sortBy = id; renderRouteSetup(el, back); } }, label);
   el.replaceChildren(h('div.bs',
@@ -144,6 +146,8 @@ function onField(e) {
   if (u) { ui.sel = null; ui.selUnit = u; renderInfo(); unitMenu(u); return; }
   if (!ui.sel) { toast('Wähle unten ein Pokémon und tippe dann auf einen Bauplatz.'); return; }
   if (game.units.length >= game.max) { toast(`Höchstens ${game.max} Pokémon gleichzeitig auf dem Feld.`); return; }
+  const sm = game.team.find((x) => x.uid === ui.sel);
+  if (sm && !game.slotAllows(si, sm.dex)) { toast(WATER_ONLY); return; }
   if (game.place(ui.sel, si)) { haptic('medium'); sfx.place(); ui.sel = null; buildBar(); renderInfo(); }
 }
 // Kann dieses Pokémon gerade trainiert werden? (genug EP, Tageslimit nicht erreicht)
@@ -159,6 +163,7 @@ function trainPreview(m) {
   const pct = (a, b) => `+${Math.max(0, Math.round((b / a - 1) * 100))} %`;
   const rows = [['Tempo', pct(levelSpeed(L), levelSpeed(L + 1))], ['Wucht', pct(wucht(L), wucht(L + 1))]];
   if (shapeOf(m.dex) === 'circle') rows.push(['Radius', `${radiusOf(L).toFixed(2)} → ${radiusOf(L + 1).toFixed(2)} Felder`]);
+  if (shapeOf(m.dex) === 'ring') rows.push(['Ring außen', `${ringOuter(L).toFixed(2)} → ${ringOuter(L + 1).toFixed(2)} Felder`]);
   return h('div.r-preview', h('b', `Lv ${L} → ${L + 1}`), ...rows.map(([a, b]) => h('span', h('i', a), b)));
 }
 // Platziertes Pokémon: trainieren (EP, dauerhaft) oder zurück in die Leiste
@@ -215,13 +220,15 @@ function dragFromBar(e, m) {
     if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(m.dex), alt: '' }); document.body.append(ghost); ui.sel = m.uid; ui.selUnit = null; renderInfo(); }
     ghost.style.transform = `translate(${ev.clientX - 26}px, ${ev.clientY - 40}px)`;
     const c = cellAt(ev.clientX, ev.clientY), si = c ? slotAt(c) : -1;
-    ui.drag = si >= 0 && game.slotFree(si) ? previewUnit(m, si) : null;
+    ui.drag = si >= 0 && game.slotFree(si) && game.slotAllows(si, m.dex) ? previewUnit(m, si) : null;
+    ui.dragBad = si >= 0 && game.slotFree(si) && !game.slotAllows(si, m.dex) ? si : -1; // Seerose, aber kein Wasser-Pokémon
   };
   const up = (ev) => {
     window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
     if (!ghost || !ui) return;
     ghost.remove(); ui.dragEnd = performance.now();
-    const d = ui.drag; ui.drag = null;
+    const d = ui.drag, bad = ui.dragBad; ui.drag = null; ui.dragBad = -1;
+    if (bad >= 0 && ev.type === 'pointerup') { toast(WATER_ONLY); ui.sel = null; buildBar(); renderInfo(); return; }
     if (ev.type !== 'pointerup' || !d) { ui.sel = null; buildBar(); renderInfo(); return; }
     if (game.units.length >= game.max) { toast(`Höchstens ${game.max} Pokémon gleichzeitig auf dem Feld.`); return; }
     if (game.place(m.uid, d.slot)) { haptic('medium'); sfx.place(); ui.sel = null; buildBar(); renderInfo(); }
@@ -298,8 +305,40 @@ function buildBackground() {
     if (sth && w && !isP(a - 1, b + 1)) { P(0, S - 1, X0, Y0, '#6e4c2a'); }
     if (sth && e && !isP(a + 1, b + 1)) { P(S - 1, S - 1, X0, Y0, '#6e4c2a'); }
   }
+  // Teich: Wasser mit Wellen-Glanzlichtern und dunklem Ufer
+  const pond = new Set((game.level.water || []).map(([a, b]) => a + ',' + b)), isW = (a, b) => pond.has(a + ',' + b);
+  for (const [a, b] of game.level.water || []) {
+    const X0 = X(a), Y0 = Y(b);
+    x.fillStyle = '#3f86d6'; x.fillRect(X0, Y0, S, S);
+    for (let yy = 0; yy < S; yy++) for (let xx = 0; xx < S; xx++) { const hv = hash(a * S + xx, b * S + yy) % 97; if (hv < 6) P(xx, yy, X0, Y0, '#5aa2ea'); else if (hv === 7) P(xx, yy, X0, Y0, '#2f6fbf'); }
+    for (let k = 0; k < 3; k++) { const yy = 4 + k * 7 + (hash(a, b + k) % 3), xx = 2 + (hash(a + k, b) % 12); x.fillStyle = '#bfe3ff'; x.fillRect(X0 + xx, Y0 + yy, 5, 1); x.fillStyle = '#8cc6f5'; x.fillRect(X0 + xx + 1, Y0 + yy + 1, 3, 1); }
+    x.fillStyle = '#2b5f9e';
+    if (!isW(a, b - 1)) x.fillRect(X0, Y0, S, 2);
+    if (!isW(a - 1, b)) x.fillRect(X0, Y0, 2, S);
+    x.fillStyle = '#7fbbe8';
+    if (!isW(a, b + 1)) x.fillRect(X0, Y0 + S - 2, S, 1);
+    if (!isW(a + 1, b)) x.fillRect(X0 + S - 2, Y0, 1, S);
+    const fx = th.wall * S, back = (cx, cy) => x.drawImage(U.tiles, fx + cx, cy, 1, 1, X0 + cx, Y0 + cy, 1, 1); // runde Teich-Ecken
+    if (!isW(a, b - 1) && !isW(a - 1, b)) { back(0, 0); back(1, 0); back(0, 1); }
+    if (!isW(a, b - 1) && !isW(a + 1, b)) { back(S - 1, 0); back(S - 2, 0); back(S - 1, 1); }
+    if (!isW(a, b + 1) && !isW(a - 1, b)) { back(0, S - 1); back(1, S - 1); back(0, S - 2); }
+    if (!isW(a, b + 1) && !isW(a + 1, b)) { back(S - 1, S - 1); back(S - 2, S - 1); back(S - 1, S - 2); }
+  }
+  // Seerosen (nur Wasser-Pokémon): grünes Blatt mit Kerbe und kleiner Blüte
+  for (const [a, b, w] of game.level.slots) {
+    if (w !== 'w') continue;
+    const cx = X(a) + 12, cy = Y(b) + 13;
+    for (let yy = -9; yy <= 9; yy++) for (let xx = -10; xx <= 10; xx++) {
+      const d = (xx * xx) / 100 + (yy * yy) / 81;
+      if (d > 1 || (xx > 0 && Math.abs(yy) < (xx / 3))) continue; // Kerbe nach rechts
+      P(cx + xx - X(a), cy + yy - Y(b), X(a), Y(b), d > 0.8 ? '#2e6b2a' : (xx + yy) % 5 === 0 ? '#5fae45' : '#4f9a3a');
+    }
+    x.fillStyle = 'rgba(10,30,60,.3)'; x.fillRect(cx - 9, cy + 9, 18, 1);
+    x.fillStyle = '#ffb3d0'; x.fillRect(cx - 5, cy - 6, 3, 3); x.fillStyle = '#fff0f6'; x.fillRect(cx - 4, cy - 5, 1, 1);
+  }
   // Bauplätze: Holzpodeste aus Brettern mit Nägeln, Kontur und Schatten
-  for (const [a, b] of game.level.slots) {
+  for (const [a, b, w] of game.level.slots) {
+    if (w === 'w') continue;
     const L = X(a) + 2, T0 = Y(b) + 2, W = 20, H = 19;
     x.fillStyle = 'rgba(20,30,10,.35)'; x.fillRect(L + 1, T0 + 3, W, H); // Schatten
     x.fillStyle = '#4a2f1c'; x.fillRect(L, T0, W, H); // Kontur
@@ -336,14 +375,17 @@ function draw(dt) {
   // freie Bauplätze hervorheben, wenn ein Pokémon gewählt ist
   if (U.sel) {
     x.strokeStyle = '#fff'; x.lineWidth = 2;
-    game.level.slots.forEach(([a, b], i) => { if (game.slotFree(i)) { const k = 1 + Math.sin(now2 / 180) * 1.5; x.strokeRect(U.ox + a * T + 3 - k, U.oy + b * T + 3 - k, T - 6 + 2 * k, T - 6 + 2 * k); } });
+    const selDex = game.team.find((m) => m.uid === U.sel)?.dex;
+    game.level.slots.forEach(([a, b], i) => { if (game.slotFree(i) && game.slotAllows(i, selDex)) { const k = 1 + Math.sin(now2 / 180) * 1.5; x.strokeRect(U.ox + a * T + 3 - k, U.oy + b * T + 3 - k, T - 6 + 2 * k, T - 6 + 2 * k); } });
   }
+  if (U.dragBad >= 0) { const [a, b] = game.level.slots[U.dragBad]; x.strokeStyle = 'rgba(255,80,80,.95)'; x.lineWidth = 3; x.strokeRect(U.ox + a * T + 1.5, U.oy + b * T + 1.5, T - 3, T - 3); }
   // Reichweite: beim Ziehen (Vorschau) bzw. des angetippten Pokémon
   const show = U.drag || (U.selUnit && game.units.includes(U.selUnit) ? U.selUnit : null);
   if (show) {
     x.fillStyle = U.drag ? 'rgba(130,220,255,.32)' : 'rgba(255,240,150,.26)';
     for (const [a, b] of reachCells(show)) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
-    if (show.shape === 'circle') { x.strokeStyle = U.drag ? 'rgba(160,230,255,.9)' : 'rgba(255,240,150,.9)'; x.lineWidth = 2; x.setLineDash([4, 3]); x.beginPath(); x.arc(U.ox + show.x * T, U.oy + show.y * T, radiusOf(show.level) * T, 0, 7); x.stroke(); x.setLineDash([]); }
+    const rings = show.shape === 'circle' ? [radiusOf(show.level)] : show.shape === 'ring' ? [R().shapes.ring.inner, ringOuter(show.level)] : [];
+    if (rings.length) { x.strokeStyle = U.drag ? 'rgba(160,230,255,.9)' : 'rgba(255,240,150,.9)'; x.lineWidth = 2; x.setLineDash([4, 3]); for (const rr of rings) { x.beginPath(); x.arc(U.ox + show.x * T, U.oy + show.y * T, rr * T, 0, 7); x.stroke(); } x.setLineDash([]); }
     if (U.drag) { const [a, b] = game.level.slots[U.drag.slot]; x.strokeStyle = '#fff'; x.lineWidth = 3; x.strokeRect(U.ox + a * T + 1.5, U.oy + b * T + 1.5, T - 3, T - 3); }
   }
   const all = [...game.units.map((o) => ({ o, mine: true })), ...game.enemies.map((o) => ({ o, mine: false }))].sort((a, b) => a.o.y - b.o.y);
@@ -367,16 +409,15 @@ function draw(dt) {
   // Radius: Ring-Welle, die sich bis zum Rand des Kreises ausbreitet
   U.waves = U.waves.filter((wv) => {
     wv.t += dt; if (wv.t > 0.45) return false;
-    const k = wv.t / 0.45, X = U.ox + wv.x * T, Y = U.oy + wv.y * T, rr = wv.r * T * (0.2 + 0.8 * Math.min(1, k * 1.4));
+    const k = wv.t / 0.45, X = U.ox + wv.x * T, Y = U.oy + wv.y * T, r0 = (wv.r0 || 0) / wv.r, rr = wv.r * T * (Math.max(0.2, r0) + (1 - Math.max(0.2, r0)) * Math.min(1, k * 1.4));
     x.globalAlpha = 1 - k; x.strokeStyle = wv.color; x.lineWidth = Math.max(3, T / 8) * (1 - k * 0.5);
     x.beginPath(); x.arc(X, Y, rr, 0, 7); x.stroke();
     x.strokeStyle = '#ffffff'; x.lineWidth = Math.max(1, T / 20); x.beginPath(); x.arc(X, Y, rr * 0.92, 0, 7); x.stroke();
-    x.fillStyle = wv.color; x.globalAlpha = 0.12 * (1 - k); x.beginPath(); x.arc(X, Y, rr, 0, 7); x.fill();
+    x.fillStyle = wv.color; x.globalAlpha = 0.12 * (1 - k); x.beginPath(); x.arc(X, Y, rr, 0, 7); if (wv.r0) x.arc(X, Y, wv.r0 * T, 0, 7, true); x.fill('evenodd');
     x.globalAlpha = 1;
     return true;
   });
-  U.fx = U.fx.filter((f) => { f.life -= dt; if (f.life <= 0) return false; f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 5 * dt; x.globalAlpha = Math.min(1, f.life / 0.3); x.fillStyle = f.color; const s = Math.max(2, T / 12); x.fillRect(U.ox + f.x * T - s / 2, U.oy + f.y * T - s / 2, s, s); return true; });
-  x.globalAlpha = 1;
+  drawParticles(x, U.fx, dt, U.ox, U.oy, T, now2);
   U.texts = U.texts.filter((t) => {
     t.t += dt; if (t.t > t.dur) return false;
     x.globalAlpha = Math.min(1, (t.dur - t.t) / 0.3);
@@ -415,8 +456,8 @@ function drawMon(x, o, mine, [X, Y], T, now2) {
 // Statuseffekte am Gegner: Flämmchen, Giftblasen, Funken (Paralyse), „z“ (Schlaf), blauer Schimmer (Verlangsamung)
 function drawStatus(x, o, X, Y, T, now2) {
   const q = Math.max(2, Math.round(T / 14)), t = game.t;
-  if (o.dots?.burn && Math.random() < 0.3) ui.fx.push({ x: o.x + (Math.random() - 0.5) * 0.4, y: o.y - 0.2, vx: 0, vy: -1.5, color: Math.random() < 0.5 ? '#ff7a3a' : '#ffd23f', life: 0.4 });
-  if (o.dots?.poison && Math.random() < 0.25) ui.fx.push({ x: o.x + (Math.random() - 0.5) * 0.4, y: o.y - 0.2, vx: 0, vy: -1, color: Math.random() < 0.5 ? '#a33ea1' : '#d79ae0', life: 0.5 });
+  if (o.dots?.burn && Math.random() < 0.25) burst({ x: o.x, y: o.y - 0.1 }, 'Feuer', 1, 0.3, 0.8, 0.4);
+  if (o.dots?.poison && Math.random() < 0.2) burst({ x: o.x, y: o.y - 0.1 }, 'Gift', 1, 0.3, 0.8, 0.4);
   if (t < (o.stunUntil || 0) && Math.floor(now2 / 90) % 2) { x.fillStyle = '#ffe066'; for (let i = 0; i < 3; i++) { const a = now2 / 120 + i * 2.1; x.fillRect(X + Math.cos(a) * T * 0.3, Y - T * 0.45 + Math.sin(a) * T * 0.08, q, q * 2); } }
   if (t < (o.sleepUntil || 0)) { x.font = `600 ${Math.round(T * 0.26)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; const k = (now2 / 900) % 1; x.globalAlpha = 1 - k; x.lineWidth = 2; x.strokeStyle = 'rgba(30,30,60,.8)'; x.strokeText('z', X + T * (0.2 + k * 0.2), Y - T * (0.4 + k * 0.4)); x.fillStyle = '#e8f0ff'; x.fillText('z', X + T * (0.2 + k * 0.2), Y - T * (0.4 + k * 0.4)); x.globalAlpha = 1; }
   if (t < (o.slowUntil || 0)) { x.fillStyle = 'rgba(120,190,255,.35)'; x.beginPath(); x.ellipse(X, Y + T * 0.2, T * 0.32, T * 0.12, 0, 0, 7); x.fill(); }
@@ -429,7 +470,17 @@ function upArrow(x, X, Y, T, now2) {
   x.fillStyle = '#7dff6a'; for (const [i, j] of px) x.fillRect(Math.round(X + i * q), Math.round(Y + b + j * q), q, q);
 }
 const say = (o, text, color, size = 0.3, dur = 0.8) => ui.texts.push({ x: o.x, y: o.y - 0.4, text, color, size, dur, t: 0 });
-const burst = (o, color, n) => { for (let i = 0; i < n; i++) { const a = Math.random() * 6.3, v = 1 + Math.random() * 2; ui.fx.push({ x: o.x, y: o.y - 0.1, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 1, color, life: 0.4 + Math.random() * 0.3 }); } };
+// Partikel nach Typ (Tropfen, Flämmchen, Blitze, Blätter …); Farbe-Variante für EP/Level/Platzieren
+const burst = (o, type, n, power = 1, size = 1, spread = 0) => typeBurst(ui.fx, o, type, n, power, size, spread);
+// Angriffseffekte je Form: Partikel entlang der Strahlen, rund um Welle/Ring, Hieb-Funken beim Nahkampf
+function attackFx(u, type) {
+  if (u.shape === 'line' || u.shape === 'cross') for (const [a, b] of reachCells(u)) burst({ x: a + 0.5, y: b + 0.5 }, type, 3, 0.6, 1.25, 0.6);
+  else if (u.shape === 'circle' || u.shape === 'ring') {
+    const r = u.shape === 'ring' ? ringOuter(u.level) : radiusOf(u.level), n = Math.round(14 + r * 9);
+    for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; burst({ x: u.x + Math.cos(a) * r * 0.9, y: u.y + Math.sin(a) * r * 0.9 + 0.1 }, type, 1, 0.5, 1.3); }
+  } else { const t = u.lookAt || u; burst({ x: (u.x + t.x) / 2, y: (u.y + t.y) / 2 + 0.1 }, type, 12, 1.3, 1.3); }
+  burst(u, type, 4, 0.6, 0.7); // kleiner Ausbruch am Angreifer
+}
 function handleEvents() {
   for (const ev of game.events) {
     if (ev.type === 'attack') {
@@ -437,18 +488,20 @@ function handleEvents() {
       u.lookAt = ev.target;
       if (u.shape === 'line' || u.shape === 'cross') ui.beams.push({ cells: reachCells(u), color, t: 0, from: u });
       if (u.shape === 'circle') ui.waves.push({ x: u.x, y: u.y, r: radiusOf(u.level), color, t: 0 });
+      if (u.shape === 'ring') ui.waves.push({ x: u.x, y: u.y, r: ringOuter(u.level), r0: R().shapes.ring.inner, color, t: 0 });
+      attackFx(u, moveOf(bdata(u.dex).move).type);
       sfx.attack(moveOf(bdata(u.dex).move).type);
     } else if (ev.type === 'hit') {
       const col = ev.crit ? '#ffe066' : ev.eff > 1 ? '#ffd23f' : ev.eff < 1 ? '#d0c8bc' : '#ffffff';
-      say(ev.e, String(ev.dmg), col, ev.crit || ev.eff > 1 ? 0.38 : 0.3); burst(ev.e, typeColor(ev.move.type), ev.crit ? 10 : 5); sfx.hit();
+      say(ev.e, String(ev.dmg), col, ev.crit || ev.eff > 1 ? 0.38 : 0.3); burst(ev.e, ev.move.type, ev.crit ? 18 : 9, ev.crit ? 1.5 : 1.1, ev.crit ? 1.6 : 1.25); sfx.hit();
     } else if (ev.type === 'status') { say(ev.e, ev.name + '!', { burn: '#ffa75c', poison: '#d48ae0', paralysis: '#ffe066', sleep: '#cfe0ff', slow: '#9fd0ff' }[ev.kind], 0.22, 0.9); }
     else if (ev.type === 'dot') { say(ev.e, String(ev.dmg), ev.kind === 'burn' ? '#ffa75c' : '#d48ae0', 0.22, 0.6); }
-    else if (ev.type === 'defeat') { say(ev.e, `+${ev.ep} EP`, ev.lucky ? '#ffd23f' : '#9fe8ff', ev.lucky ? 0.36 : 0.26, ev.lucky ? 1.4 : 1); burst(ev.e, ev.lucky ? '#ffd23f' : '#ffffff', ev.lucky ? 22 : 12); sfx.ko(); if (ev.lucky) sfx.star(); }
+    else if (ev.type === 'defeat') { say(ev.e, `+${ev.ep} EP`, ev.lucky ? '#ffd23f' : '#9fe8ff', ev.lucky ? 0.36 : 0.26, ev.lucky ? 1.4 : 1); burst(ev.e, species(ev.e.dex).types[0], 14, 1.4, 1.1); if (ev.lucky) burst(ev.e, 'Fee', 22, 1.6, 1.2); sfx.ko(); if (ev.lucky) sfx.star(); }
     else if (ev.type === 'leak') { message(`Ein wildes Pokémon ist durchgekommen! Noch ${game.lives} ♥`); haptic('strong'); sfx.lose(); }
     else if (ev.type === 'wave') { message(ev.last ? 'Letzte Welle – mit Boss!' : `Welle ${ev.wave + 1}`); sfx.wave(ev.last); haptic('medium'); }
     else if (ev.type === 'boss') { message('Ein Boss erscheint!'); haptic('strong'); }
-    else if (ev.type === 'level') { say(ev.u, `Lv ${ev.u.level}!`, '#ffd23f', 0.32, 1); burst(ev.u, '#ffd23f', 14); }
-    else if (ev.type === 'place') burst(ev.u, '#e2bf65', 8);
+    else if (ev.type === 'level') { say(ev.u, `Lv ${ev.u.level}!`, '#ffd23f', 0.32, 1); burst(ev.u, 'Fee', 18, 1.3, 1.1); burst(ev.u, 'Elektro', 8, 1); }
+    else if (ev.type === 'place') burst(ev.u, 'Boden', 10, 1, 0.9);
   }
   game.events.length = 0;
 }

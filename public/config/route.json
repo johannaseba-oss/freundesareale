@@ -37,9 +37,9 @@
     "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels, über spread Sekunden verteilt; danach gap Sekunden Pause"
   },
   "shapes": {
-    "_hinweis": "Angriffsformen: adjacent = nur direkt angrenzende Felder (auch schräg), line = die ganze gerade Strecke in Blickrichtung (durchschlägt), circle = Welle im Radius (trifft alle im Kreis), cross = Kreuz (greift in alle vier Richtungen gleichzeitig an, trifft alle auf den Armen). Körperkontakt-Attacken = adjacent, sonst nach Attacken-Typ (byType), sonst circle.",
+    "_hinweis": "Angriffsformen: adjacent = nur direkt angrenzende Felder (auch schräg), line = die ganze gerade Strecke in Blickrichtung (durchschlägt), circle = Welle im Radius (trifft alle im Kreis), cross = Kreuz (greift in alle vier Richtungen gleichzeitig an, trifft alle auf den Armen). Körperkontakt-Attacken = adjacent, sonst nach Attacken-Typ (byType), sonst circle. ring = Wasser-Pokémon (Typ Wasser): Welle in einem Ring mit freier Mitte.",
     "byType": {
-      "Wasser": "line",
+      "Wasser": "ring",
       "Feuer": "line",
       "Drache": "line",
       "Elektro": "cross",
@@ -85,6 +85,17 @@
       "cooldown": 1.25,
       "mult": 0.75,
       "arm": 2
+    },
+    "ring": {
+      "name": "Ring",
+      "icon": "◯",
+      "cooldown": 1.2,
+      "mult": 0.7,
+      "inner": 1.1,
+      "outer": 2.4,
+      "outerPerLevel": 0.025,
+      "outerMax": 3.6,
+      "_hinweis": "Wasser-Pokémon: ringförmige Welle – trifft alle zwischen inner und outer Feldern Abstand, innen bleibt frei. outer wächst mit dem Level."
     }
   },
   "levelEffect": {
@@ -177,5 +188,8 @@
         "factor": 0.7
       }
     }
+  },
+  "water": {
+    "_hinweis": "Seerosen im Teich: dort dürfen nur Pokémon mit Typ Wasser stehen (Wasser-Pokémon können aber auch auf normale Plätze)."
   }
 }

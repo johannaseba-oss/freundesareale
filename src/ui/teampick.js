@@ -10,11 +10,13 @@ import { haptic } from '../haptics.js';
 // mons: Pokémon-Liste; N: Teamgröße; hint(p): kleine Zusatzinfo (Attacke/Rolle); onFull(uids): Team vollständig
 // initial: vorausgewählte uids (Empfehlung) – dann gibt es die Leiste mit „Empfehlung“, „Leeren“ und „Weiter“
 // recommend: empfohlene uids (Knopf „Empfehlung“, kleines ✦ auf der Karte) – ohne Angabe = initial
-export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = null }) {
+// selectedFirst: Ausgewählte stehen immer oben (in Auswahl-Reihenfolge), Abgewählte rutschen an ihren Platz in der Sortierung zurück
+export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = null, selectedFirst = false }) {
   const rec = recommend || initial;
   const sel = initial ? [...initial] : [];
   const count = h('span.bs-count');
   const cards = new Map();
+  let grid = null;
   const refresh = () => {
     count.textContent = `${sel.length}/${N}`;
     count.classList.toggle('full', sel.length === N);
@@ -23,8 +25,12 @@ export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = 
       el.classList.toggle('on', i >= 0);
       el.querySelector('.bs-num').textContent = i >= 0 ? String(i + 1) : '';
     }
+    if (selectedFirst && grid) {
+      const order = [...sel.map((u) => cards.get(u)).filter(Boolean), ...mons.filter((m) => !sel.includes(m.uid)).map((m) => cards.get(m.uid))];
+      order.forEach((el, k) => { if (grid.children[k] !== el) grid.insertBefore(el, grid.children[k] || null); });
+    }
   };
-  const grid = h('div.bs-grid.pick', mons.map((p) => {
+  grid = h('div.bs-grid.pick', mons.map((p) => {
     const el = h('button.bs-mon', { onclick: () => {
       const i = sel.indexOf(p.uid);
       if (i >= 0) sel.splice(i, 1);

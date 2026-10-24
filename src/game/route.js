@@ -12,8 +12,10 @@ const R = () => CFG.route;
 const refSpeed = (level) => Math.floor(((2 * 80 + 15) * level) / 100) + 5;
 export const routeLevels = () => CFG.routeLevels.levels;
 
-// Angriffsform einer Art: Körperkontakt = adjacent, sonst nach Attacken-Typ, sonst circle
+export const isWaterMon = (dex) => species(dex).types.includes('Wasser');
+// Angriffsform einer Art: Wasser-Pokémon = Ring, Körperkontakt = adjacent, sonst nach Attacken-Typ, sonst circle
 export function shapeOf(dex) {
+  if (isWaterMon(dex)) return 'ring';
   const mv = moveOf(bdata(dex).move);
   if (mv?.range === 'nah') return 'adjacent';
   return R().shapes.byType[mv?.type] || 'circle';
@@ -23,6 +25,11 @@ export const shapeInfo = (dex) => R().shapes[shapeOf(dex)];
 export function radiusOf(level) {
   const C = R().shapes.circle;
   return Math.min(C.radiusMax, C.radius + C.radiusPerLevel * (level - 1));
+}
+// äußerer Rand der Ring-Welle (wächst mit dem Level wie der Radius)
+export function ringOuter(level) {
+  const C = R().shapes.ring;
+  return Math.min(C.outerMax, C.outer + C.outerPerLevel * (level - 1));
 }
 // Tempo-Faktor durch das Level
 export const levelSpeed = (level) => Math.min(R().levelEffect.speedMax, 1 + R().levelEffect.speedPerLevel * (level - 1));
@@ -81,10 +88,13 @@ export class Route {
 
   // ---- Platzieren ----
   slotFree(i) { return !this.units.some((u) => u.slot === i); }
+  isWaterSlot(i) { return this.level.slots[i]?.[2] === 'w'; }
+  // Seerosen im Teich nur für Wasser-Pokémon
+  slotAllows(i, dex) { return !this.isWaterSlot(i) || isWaterMon(dex); }
   placed(uid) { return this.units.find((u) => u.uid === uid) || null; }
   place(uid, slot) {
     const m = this.team.find((x) => x.uid === uid);
-    if (!m || this.over || !this.slotFree(slot) || this.placed(uid) || this.units.length >= this.max) return false;
+    if (!m || this.over || !this.slotFree(slot) || !this.slotAllows(slot, m.dex) || this.placed(uid) || this.units.length >= this.max) return false;
     const [c, r] = this.level.slots[slot];
     const u = { id: this.nextId++, uid, dex: m.dex, gender: m.gender, nick: m.nick, ivs: m.ivs, evs: m.evs, level: m.level, slot, x: c + 0.5, y: r + 0.5, shape: shapeOf(m.dex), cd: 0.6, placedAt: this.t };
     u.face = this.bestFacing(u);
@@ -120,6 +130,7 @@ export class Route {
     switch (u.shape) {
       case 'adjacent': return Math.max(Math.abs(dx), Math.abs(dy)) <= 1.5;
       case 'line': { const fwd = dx * u.face[0] + dy * u.face[1], lat = Math.abs(dx * u.face[1] - dy * u.face[0]); return fwd > 0.3 && lat < 0.55; }
+      case 'ring': { const d = Math.hypot(dx, dy); return d >= R().shapes.ring.inner && d <= ringOuter(u.level); }
       case 'cross': { const a = R().shapes.cross.arm + 0.5; return (Math.abs(dx) < 0.55 && Math.abs(dy) <= a) || (Math.abs(dy) < 0.55 && Math.abs(dx) <= a); }
       default: return Math.hypot(dx, dy) <= radiusOf(u.level);
     }
@@ -228,7 +239,7 @@ export class Route {
       u.cd = S.cooldown / (levelSpeed(u.level) * spd);
       u.anim = { name: u.shape === 'adjacent' ? 'Attack' : 'Shoot', t0: this.t };
       const lead = inRange.reduce((a, b) => (b.s > a.s ? b : a));
-      if (u.shape === 'line' || u.shape === 'cross' || u.shape === 'circle') {
+      if (u.shape === 'line' || u.shape === 'cross' || u.shape === 'circle' || u.shape === 'ring') {
         // Gerade: ganze Strecke; Kreuz: alle vier Arme gleichzeitig; Radius: Welle, die alle im Kreis trifft
         for (const e of inRange) this.hit(u, e, S.mult);
         this.events.push({ type: 'attack', u, shape: u.shape, target: lead });

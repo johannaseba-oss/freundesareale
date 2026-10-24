@@ -28,25 +28,54 @@ function cells(pts) {
   out.push(pts[pts.length - 1]);
   return out.filter(([x, y]) => y >= 0 && y < ROWS && x >= 0 && x < COLS);
 }
-// Bauplätze: freie Felder neben der Route; bevorzugt solche, von denen aus viel Route in Reichweite liegt, mit Abstand zueinander
+// Bauplätze: freie Felder neben der Route; bevorzugt solche, von denen aus viel Route in Reichweite liegt, mit Abstand zueinander.
+// Zuerst Plätze in Verlängerung langer Geraden (dort sieht ein „Gerade“-Angreifer die ganze Strecke entlang),
+// dazu ein kleiner Teich mit Seerosen-Plätzen nur für Wasser-Pokémon.
 function slots(pts, n) {
   const path = cells(pts), on = new Set(path.map(([x, y]) => x + ',' + y));
+  const free = (x, y) => x >= 0 && x < COLS && y >= 0 && y < ROWS && !on.has(x + ',' + y);
+  const out = [], taken = (x, y) => out.some((o) => o.x === x && o.y === y);
+  // 1) Enden langer Geraden (mind. 4 Felder): das Feld direkt hinter dem Ende, in Linie mit der Strecke
+  const ends = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1], len = Math.abs(x1 - x0) + Math.abs(y1 - y0), dx = Math.sign(x1 - x0), dy = Math.sign(y1 - y0);
+    if (len < 4) continue;
+    for (const [x, y] of [[x0 - dx, y0 - dy], [x1 + dx, y1 + dy]]) if (free(x, y)) ends.push({ x, y, score: len + rnd() });
+  }
+  ends.sort((a, b) => b.score - a.score);
+  for (const e of ends) if (out.length < 3 && !taken(e.x, e.y)) out.push({ ...e, line: true });
+  // 2) Teich (2×2) nahe der Route, abseits der Linien-Plätze; ein Seerosen-Platz an der Route
+  let pond = null;
+  const pondCand = [];
+  for (let y = 1; y < ROWS - 2; y++) for (let x = 0; x < COLS - 1; x++) {
+    const cellsP = [[x, y], [x + 1, y], [x, y + 1], [x + 1, y + 1]];
+    if (!cellsP.every(([a, b]) => free(a, b) && !taken(a, b))) continue;
+    const near = cellsP.reduce((m, [a, b]) => m + path.filter(([px, py]) => Math.max(Math.abs(px - a), Math.abs(py - b)) <= 1).length, 0);
+    if (near) pondCand.push({ cellsP, score: near + rnd() * 3 });
+  }
+  pondCand.sort((a, b) => b.score - a.score);
+  if (pondCand.length) {
+    pond = pondCand[0].cellsP;
+    const best = [...pond].sort((a, b) => path.filter(([px, py]) => Math.hypot(px - b[0], py - b[1]) <= 2).length - path.filter(([px, py]) => Math.hypot(px - a[0], py - a[1]) <= 2).length);
+    out.push({ x: best[0][0], y: best[0][1], water: true });
+    if (rnd() < 0.5) { const o = best.find(([a, b]) => Math.abs(a - best[0][0]) + Math.abs(b - best[0][1]) === 2) || null; if (o) out.push({ x: o[0], y: o[1], water: true }); }
+  }
+  const inPond = (x, y) => pond?.some(([a, b]) => a === x && b === y);
   const cand = [];
   for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) {
-    if (on.has(x + ',' + y)) continue;
+    if (on.has(x + ',' + y) || inPond(x, y)) continue;
     const near = path.filter(([px, py]) => Math.max(Math.abs(px - x), Math.abs(py - y)) <= 1).length;
     if (!near) continue;
     const reach = path.filter(([px, py]) => Math.hypot(px - x, py - y) <= 2).length;
     cand.push({ x, y, score: near * 2 + reach + rnd() * 2 });
   }
   cand.sort((a, b) => b.score - a.score);
-  const out = [];
   for (const c of cand) {
     if (out.length >= n) break;
     if (out.some((o) => Math.abs(o.x - c.x) + Math.abs(o.y - c.y) < 2)) continue; // nicht direkt nebeneinander
     out.push(c);
   }
-  return out.map((c) => [c.x, c.y]).sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+  return { slots: out.sort((a, b) => a.y - b.y || a.x - b.x).map((c) => (c.water ? [c.x, c.y, 'w'] : [c.x, c.y])), water: pond || [] };
 }
 
 const levels = [];
@@ -58,7 +87,7 @@ for (let n = 1; n <= 30; n++) {
     n,
     name: P.name,
     path: P.pts,
-    slots: slots(P.pts, Math.max(11, 15 - Math.floor(n / 8))),
+    ...slots(P.pts, Math.max(11, 15 - Math.floor(n / 8))),
     types: [...new Set(types)],
     waves: 6 + Math.floor(n / 4),
     enemyLevel: Math.round(1 + (n - 1) * 1.55), // Level 1 mit frisch gezogenen Pokémon schaffbar
@@ -67,7 +96,7 @@ for (let n = 1; n <= 30; n++) {
   });
 }
 fs.writeFileSync(path.join(ROOT, 'public/config/route_levels.json'), JSON.stringify({
-  _hinweis: 'Route-Level. path = Eckpunkte der Route [Spalte, Zeile] im 9×13-Raster (Zeile -1 = Eingang oben, 13 = Ausgang unten), slots = Bauplätze, types = Gegner-Typen, waves = Wellen, enemyLevel = Gegnerlevel in Welle 1 (+enemy.levelPerWave je Welle), countMult = Gegneranzahl-Faktor, finalStage = höchste Entwicklungsstufe. Neu erzeugen: node tools/build_route_levels.mjs',
+  _hinweis: 'Route-Level. path = Eckpunkte der Route [Spalte, Zeile] im 9×13-Raster (Zeile -1 = Eingang oben, 13 = Ausgang unten), slots = Bauplätze ([Spalte, Zeile] bzw. [Spalte, Zeile, "w"] = Seerose im Teich, nur für Wasser-Pokémon), water = Teich-Felder, types = Gegner-Typen, waves = Wellen, enemyLevel = Gegnerlevel in Welle 1 (+enemy.levelPerWave je Welle), countMult = Gegneranzahl-Faktor, finalStage = höchste Entwicklungsstufe. Neu erzeugen: node tools/build_route_levels.mjs',
   levels,
 }, null, 1));
-console.log('Level:', levels.length, 'Bauplätze:', levels.map((l) => l.slots.length).join(','));
+console.log('Level:', levels.length, 'Bauplätze:', levels.map((l) => l.slots.length).join(','), 'Seerosen:', levels.map((l) => l.slots.filter((x) => x[2] === 'w').length).join(','));

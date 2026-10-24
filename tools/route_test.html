@@ -28,7 +28,7 @@ for (const ln of (qs.get('levels') || '1,5,10,20,30').split(',').map(Number)) {
       for (const s of scored) {
         if (!g.slotFree(s.i)) continue;
         const [c, r] = level.slots[s.i], probe = { x: c + 0.5, y: r + 0.5, shape: undefined };
-        g.place(m.uid, s.i); const u = g.placed(m.uid); let n = 0; for (const [a, b] of [...g.onPath].map((t) => t.split(',').map(Number))) if (g.inReach(u, { x: a + 0.5, y: b + 0.5 })) n++; g.unplace(u);
+        if (!g.place(m.uid, s.i)) continue; const u = g.placed(m.uid); let n = 0; for (const [a, b] of [...g.onPath].map((t) => t.split(',').map(Number))) if (g.inReach(u, { x: a + 0.5, y: b + 0.5 })) n++; g.unplace(u);
         if (!best || n > best.n) best = { i: s.i, n };
       }
       if (best) g.place(m.uid, best.i);
