@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Spaziergang (wie bei Nintendogs): Route auf der Karte einzeichnen – vom Zuhause (🏠) los und wieder zurück. Ausdauer (1–5) bestimmt die maximale Länge, Tempo (1–5, wie im Felsbrecher) die Geschwindigkeit. Wilde Pokémon wandern umher; wer ihnen begegnet, kämpft rundenbasiert wie im klassischen Pokémon-Spiel – jede Attacke kostet Münzen.",
+  "_hinweis": "Spaziergang (wie bei Nintendogs): Route auf der Karte einzeichnen – vom Startplatz los und wieder zurück. Ausdauer (1–5) bestimmt die maximale Länge, Tempo (1–5, wie im Felsbrecher) die Geschwindigkeit. Wilde Pokémon wandern umher; wer ihnen begegnet, kämpft rundenbasiert wie im Hauptspiel – mit den (bis zu) vier zuletzt per Level gelernten Attacken (public/data/learnsets.json, tools/build_learnsets.mjs).",
   "grid": {
     "cols": 20,
     "rows": 28
@@ -62,7 +62,7 @@
     ]
   },
   "wild": {
-    "_hinweis": "count = Anzahl wilder Pokémon [min, max]; inGrass = Anteil, der im hohen Gras startet; stayInGrass = Chance, im Gras zu bleiben; stepEvery = Sekunden je Schritt; Level = Level deines Pokémon + levelOffset, mindestens minLevel; maxStage nach Gegnerlevel; themeTypes = Typen je Gebiet.",
+    "_hinweis": "count = Anzahl wilder Pokémon [min, max]; inGrass = Anteil, der im hohen Gras startet; stayInGrass = Chance, im Gras zu bleiben; stepEvery = Sekunden je Schritt; Level = Level deines Pokémon + zufällig levelOffset [min, max] (jedes wilde Pokémon anders), mindestens minLevel; maxStage nach Gegnerlevel; themeTypes = Typen je Gebiet.",
     "count": [
       5,
       8
@@ -72,10 +72,10 @@
       1.1
     ],
     "levelOffset": [
-      -1,
-      1
+      -3,
+      4
     ],
-    "minLevel": 2,
+    "minLevel": 1,
     "fleeIgnore": 3,
     "themeTypes": {
       "wald": [
@@ -125,9 +125,7 @@
     "stayInGrass": 0.8
   },
   "battle": {
-    "_hinweis": "Attacken-Preis in Münzen = max(minCost, round(Stärke² / coinDiv)) – starke Attacken sind teuer (Stärke 40 ≈ 10, 80 ≈ 40, 120 ≈ 90). Wer eine gewählte Attacke nicht bezahlen kann: das Pokémon bekommt Angst und rennt nach Hause – der Spaziergang gilt als nicht geschafft. Fliehen: Chance fleeBase + (eigene Init / gegnerische Init − 1) × fleeSpeed, zwischen fleeMin und fleeMax.",
-    "coinDiv": 160,
-    "minCost": 10,
+    "_hinweis": "Fliehen: Chance fleeBase + (eigene Init / gegnerische Init − 1) × fleeSpeed, zwischen fleeMin und fleeMax.",
     "fleeBase": 0.5,
     "fleeSpeed": 0.5,
     "fleeMin": 0.2,

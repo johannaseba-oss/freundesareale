@@ -830,3 +830,5 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .pw-btn:disabled { filter: grayscale(.7); opacity: .6; }
 .pw.walking .pw-btns { display: none; }
 .walk2 .wb { z-index: 6; }
+.wb-st { margin-left: 6px; font-size: 10px; font-weight: 800; color: #fff; padding: 1px 4px; border-radius: 4px; vertical-align: middle; }
+.wb-st.par { background: #d8b020; } .wb-st.slp { background: #8a8a9a; } .wb-st.frz { background: #6ab8e8; } .wb-st.brn { background: #e0602a; } .wb-st.psn { background: #a050c0; }

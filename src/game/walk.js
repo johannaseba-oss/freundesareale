@@ -1,7 +1,7 @@
-// Spaziergang (wie bei Nintendogs): Zufallskarte, eingezeichnete Route (Zuhause → … → Zuhause), umherwandernde wilde Pokémon
-// und klassische Rundenkämpfe mit 4 Attacken, die Münzen kosten. Werte in walk.json.
+// Spaziergang (wie bei Nintendogs): Zufallskarte, eingezeichnete Route (Start → … → Start), umherwandernde wilde Pokémon
+// und klassische Rundenkämpfe mit den Attacken, die die Pokémon auf ihrem Level offiziell beherrschen. Werte in walk.json.
 import { CFG, species } from '../config.js';
-import { bdata, moveOf, calcStats, damageOf } from './battle.js';
+import { bdata, calcStats } from './battle.js';
 import { effectiveness } from './types.js';
 import { speedOf } from './rocks.js';
 import { dayKey } from '../time.js';
@@ -72,26 +72,24 @@ const walkableCell = (t) => t === 'F' || t === 'P' || t === 'T' || t === 'C';
 export const walkable = (map, x, y) => walkableCell(map.g[y]?.[x]);
 export const cellOf = (map, x, y) => map.g[y]?.[x] || 'W';
 
-// ---- Attacken: Signatur-Attacke + passende weitere, je nach stärkerem Angriffswert physisch oder speziell ----
-export function walkMoves(dex) {
-  const b = bdata(dex), sp = species(dex), phys = b.base[1] >= b.base[3];
-  const all = Object.entries(CFG.battleData.moves).filter(([, m]) => m.power > 0);
-  const out = [b.move];
-  const pick = (type, target) => {
-    const c = all.filter(([k, m]) => m.type === type && !out.includes(k)).sort((x, y) => (x[1].cat === (phys ? 'phys' : 'spez') ? 0 : 30) + Math.abs(x[1].power - target) - ((y[1].cat === (phys ? 'phys' : 'spez') ? 0 : 30) + Math.abs(y[1].power - target)));
-    if (c[0]) out.push(c[0][0]);
-  };
-  pick('Normal', 40); // günstige Grundattacke
-  for (const t of sp.types) if (out.length < 4) pick(t, out.length === 2 ? 65 : 95);
-  while (out.length < 4) pick(out.length === 3 ? sp.types[0] : 'Normal', out.length === 3 ? 110 : 70);
-  return out.slice(0, 4).sort((x, y) => moveOf(x).power - moveOf(y).power);
+// ---- Attacken nach offiziellem Regelwerk: die (bis zu) vier zuletzt per Level gelernten Attacken (data/learnsets.json) ----
+let LS = null;
+export async function loadLearnsets() {
+  if (!LS) LS = await fetch(`${import.meta.env.BASE_URL}data/learnsets.json`, { cache: 'no-cache' }).then((r) => r.json());
+  return LS;
 }
-export const moveCost = (key) => Math.max(W().battle.minCost, Math.round(moveOf(key).power ** 2 / W().battle.coinDiv));
+export const moveData = (id) => LS?.moves[id];
+export function movesAtLevel(dex, level) {
+  const all = LS?.learn[dex] || [], list = all.filter(([lv]) => lv <= Math.max(1, level));
+  const out = list.slice(-4).map(([, id]) => id);
+  return out.length ? out : all.slice(0, 1).map(([, id]) => id);
+}
 
-// Kämpfer für den Rundenkampf
+// Kämpfer für den Rundenkampf (offizielle Werteformel; Statusstufen −6…+6, Zustand, Verwirrung)
 export function makeFighter(src, level) {
   const stats = calcStats(src.dex, level, src.ivs || [15, 15, 15, 15, 15, 15], src.evs || [0, 0, 0, 0, 0, 0]);
-  return { uid: src.uid ?? null, dex: src.dex, gender: src.gender ?? null, nick: src.nick || null, level, stats, hp: stats[0], maxHp: stats[0], moves: walkMoves(src.dex), pbuff: src.pbuff || 1 };
+  return { uid: src.uid ?? null, dex: src.dex, gender: src.gender ?? null, nick: src.nick || null, level, stats, hp: stats[0], maxHp: stats[0], moves: movesAtLevel(src.dex, level), pbuff: src.pbuff || 1,
+    stage: [0, 0, 0, 0, 0, 0, 0, 0, 0], status: null, sleep: 0, confused: 0 };
 }
 
 // ---- wilde Pokémon ----
@@ -132,35 +130,128 @@ export function moveWild(map, wild, dt, rnd) {
   }
 }
 
-// ---- Rundenkampf ----
-// eine Runde: Spieler wählt Attacke (Index) oder 'flee'; liefert die Schritte für die Anzeige
+// ---- Rundenkampf nach den Hauptspiel-Regeln (vereinfacht: keine AP, keine Fähigkeiten/Items) ----
+// Reihenfolge nach Priorität, dann Initiative; Schaden mit offizieller Formel (Volltreffer, STAB, Typen, Zufall 85–100 %),
+// Statuswert-Stufen, Zustände (Paralyse, Schlaf, Gefroren, Verbrennung, Gift), Verwirrung, Zurückschrecken, Heilen/Saugen, Mehrfachtreffer.
+const STAT_NAME = [null, 'Angriff', 'Verteidigung', 'Spezial-Angriff', 'Spezial-Verteidigung', 'Initiative', 'Genauigkeit', 'Ausweichwert'];
+const stageMult = (s) => (s >= 0 ? (2 + s) / 2 : 2 / (2 - s));
+const accMult = (s) => (s >= 0 ? (3 + s) / 3 : 3 / (3 - s));
+const AIL = { 1: 'par', 2: 'slp', 3: 'frz', 4: 'brn', 5: 'psn', 6: 'conf' };
+const AIL_TEXT = { par: 'ist paralysiert! Es kann eventuell nicht angreifen.', slp: 'ist eingeschlafen!', frz: 'wurde eingefroren!', brn: 'hat sich verbrannt!', psn: 'wurde vergiftet!', conf: 'ist verwirrt!' };
+const IMMUNE = { par: ['Elektro'], brn: ['Feuer'], frz: ['Eis'], psn: ['Gift', 'Stahl'] };
+export const STATUS_TAG = { par: 'PAR', slp: 'SLF', frz: 'GFR', brn: 'BRT', psn: 'GIF' };
+const speedOfF = (f) => f.stats[5] * stageMult(f.stage[5]) * (f.status === 'par' ? 0.5 : 1);
+const nameOf = (f, who) => (who === 'w' ? 'Das wilde ' : '') + (f.nick || species(f.dex).name);
+const other = (who) => (who === 'p' ? 'w' : 'p');
+const ofName = (f, who) => (who === 'w' ? 'des wilden ' : 'von ') + (f.nick || species(f.dex).name); // „Angriff des wilden Bisasam“
+const inName = (f, who) => (who === 'w' ? 'das wilde ' : '') + (f.nick || species(f.dex).name); // mitten im Satz
+
 export function battleTurn(me, foe, choice, rnd) {
-  const steps = [];
-  const attack = (a, d, key, who) => {
-    const mv = moveOf(key);
-    steps.push({ who, text: `${nameOf(a, who)} setzt ${mv.name} ein!`, key });
-    if (rnd() * 100 >= (mv.acc || 100)) { steps.push({ who, text: 'Daneben!' }); return; }
-    const r = damageOf(a, d, mv, rnd);
-    d.hp = Math.max(0, d.hp - r.dmg);
-    steps.push({ who, hit: who === 'p' ? 'w' : 'p', dmg: r.dmg, eff: r.eff, hp: d.hp, text: r.eff === 0 ? 'Das hat keine Wirkung …' : r.eff > 1 ? 'Das ist sehr effektiv!' : r.eff < 1 ? 'Das ist nicht sehr effektiv …' : null });
-    if (d.hp <= 0) steps.push({ who, faint: who === 'p' ? 'w' : 'p', text: `${nameOf(d, who === 'p' ? 'w' : 'p')} wurde besiegt!` });
+  const steps = [], F = { p: me, w: foe };
+  const say = (text, extra = {}) => steps.push({ text, ...extra });
+  const faintCheck = (who) => { if (F[who].hp <= 0) { say(`${nameOf(F[who], who)} wurde besiegt!`, { faint: who }); return true; } return false; };
+  const applyAilment = (who, ail, fromStatusMove) => {
+    const d = F[who], k = AIL[ail];
+    if (!k) { if (fromStatusMove) say('Aber es passierte nichts …'); return; }
+    if (k === 'conf') { if (d.confused > 0) { if (fromStatusMove) say(`${nameOf(d, who)} ist bereits verwirrt.`); return; } d.confused = 2 + Math.floor(rnd() * 4); say(`${nameOf(d, who)} ${AIL_TEXT.conf}`); return; }
+    if (d.status || species(d.dex).types.some((t) => IMMUNE[k]?.includes(t))) { if (fromStatusMove) say('Es hat keine Wirkung …'); return; }
+    d.status = k; if (k === 'slp') d.sleep = 1 + Math.floor(rnd() * 3);
+    say(`${nameOf(d, who)} ${AIL_TEXT[k]}`, { status: who, value: k });
+  };
+  const applyStats = (who, list) => {
+    const d = F[who];
+    for (const [stat, ch] of list) {
+      const i = stat - 1; if (i < 1 || i > 7) continue;
+      const before = d.stage[i]; d.stage[i] = Math.max(-6, Math.min(6, before + ch));
+      const s = STAT_NAME[i], n = ofName(d, who);
+      if (d.stage[i] === before) say(`${s} ${n} kann nicht weiter ${ch > 0 ? 'steigen' : 'sinken'}!`);
+      else say(`${s} ${n} ${ch > 0 ? 'steigt' : 'sinkt'}${Math.abs(ch) >= 2 ? (ch > 0 ? ' stark' : ' stark') : ''}!`);
+    }
+  };
+  const damage = (a, d, mv, crit) => {
+    const phys = mv.cat === 'phys', ai = phys ? 1 : 3, di = phys ? 2 : 4;
+    const as = crit ? Math.max(0, a.stage[ai]) : a.stage[ai], ds = crit ? Math.min(0, d.stage[di]) : d.stage[di];
+    const A = a.stats[ai] * stageMult(as) * (phys ? a.pbuff || 1 : 1), D = d.stats[di] * stageMult(ds);
+    const eff = mv.type === '???' ? 1 : effectiveness(mv.type, species(d.dex).types);
+    let dmg = Math.floor(Math.floor((Math.floor((2 * a.level) / 5 + 2) * mv.power * A) / D) / 50) + 2;
+    dmg *= (crit ? 1.5 : 1) * (0.85 + rnd() * 0.15) * (species(a.dex).types.includes(mv.type) ? 1.5 : 1) * eff * (phys && a.status === 'brn' ? 0.5 : 1);
+    return { dmg: eff ? Math.max(1, Math.floor(dmg)) : 0, eff };
+  };
+  // eine Aktion; first = hat zuerst gehandelt (für Zurückschrecken)
+  const act = (who, id, first) => {
+    const a = F[who], dw = other(who), d = F[dw], mv = moveData(id);
+    if (a.flinch) { a.flinch = false; say(`${nameOf(a, who)} schreckt zurück!`); return; }
+    if (a.status === 'slp') { if (--a.sleep > 0) { say(`${nameOf(a, who)} schläft tief und fest.`); return; } a.status = null; say(`${nameOf(a, who)} ist aufgewacht!`, { status: who, value: null }); }
+    if (a.status === 'frz') { if (rnd() < 0.2) { a.status = null; say(`${nameOf(a, who)} ist wieder aufgetaut!`, { status: who, value: null }); } else { say(`${nameOf(a, who)} ist gefroren!`); return; } }
+    if (a.status === 'par' && rnd() < 0.25) { say(`${nameOf(a, who)} ist paralysiert! Es kann nicht angreifen!`); return; }
+    if (a.confused > 0) {
+      if (--a.confused <= 0) say(`${nameOf(a, who)} ist nicht mehr verwirrt!`);
+      else {
+        say(`${nameOf(a, who)} ist verwirrt!`);
+        if (rnd() < 1 / 3) { const r = damage(a, a, { power: 40, cat: 'phys', type: '???' }, false); a.hp = Math.max(0, a.hp - r.dmg); say('Es hat sich vor Verwirrung selbst verletzt!', { hit: who, dmg: r.dmg, eff: 1, hp: a.hp }); faintCheck(who); return; }
+      }
+    }
+    if (!mv) { say(`${nameOf(a, who)} weiß nicht, was es tun soll …`); return; }
+    say(`${nameOf(a, who)} setzt ${mv.name} ein!`, { who, key: id });
+    const m = mv.m || {};
+    if (mv.acc && !mv.self && rnd() * 100 >= mv.acc * accMult(a.stage[6] - d.stage[7])) { say(`Die Attacke ${ofName(a, who)} ging daneben!`); return; }
+    if (mv.power > 0) {
+      const hits = m.hits ? m.hits[0] + Math.floor(rnd() * (m.hits[1] - m.hits[0] + 1)) : 1;
+      let total = 0, n = 0, lastEff = 1;
+      for (let i = 0; i < hits && d.hp > 0; i++) {
+        const crit = rnd() < [1 / 24, 1 / 8, 1 / 2, 1][Math.min(3, m.crit || 0)];
+        const r = damage(a, d, mv, crit); lastEff = r.eff;
+        if (!r.eff) { say(`Es hat keine Wirkung auf ${inName(d, dw)} …`); return; }
+        d.hp = Math.max(0, d.hp - r.dmg); total += r.dmg; n++;
+        say(crit ? 'Ein Volltreffer!' : null, { hit: dw, dmg: r.dmg, eff: r.eff, hp: d.hp });
+      }
+      if (lastEff > 1) say('Das ist sehr effektiv!'); else if (lastEff < 1) say('Das ist nicht sehr effektiv …');
+      if (hits > 1) say(`Getroffen: ${n}-mal!`);
+      if (m.drain) { // positiv = Saugen, negativ = Rückstoß
+        const ch = Math.max(1, Math.floor((total * Math.abs(m.drain)) / 100));
+        a.hp = m.drain > 0 ? Math.min(a.maxHp, a.hp + ch) : Math.max(0, a.hp - ch);
+        say(m.drain > 0 ? `${inName(d, dw).replace(/^./, (c) => c.toUpperCase())} wurde Energie abgesaugt!` : `${nameOf(a, who)} wird durch den Rückstoß getroffen!`, { set: who, hp: a.hp });
+      }
+      if (faintCheck(dw)) { if (a.hp <= 0) faintCheck(who); return; }
+      if (a.hp <= 0 && faintCheck(who)) return;
+      if (m.flinch && first && rnd() * 100 < m.flinch) d.flinch = true;
+      if (m.ail && (m.c === 4 || m.c === 0) && rnd() * 100 < (m.ailP || 0)) applyAilment(dw, m.ail, false);
+      if (m.stats && (m.c === 6 || m.c === 7) && rnd() * 100 < (m.statP || 100)) applyStats(m.c === 7 ? who : dw, m.stats);
+      return;
+    }
+    // Status-Attacken
+    if (m.c === 1 && m.ail) { applyAilment(mv.self ? who : dw, m.ail, true); return; }
+    if (m.c === 2 && m.stats) { applyStats(mv.self ? who : dw, m.stats); return; }
+    if (m.c === 3 && m.heal) { if (a.hp >= a.maxHp) { say('Aber es schlug fehl!'); return; } a.hp = Math.min(a.maxHp, a.hp + Math.floor((a.maxHp * m.heal) / 100)); say(`${nameOf(a, who)} hat sich erholt!`, { set: who, hp: a.hp }); return; }
+    if (m.c === 5) { applyStats(dw, m.stats || [[2, 2]]); applyAilment(dw, 6, true); return; }
+    say('Aber es passierte nichts …');
+  };
+  const endOfTurn = () => {
+    for (const who of ['p', 'w']) {
+      const f = F[who];
+      if (f.hp <= 0 || (f.status !== 'brn' && f.status !== 'psn')) continue;
+      const dmg = Math.max(1, Math.floor(f.maxHp / (f.status === 'brn' ? 16 : 8)));
+      f.hp = Math.max(0, f.hp - dmg);
+      say(`${nameOf(f, who)} wird ${f.status === 'brn' ? 'durch die Verbrennung' : 'durch das Gift'} verletzt!`, { hit: who, dmg, eff: 1, hp: f.hp });
+      if (faintCheck(who)) return;
+    }
   };
   const foeMove = foe.moves[Math.floor(rnd() * foe.moves.length)];
   if (choice === 'flee') {
-    const B = W().battle, ch = Math.max(B.fleeMin, Math.min(B.fleeMax, B.fleeBase + (me.stats[5] / foe.stats[5] - 1) * B.fleeSpeed));
-    if (rnd() < ch) { steps.push({ fled: true, text: 'Du bist entkommen!' }); return steps; }
-    steps.push({ text: 'Flucht gescheitert!' });
-    attack(foe, me, foeMove, 'w');
+    const B = W().battle, ch = Math.max(B.fleeMin, Math.min(B.fleeMax, B.fleeBase + (speedOfF(me) / speedOfF(foe) - 1) * B.fleeSpeed));
+    if (rnd() < ch) { say('Du bist entkommen!', { fled: true }); return steps; }
+    say('Flucht gescheitert!');
+    act('w', foeMove, true); if (me.hp > 0 && foe.hp > 0) endOfTurn();
     return steps;
   }
-  const key = me.moves[choice];
-  const meFirst = me.stats[5] > foe.stats[5] || (me.stats[5] === foe.stats[5] && rnd() < 0.5);
-  const order = meFirst ? [[me, foe, key, 'p'], [foe, me, foeMove, 'w']] : [[foe, me, foeMove, 'w'], [me, foe, key, 'p']];
-  for (const [a, d, k, who] of order) { if (a.hp <= 0 || d.hp <= 0) break; attack(a, d, k, who); }
+  const myMove = me.moves[choice], pm = moveData(myMove)?.prio || 0, pf = moveData(foeMove)?.prio || 0;
+  const meFirst = pm !== pf ? pm > pf : speedOfF(me) !== speedOfF(foe) ? speedOfF(me) > speedOfF(foe) : rnd() < 0.5;
+  const order = meFirst ? [['p', myMove], ['w', foeMove]] : [['w', foeMove], ['p', myMove]];
+  order.forEach(([who, id], i) => { if (me.hp > 0 && foe.hp > 0) act(who, id, i === 0); });
+  if (me.hp > 0 && foe.hp > 0) endOfTurn();
+  me.flinch = foe.flinch = false;
   return steps;
 }
-const nameOf = (f, who) => (who === 'w' ? 'Das wilde ' : '') + (f.nick || species(f.dex).name);
-export { effectiveness };
 
 // ---- Belohnungen im Spielstand ----
 export function walkWin(s, uid, foe) {
@@ -186,10 +277,4 @@ export function walkDone(s, uid, steps, home, t) {
   const ep = home ? Math.round(steps * W().rewards.epPerStep) : 0;
   s.route ||= { ep: 0, cleared: 0 }; s.route.ep += ep;
   return { ok: true, ep };
-}
-export function payMove(s, key) {
-  const c = moveCost(key);
-  if (s.coins < c) return { ok: false, msg: `Zu wenig Münzen (${c} nötig).` };
-  s.coins -= c;
-  return { ok: true, cost: c };
 }
