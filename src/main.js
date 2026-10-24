@@ -62,7 +62,7 @@ async function main() {
   if (/type=recovery/.test(location.hash)) { recovery = true; hideBoot(); showAuth(be, 'reset'); return; }
   const user = await be.getUser();
   if (user) startGame(user);
-  else { hideBoot(); showAuth(be, 'login'); }
+  else { hideBoot(); showAuth(be, new URLSearchParams(location.search).has('registrieren') ? 'register' : 'login'); } // Link mit ?registrieren öffnet direkt die Registrierung
 }
 
 async function startGame(user) {
