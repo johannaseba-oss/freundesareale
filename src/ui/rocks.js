@@ -73,7 +73,7 @@ export function openItemShop(onClose = null) {
         })));
     };
     render();
-    m.append(h('div.row', h('h3', { style: { margin: 0, flex: 1 } }, '🛒 Item-Shop'), h('button.btn.small', { onclick: () => { close(); onClose?.(); if (setupEl?.isConnected && !ui) renderRocksSetup(setupEl, setupBack); }, style: { flex: 'none' } }, '✕')), body);
+    m.append(h('div.row', h('h3', { style: { margin: 0, flex: 1 } }, '🛒 Item-Shop'), h('button.btn.small', { onclick: () => import('./slots.js').then((x) => x.openBag()), style: { flex: 'none' } }, '🎒 Steine'), h('button.btn.small', { onclick: () => { close(); onClose?.(); if (setupEl?.isConnected && !ui) renderRocksSetup(setupEl, setupBack); }, style: { flex: 'none' } }, '✕')), body);
   });
 }
 

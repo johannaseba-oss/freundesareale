@@ -779,3 +779,24 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .wb-move:disabled, .wb-flee:disabled { opacity: .5; }
 .wb-flee { grid-column: span 2; background: var(--paper2); border: 2px solid var(--line); border-radius: 10px; padding: 8px; font: inherit; font-weight: 700; color: var(--ink); }
 .wb-move .wb-cost.poor { color: #d9534f; }
+
+/* Spielautomat */
+.slot-btn { position: absolute; right: 10px; top: calc(10px + var(--safe-t)); z-index: 3; background: linear-gradient(#ffb43a, #f07a10); color: #fff; font: inherit; font-weight: 800; border: 3px solid #7a3a08; border-radius: 12px; padding: 6px 10px; box-shadow: 0 3px 0 #7a3a08; text-shadow: 0 1px 0 #7a3a08; }
+.slots { background: #2b1838; }
+.slots .b-field { position: relative; }
+.sl-controls { background: var(--paper); padding: 8px 10px calc(8px + var(--safe-b)); display: grid; gap: 8px; max-height: 44vh; overflow-y: auto; }
+.sl-bets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.sl-bet { display: grid; justify-items: center; gap: 1px; background: var(--paper2); border: 2px solid var(--line); border-radius: 10px; padding: 4px; font: inherit; color: var(--ink); }
+.sl-bet.on { border-color: #f07a10; background: #fff1d6; box-shadow: 0 0 0 2px #ffb43a inset; }
+.sl-bet canvas { image-rendering: pixelated; width: 28px; height: 28px; }
+.sl-bet b { font-size: 16px; }
+.sl-bet small { font-size: 10px; color: var(--ink-soft); }
+.sl-bet:disabled { opacity: .5; }
+.sl-spin { font-size: 20px; }
+.sl-legend { display: grid; gap: 3px; font-size: 12px; }
+.sl-row { display: flex; align-items: center; gap: 6px; }
+.sl-row span:nth-child(2) { flex: 1; }
+.sl-row small { color: var(--ink-soft); }
+.sl-syms { display: inline-flex; gap: 1px; width: 96px; flex: none; }
+.sl-syms canvas { image-rendering: pixelated; height: 18px; width: auto; }
+.rk-tabs.wrap { flex-wrap: wrap; }

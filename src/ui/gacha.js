@@ -46,6 +46,7 @@ export async function initGacha() {
   bindKnob();
   app.views.add(renderInfo);
   $('#gacha-psychic').onclick = useForesight;
+  $('#slot-btn').onclick = () => import('./slots.js').then((m) => m.openSlots());
   if (import.meta.env.DEV) app.gacha = { step: (dt) => { stepCrank(dt); step(dt); }, draw, finishCrank, get balls() { return balls; }, get anim() { return anim; }, exitPoint };
   let last = performance.now();
   const loop = (t) => {
@@ -334,7 +335,7 @@ function useForesight() {
 }
 
 // ---- Enthüllung ----
-function reveal(r) {
+export function reveal(r) {
   const p = r.pokemon, sp = species(p.dex), ball = ballById(r.ball.ball);
   const legendary = sp.rarity === 'legendaer';
   const cv = h('canvas', { width: 380, height: 380 });

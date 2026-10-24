@@ -175,15 +175,20 @@ export function draw(s, t, key) {
   if (free) s.freeDrawAt = t + CFG.balance.gacha.freeDrawEveryHours * 3600e3;
   else s.coins -= cost;
   s.stats.draws++;
+  const p = addCaught(s, t, ball.dex, ball.ball, { drawKey: ball.key, paid: free ? 0 : cost });
+  return { ok: true, pokemon: p, ball, free };
+}
+// neues Pokémon in den Beutel (Automat, Spielautomat)
+export function addCaught(s, t, dex, ballId, extra = {}) {
   const p = {
-    uid: newUid(s, t), dex: ball.dex, ball: ball.ball, drawKey: ball.key, paid: free ? 0 : cost, caughtAt: t, area: null,
+    uid: newUid(s, t), dex, ball: ballId, ...extra, caughtAt: t, area: null,
     level: 1, xp: 0, fullness: CFG.balance.newPokemon.fullness, satisfaction: CFG.balance.newPokemon.satisfaction, affection: CFG.balance.newPokemon.affection,
-    gender: rollGender(ball.dex), cleanliness: isHairy(ball.dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
+    gender: rollGender(dex), cleanliness: isHairy(dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
   };
   ensureBattleData(p);
   s.pokemon.push(p);
   if (!s.dexOwned.includes(p.dex)) s.dexOwned.push(p.dex);
-  return { ok: true, pokemon: p, ball, free };
+  return p;
 }
 
 // Ei ausbrüten: neues Exemplar im Beutel, mit vererbten/verbesserten Werten

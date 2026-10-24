@@ -16,10 +16,22 @@ function weekStart(ms) {
 export const weekKey = (ms) => { const d = weekStart(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 export const nextWeekStart = (ms) => { const d = weekStart(ms); d.setDate(d.getDate() + 7); return d.getTime(); };
 
+// nur über den Spielautomaten erhältlich (slots.json exclusive)
+const slotOnly = (dex) => !!CFG.slots?.exclusive?.includes(dex);
+// ältere Wochen-Pools: Spielautomat-exklusive Pokémon gegen andere derselben Seltenheit tauschen
+function dropSlotOnly(s) {
+  let changed = false;
+  for (const b of [...(s.gacha?.machine || []), ...(s.gacha?.queue || [])]) {
+    if (!slotOnly(b.dex)) continue;
+    const r = species(b.dex)?.rarity, list = CFG.dex.filter((p) => p.rarity === r && !slotOnly(p.dex)).map((p) => p.dex);
+    if (list.length) { b.dex = list[hashString('swap' + b.key) % list.length]; changed = true; }
+  }
+  return changed;
+}
 // ein Ball mit festem Inhalt (gleiche Seltenheits-Gewichte wie der Wochen-Pool)
 function makeBall(rnd, i) {
   const g = CFG.balance.gacha, byRarity = {};
-  for (const p of CFG.dex) (byRarity[p.rarity] ||= []).push(p.dex);
+  for (const p of CFG.dex) if (!slotOnly(p.dex)) (byRarity[p.rarity] ||= []).push(p.dex); // Spielautomat-exklusive fehlen hier
   const ball = weightedPick(g.balls.filter((b) => byRarity[b.rarity]?.length), (b) => b.weight, rnd);
   const list = byRarity[ball.rarity];
   return { key: Math.floor(rnd() * 1e9) * 100 + (i % 100), ball: ball.id, dex: list[Math.floor(rnd() * list.length)], x: null, y: null };
@@ -39,7 +51,7 @@ function topUp(s) {
 export function ensureWeeklyPool(s, nowMs, userId) {
   const g = CFG.balance.gacha;
   const week = weekKey(nowMs);
-  if (s.gacha && s.gacha.week === week) return topUp(s); // ältere Spielstände mit weniger Bällen auffüllen
+  if (s.gacha && s.gacha.week === week) { const d = dropSlotOnly(s); return topUp(s) || d; } // ältere Spielstände auffüllen / bereinigen
   const rnd = mulberry32(hashString(`${userId}|week|${week}`));
   const pool = [];
   for (let i = 0; i < g.ballsPerWeek; i++) pool.push(makeBall(rnd, i));
