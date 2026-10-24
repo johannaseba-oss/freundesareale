@@ -96,8 +96,10 @@ function openField() {
   setMusic(musicForLevel(game.level.types));
   ui = { root, canvas, ctx: canvas.getContext('2d'), bar, info, msg, livesEl, epEl, waveEl, sel: null, selUnit: null, fx: [], texts: [], beams: [], waves: [], last: performance.now(), raf: 0 };
   for (const m of game.team) loadSprites(m.dex, m.gender);
-  const TH = CFG.defenseThemes; ui.themeId = TH.byType[game.level.types[0]] || 'wald';
-  const ti = new Image(); ti.src = `${base}art/defense/${ui.themeId}.png`; ti.onload = () => { ui.bg = null; }; ui.tiles = ti;
+  // Thema je Level: nach Gegner-Typ, sonst reihum (Wald, Herbstwald, Dunkler Wald, Eishöhle)
+  const RT = CFG.routeTiles, ids = Object.keys(RT.themes);
+  ui.themeId = RT.byType[game.level.types[0]] && RT.themes[RT.byType[game.level.types[0]]] ? RT.byType[game.level.types[0]] : ids[(game.level.n - 1) % ids.length];
+  const ti = new Image(); ti.src = `${base}art/route/${ui.themeId}.png`; ti.onload = () => { ui.bg = null; }; ui.tiles = ti;
   ui.ro = new ResizeObserver(() => layout()); ui.ro.observe(canvas.parentElement);
   canvas.addEventListener('pointerdown', onField);
   layout();
@@ -261,10 +263,41 @@ function renderTop() {
 function message(text) { const el = h('div', text); ui.msg.append(el); setTimeout(() => el.remove(), 2600); }
 
 // ---------- Zeichnen ----------
-// Hintergrund in Original-Pixelgröße (24 px je Feld) zeichnen und danach ganzzahlig vergrößern:
-// Boden aus dem Tileset, sandige Route mit eingesunkener Kante, Kieseln und runden Ecken, Bauplätze als Holzpodeste
+// Gelände der Karte: Route, Bauplatz-Lichtungen und Teich-Ufer = Boden (F), Teich = Wasser (A), alles andere = Wand (W, Bäume)
+function terrainAt() {
+  const G = R().grid, cells = new Map(), k = (x, y) => x + ',' + y;
+  for (const [x, y] of pathCells(game.level.path)) cells.set(k(x, y), 'F');
+  for (const [x, y] of game.level.slots) cells.set(k(x, y), 'F');
+  for (const [x, y] of game.level.water || []) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const nx = x + dx, ny = y + dy;
+    if (!cells.has(k(nx, ny)) && nx >= 0 && nx < G.cols && ny >= 0 && ny < G.rows) cells.set(k(nx, ny), 'F'); // Ufer
+  }
+  for (const [x, y] of game.level.water || []) cells.set(k(x, y), 'A');
+  const first = game.level.path[0], last = game.level.path[game.level.path.length - 1];
+  return (x, y) => cells.get(k(x, y)) || ((x === first[0] && y < 0) || (x === last[0] && y >= G.rows) ? 'F' : 'W');
+}
+// erwartete Ränder (N, NO, O, SO, S, SW, W, NW): eigenes Gelände, wenn der Nachbar dazugehört, sonst Boden
+function expectedEdges(tAt, x, y) {
+  const t = tAt(x, y);
+  if (t === 'F') return 'FFFFFFFF';
+  const same = (dx, dy) => tAt(x + dx, y + dy) === t;
+  const o = (dx, dy) => (same(dx, dy) ? t : 'F'), corner = (dx, dy) => (same(dx, 0) && same(0, dy) && same(dx, dy) ? t : 'F');
+  return o(0, -1) + corner(1, -1) + o(1, 0) + corner(1, 1) + o(0, 1) + corner(-1, 1) + o(-1, 0) + corner(-1, -1);
+}
+// passende Kachel: wenigste abweichende Ränder; unter gleich guten zufällig (fest je Feld) – so wiederholt sich nichts sichtbar
+function pickTile(tiles, t, exp, h) {
+  let best = [], bs = 99;
+  for (const k of tiles) {
+    if (k.t !== t || (k.x && exp === t.repeat(8))) continue;
+    let sc = 0; for (let i = 0; i < 8; i++) if (k.m[i] !== exp[i]) sc += i % 2 ? 1 : 2;
+    if (sc < bs) { bs = sc; best = [k]; } else if (sc === bs) best.push(k);
+  }
+  return best.length ? best[h % best.length] : null;
+}
+// Hintergrund aus den PMD-Tilesets (Autotiles) in Original-Pixelgröße zeichnen und ganzzahlig vergrößern;
+// darauf Seerosen (Wasser-Plätze) und Holzpodeste (Bauplätze)
 function buildBackground() {
-  const U = ui, G = R().grid, th = CFG.defenseThemes.themes[U.themeId], S = 24;
+  const U = ui, G = R().grid, S = 24, tiles = CFG.routeTiles.themes[U.themeId].tiles;
   const c = document.createElement('canvas');
   c.width = Math.round(U.w * U.dpr); c.height = Math.round(U.h * U.dpr);
   const Dp = Math.round(U.tile * U.dpr), ox = Math.round(U.ox * U.dpr), oy = Math.round(U.oy * U.dpr);
@@ -272,58 +305,14 @@ function buildBackground() {
   const lo = document.createElement('canvas'); lo.width = (c1 - c0 + 1) * S; lo.height = (r1 - r0 + 1) * S;
   const x = lo.getContext('2d'); x.imageSmoothingEnabled = false;
   const X = (col) => (col - c0) * S, Y = (r) => (r - r0) * S;
-  const hash = (a, b) => (((a * 73856093) ^ (b * 19349663)) >>> 0);
-  const inGrid = (col, r) => col >= 0 && col < G.cols && r >= 0 && r < G.rows;
-  for (let r = r0; r <= r1; r++) for (let col = c0; col <= c1; col++) x.drawImage(U.tiles, (inGrid(col, r) ? th.wall : hash(col, r) % 997 % th.wall) * S, 0, S, S, X(col), Y(r), S, S);
-  // Route (inkl. Eingang oben und Ausgang unten bis zum Bildrand)
-  const cells = pathCells(game.level.path), on = new Set(cells.map(([a, b]) => a + ',' + b));
-  const first = game.level.path[0], last = game.level.path[game.level.path.length - 1];
-  const isP = (a, b) => on.has(a + ',' + b) || (a === first[0] && b < 0) || (a === last[0] && b >= G.rows);
-  const all = [...cells]; for (let r = r0; r < 0; r++) all.push([first[0], r]); for (let r = G.rows; r <= r1; r++) all.push([last[0], r]);
+  const hash = (a, b) => (((a * 73856093) ^ (b * 19349663) ^ (game.level.n * 83492791)) >>> 0);
+  const tAt = terrainAt();
+  for (let r = r0; r <= r1; r++) for (let col = c0; col <= c1; col++) {
+    const t = tAt(col, r), h = hash(col, r);
+    const k = pickTile(tiles, t, expectedEdges(tAt, col, r), h) || pickTile(tiles, 'F', 'FFFFFFFF', h);
+    if (k) x.drawImage(U.tiles, k.c * S, k.r * S, S, S, X(col), Y(r), S, S);
+  }
   const P = (col, r, X0, Y0, color) => { x.fillStyle = color; x.fillRect(X0 + col, Y0 + r, 1, 1); };
-  for (const [a, b] of all) {
-    const X0 = X(a), Y0 = Y(b), n = isP(a, b - 1), sth = isP(a, b + 1), w = isP(a - 1, b), e = isP(a + 1, b);
-    x.fillStyle = '#c99c5d'; x.fillRect(X0, Y0, S, S);
-    for (let yy = 0; yy < S; yy++) for (let xx = 0; xx < S; xx++) { // Erdkörnung
-      const hv = hash(a * S + xx, b * S + yy) % 211;
-      if (hv < 14) P(xx, yy, X0, Y0, '#b88a4f'); else if (hv < 22) P(xx, yy, X0, Y0, '#d9b277'); else if (hv === 23) { P(xx, yy, X0, Y0, '#8f6a3e'); P(xx + 1, yy, X0, Y0, '#8f6a3e'); P(xx, yy - 1, X0, Y0, '#e6c891'); }
-    }
-    // Kanten: oben/links Schatten (Weg liegt etwas tiefer), unten/rechts heller Rand, außen dunkle Kontur
-    if (!n) { x.fillStyle = '#6e4c2a'; x.fillRect(X0, Y0, S, 1); x.fillStyle = '#9e7340'; x.fillRect(X0, Y0 + 1, S, 2); }
-    if (!w) { x.fillStyle = '#6e4c2a'; x.fillRect(X0, Y0, 1, S); x.fillStyle = '#9e7340'; x.fillRect(X0 + 1, Y0, 2, S); }
-    if (!sth) { x.fillStyle = '#6e4c2a'; x.fillRect(X0, Y0 + S - 1, S, 1); x.fillStyle = '#e2c38c'; x.fillRect(X0, Y0 + S - 2, S, 1); }
-    if (!e) { x.fillStyle = '#6e4c2a'; x.fillRect(X0 + S - 1, Y0, 1, S); x.fillStyle = '#e2c38c'; x.fillRect(X0 + S - 2, Y0, 1, S); }
-    // runde Außenecken: Bodenpixel aus dem Tileset zurückholen
-    const fx = th.wall * S, back = (cx, cy) => x.drawImage(U.tiles, fx + cx, cy, 1, 1, X0 + cx, Y0 + cy, 1, 1);
-    if (!n && !w) { back(0, 0); back(1, 0); back(0, 1); P(1, 1, X0, Y0, '#6e4c2a'); }
-    if (!n && !e) { back(S - 1, 0); back(S - 2, 0); back(S - 1, 1); P(S - 2, 1, X0, Y0, '#6e4c2a'); }
-    if (!sth && !w) { back(0, S - 1); back(1, S - 1); back(0, S - 2); P(1, S - 2, X0, Y0, '#6e4c2a'); }
-    if (!sth && !e) { back(S - 1, S - 1); back(S - 2, S - 1); back(S - 1, S - 2); P(S - 2, S - 2, X0, Y0, '#6e4c2a'); }
-    // Innenecken: kleiner Schattenpunkt, wo zwei Wegstücke um eine Ecke laufen
-    if (n && w && !isP(a - 1, b - 1)) { P(0, 0, X0, Y0, '#6e4c2a'); P(1, 0, X0, Y0, '#9e7340'); P(0, 1, X0, Y0, '#9e7340'); }
-    if (n && e && !isP(a + 1, b - 1)) { P(S - 1, 0, X0, Y0, '#6e4c2a'); }
-    if (sth && w && !isP(a - 1, b + 1)) { P(0, S - 1, X0, Y0, '#6e4c2a'); }
-    if (sth && e && !isP(a + 1, b + 1)) { P(S - 1, S - 1, X0, Y0, '#6e4c2a'); }
-  }
-  // Teich: Wasser mit Wellen-Glanzlichtern und dunklem Ufer
-  const pond = new Set((game.level.water || []).map(([a, b]) => a + ',' + b)), isW = (a, b) => pond.has(a + ',' + b);
-  for (const [a, b] of game.level.water || []) {
-    const X0 = X(a), Y0 = Y(b);
-    x.fillStyle = '#3f86d6'; x.fillRect(X0, Y0, S, S);
-    for (let yy = 0; yy < S; yy++) for (let xx = 0; xx < S; xx++) { const hv = hash(a * S + xx, b * S + yy) % 97; if (hv < 6) P(xx, yy, X0, Y0, '#5aa2ea'); else if (hv === 7) P(xx, yy, X0, Y0, '#2f6fbf'); }
-    for (let k = 0; k < 3; k++) { const yy = 4 + k * 7 + (hash(a, b + k) % 3), xx = 2 + (hash(a + k, b) % 12); x.fillStyle = '#bfe3ff'; x.fillRect(X0 + xx, Y0 + yy, 5, 1); x.fillStyle = '#8cc6f5'; x.fillRect(X0 + xx + 1, Y0 + yy + 1, 3, 1); }
-    x.fillStyle = '#2b5f9e';
-    if (!isW(a, b - 1)) x.fillRect(X0, Y0, S, 2);
-    if (!isW(a - 1, b)) x.fillRect(X0, Y0, 2, S);
-    x.fillStyle = '#7fbbe8';
-    if (!isW(a, b + 1)) x.fillRect(X0, Y0 + S - 2, S, 1);
-    if (!isW(a + 1, b)) x.fillRect(X0 + S - 2, Y0, 1, S);
-    const fx = th.wall * S, back = (cx, cy) => x.drawImage(U.tiles, fx + cx, cy, 1, 1, X0 + cx, Y0 + cy, 1, 1); // runde Teich-Ecken
-    if (!isW(a, b - 1) && !isW(a - 1, b)) { back(0, 0); back(1, 0); back(0, 1); }
-    if (!isW(a, b - 1) && !isW(a + 1, b)) { back(S - 1, 0); back(S - 2, 0); back(S - 1, 1); }
-    if (!isW(a, b + 1) && !isW(a - 1, b)) { back(0, S - 1); back(1, S - 1); back(0, S - 2); }
-    if (!isW(a, b + 1) && !isW(a + 1, b)) { back(S - 1, S - 1); back(S - 2, S - 1); back(S - 1, S - 2); }
-  }
   // Seerosen (nur Wasser-Pokémon): grünes Blatt mit Kerbe und kleiner Blüte
   for (const [a, b, w] of game.level.slots) {
     if (w !== 'w') continue;
@@ -352,8 +341,6 @@ function buildBackground() {
     }
     x.fillStyle = '#8a5a30'; x.fillRect(L + 1, T0 + 17, W - 2, 1); // untere Kante
   }
-  // Rahmen um das Spielfeld
-  x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(X(0) - 1, Y(0) - 1, G.cols * S + 2, 1); x.fillRect(X(0) - 1, Y(G.rows), G.cols * S + 2, 1); x.fillRect(X(0) - 1, Y(0), 1, G.rows * S); x.fillRect(X(G.cols), Y(0), 1, G.rows * S);
   // ganzzahlig vergrößert aufs Bild
   const out = c.getContext('2d'); out.imageSmoothingEnabled = false;
   out.drawImage(lo, 0, 0, lo.width, lo.height, ox + c0 * Dp, oy + r0 * Dp, lo.width * (Dp / S), lo.height * (Dp / S));
