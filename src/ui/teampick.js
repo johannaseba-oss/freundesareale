@@ -9,7 +9,9 @@ import { haptic } from '../haptics.js';
 
 // mons: Pokémon-Liste; N: Teamgröße; hint(p): kleine Zusatzinfo (Attacke/Rolle); onFull(uids): Team vollständig
 // initial: vorausgewählte uids (Empfehlung) – dann gibt es die Leiste mit „Empfehlung“, „Leeren“ und „Weiter“
-export function teamPicker({ mons, N, hint, onFull, initial = null }) {
+// recommend: empfohlene uids (Knopf „Empfehlung“, kleines ✦ auf der Karte) – ohne Angabe = initial
+export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = null }) {
+  const rec = recommend || initial;
   const sel = initial ? [...initial] : [];
   const count = h('span.bs-count');
   const cards = new Map();
@@ -35,7 +37,7 @@ export function teamPicker({ mons, N, hint, onFull, initial = null }) {
     } },
     h('span.bs-num'),
     h('img.bs-por', { src: portraitUrl(p.dex), alt: '', loading: 'lazy' }),
-    h('b', p.nick || species(p.dex).name),
+    h('b', p.nick || species(p.dex).name, recommend?.includes(p.uid) ? h('span.bs-rec', { title: 'Empfohlen' }, ' ✦') : null),
     h('span.type-chips.mini', species(p.dex).types.map((ty) => typeChip(ty))),
     hint(p));
     cards.set(p.uid, el);
@@ -43,7 +45,7 @@ export function teamPicker({ mons, N, hint, onFull, initial = null }) {
   }));
   const set = (list) => { sel.length = 0; sel.push(...list); refresh(); };
   const tools = initial ? h('div.bs-tools',
-    h('button.btn.small', { onclick: () => { set(initial); haptic('tick'); } }, '✦ Empfehlung'),
+    h('button.btn.small', { onclick: () => { set(rec); haptic('tick'); } }, '✦ Empfehlung'),
     h('button.btn.small', { onclick: () => { set([]); haptic('tick'); } }, 'Leeren'),
     h('button.btn.small.primary', { onclick: () => { if (sel.length === N || (sel.length && sel.length >= Math.min(N, mons.length))) onFull([...sel]); else toast(`Wähle ${N} Pokémon.`); } }, 'Weiter ›')) : null;
   refresh();

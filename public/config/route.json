@@ -13,7 +13,7 @@
   "lives": 10,
   "_lives": "So viele Gegner dürfen das Ende der Route erreichen; danach ist das Level verloren.",
   "enemy": {
-    "hpMult": 2.4,
+    "hpMult": 3,
     "tilesPerSecond": 1,
     "speedExp": 0.5,
     "levelPerWave": 1,
@@ -37,7 +37,7 @@
     "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels, über spread Sekunden verteilt; danach gap Sekunden Pause"
   },
   "shapes": {
-    "_hinweis": "Angriffsformen: adjacent = nur direkt angrenzende Felder (auch schräg), line = die ganze gerade Strecke in Blickrichtung (durchschlägt), circle = kreisrunder Radius (Fernschuss auf ein Ziel), cross = Kreuz (trifft alle auf den Armen). Körperkontakt-Attacken = adjacent, sonst nach Attacken-Typ (byType), sonst circle.",
+    "_hinweis": "Angriffsformen: adjacent = nur direkt angrenzende Felder (auch schräg), line = die ganze gerade Strecke in Blickrichtung (durchschlägt), circle = Welle im Radius (trifft alle im Kreis), cross = Kreuz (greift in alle vier Richtungen gleichzeitig an, trifft alle auf den Armen). Körperkontakt-Attacken = adjacent, sonst nach Attacken-Typ (byType), sonst circle.",
     "byType": {
       "Wasser": "line",
       "Feuer": "line",
@@ -74,7 +74,7 @@
       "name": "Radius",
       "icon": "◎",
       "cooldown": 1.1,
-      "mult": 1,
+      "mult": 0.6,
       "radius": 1.6,
       "radiusPerLevel": 0.025,
       "radiusMax": 3.2
@@ -112,5 +112,63 @@
   },
   "teamRecommend": {
     "_hinweis": "Empfohlenes Team: möglichst verschiedene Angriffsformen, dann die stärksten gegen die Gegner-Typen"
+  },
+  "status": {
+    "_hinweis": "Statuseffekte nach Attacken-Typ (bei jedem Treffer mit chance): burn/poison = Schaden über Zeit (pctPerSecond der max. KP, seconds lang), paralysis = steht kurz still, sleep = schläft (steht still, bis die Zeit um ist), slow = langsamer (factor).",
+    "byType": {
+      "Feuer": {
+        "kind": "burn",
+        "name": "Verbrennung",
+        "chance": 0.35,
+        "seconds": 3,
+        "pctPerSecond": 0.025
+      },
+      "Gift": {
+        "kind": "poison",
+        "name": "Gift",
+        "chance": 0.5,
+        "seconds": 4,
+        "pctPerSecond": 0.025
+      },
+      "Elektro": {
+        "kind": "paralysis",
+        "name": "Paralyse",
+        "chance": 0.25,
+        "seconds": 1
+      },
+      "Pflanze": {
+        "kind": "sleep",
+        "name": "Schlaf",
+        "chance": 0.15,
+        "seconds": 2
+      },
+      "Psycho": {
+        "kind": "sleep",
+        "name": "Schlaf",
+        "chance": 0.1,
+        "seconds": 1.5
+      },
+      "Eis": {
+        "kind": "slow",
+        "name": "Verlangsamung",
+        "chance": 0.6,
+        "seconds": 2.5,
+        "factor": 0.5
+      },
+      "Wasser": {
+        "kind": "slow",
+        "name": "Verlangsamung",
+        "chance": 0.35,
+        "seconds": 1.5,
+        "factor": 0.7
+      },
+      "Boden": {
+        "kind": "slow",
+        "name": "Verlangsamung",
+        "chance": 0.35,
+        "seconds": 1.5,
+        "factor": 0.7
+      }
+    }
   }
 }

@@ -695,3 +695,11 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .r-preview span i { font-style: normal; color: var(--ink); font-weight: 400; }
 .btn.dim { opacity: .55; }
 .r-mon { touch-action: none; }
+
+/* Route-Teamauswahl: Favoriten, Empfehlung, Sortierung */
+.bs-mon { position: relative; }
+.bs-fav { position: absolute; top: 26px; left: 3px; font-size: 18px; line-height: 1; color: #b9ad97; cursor: pointer; padding: 2px; }
+.bs-fav.on { color: #f2b93b; text-shadow: 0 1px 0 #8a5a12; }
+.bs-rec { color: #7a46b0; font-weight: 700; }
+.r-sort { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
+.r-sort small { color: var(--ink-soft); }

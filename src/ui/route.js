@@ -16,22 +16,35 @@ import { now, dayKey } from '../time.js';
 const R = () => CFG.route;
 const base = import.meta.env.BASE_URL;
 let chosen = null, game = null, ui = null, team = [];
+let sortBy = 'level', pickSel = null; // Sortierung der Teamauswahl, aktuelle Auswahl (bleibt beim Umsortieren)
 const st = () => app.state.route || { ep: 0, cleared: 0 };
-const SHAPE_TEXT = { adjacent: 'trifft direkt angrenzende Felder', line: 'trifft die ganze gerade Strecke in Blickrichtung', circle: 'schießt im Radius', cross: 'trifft alles auf einem Kreuz' };
+const SHAPE_TEXT = { adjacent: 'trifft direkt angrenzende Felder', line: 'trifft die ganze gerade Strecke in Blickrichtung', circle: 'Welle trifft alle im Radius', cross: 'greift in alle vier Richtungen gleichzeitig an' };
 
 // ================= Auswahl =================
 export function renderRouteSetup(el, back) {
   if (!chosen) { renderLevels(el, back); return; }
-  const mons = app.state.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => b.level - a.level || a.dex - b.dex);
+  // Favoriten immer oben, danach nach Level oder Angriffsform
+  const favs = st().favs || [], SH = ['adjacent', 'line', 'circle', 'cross'];
+  const mons = app.state.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => (favs.includes(b.uid) - favs.includes(a.uid))
+    || (sortBy === 'shape' ? SH.indexOf(shapeOf(a.dex)) - SH.indexOf(shapeOf(b.dex)) : 0) || b.level - a.level || a.dex - b.dex);
   const N = Math.min(maxUnits(st().cleared || 0), mons.length);
   if (!N) { toast('Du brauchst Pokémon – zieh welche am Automaten!'); chosen = null; renderLevels(el, back); return; }
-  const hint = (p) => { const sh = R().shapes[shapeOf(p.dex)]; return [h('span.role-tag.route-shape', `${sh.icon} ${sh.name}`), h('span.d-price', `Lv ${p.level}`)]; };
-  const picker = teamPicker({ mons, N, hint, initial: recommendRouteTeam(mons, chosen.types, N), onFull: (uids) => confirmTeam(uids) });
+  const rec = recommendRouteTeam(mons, chosen.types, N);
+  if (!pickSel) pickSel = rec;
+  const hint = (p) => {
+    const sh = R().shapes[shapeOf(p.dex)], fav = favs.includes(p.uid);
+    const star = h('span.bs-fav' + (fav ? '.on' : ''), { title: 'Favorit', onclick: (e) => { e.stopPropagation(); app.act((s) => A.toggleRouteFav(s, p.uid), true); haptic('tick'); renderRouteSetup(el, back); } }, fav ? '★' : '☆');
+    return [h('span.role-tag.route-shape', `${sh.icon} ${sh.name}`), h('span.d-price', `Lv ${p.level}`), star];
+  };
+  const picker = teamPicker({ mons, N, hint, initial: pickSel, recommend: rec, onFull: (uids) => confirmTeam(uids) });
+  pickSel = picker.sel; // gleiche Liste – Änderungen bleiben beim Neuzeichnen erhalten
+  const sortBtn = (id, label) => h('button.btn.small' + (sortBy === id ? '.primary' : ''), { onclick: () => { sortBy = id; renderRouteSetup(el, back); } }, label);
   el.replaceChildren(h('div.bs',
-    h('button.btn.small.mode-back', { onclick: () => { chosen = null; renderRouteSetup(el, back); } }, '‹ Level'),
+    h('button.btn.small.mode-back', { onclick: () => { chosen = null; pickSel = null; renderRouteSetup(el, back); } }, '‹ Level'),
     h('div.bs-head', h('h2', `🛤 Level ${chosen.n} · ${chosen.name}`), picker.count),
     h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t))), h('small', ` · ${chosen.waves} Wellen`)),
-    h('p.note', `Empfohlenes Team mit verschiedenen Angriffsformen ist ausgewählt – antippen zum Tauschen. Bis zu ${N} Pokémon kommen aufs Feld.`),
+    h('p.note', `✦ = empfohlen (verschiedene Angriffsformen, stark gegen diese Gegner). Antippen zum Tauschen, ☆ markiert Favoriten. Bis zu ${N} Pokémon kommen aufs Feld.`),
+    h('div.r-sort', h('small', 'Sortieren:'), sortBtn('level', 'Level'), sortBtn('shape', 'Angriffsform')),
     picker.tools, picker.grid));
 }
 function renderLevels(el, back) {
@@ -44,7 +57,7 @@ function renderLevels(el, back) {
       const state = lv.n <= done ? 'done' : lv.n === done + 1 ? 'next' : 'locked';
       return h('button.route-lv.' + state, { onclick: () => {
         if (state === 'locked') { toast(`Schaffe zuerst Level ${done + 1}.`); return; }
-        chosen = lv; haptic('tick'); renderRouteSetup(el, back); el.scrollTop = 0;
+        chosen = lv; pickSel = null; haptic('tick'); renderRouteSetup(el, back); el.scrollTop = 0;
       } }, h('b', state === 'done' ? '✓ ' + lv.n : String(lv.n)), h('small', lv.name), h('span.road-types', lv.types.map((t) => h('i', { style: { background: typeColor(t) } }))));
     }))));
 }
@@ -79,7 +92,7 @@ function openField() {
   document.body.append(root);
   document.body.classList.add('in-battle');
   setMusic(musicForLevel(game.level.types));
-  ui = { root, canvas, ctx: canvas.getContext('2d'), bar, info, msg, livesEl, epEl, waveEl, sel: null, selUnit: null, fx: [], texts: [], beams: [], last: performance.now(), raf: 0 };
+  ui = { root, canvas, ctx: canvas.getContext('2d'), bar, info, msg, livesEl, epEl, waveEl, sel: null, selUnit: null, fx: [], texts: [], beams: [], waves: [], last: performance.now(), raf: 0 };
   for (const m of game.team) loadSprites(m.dex, m.gender);
   const TH = CFG.defenseThemes; ui.themeId = TH.byType[game.level.types[0]] || 'wald';
   const ti = new Image(); ti.src = `${base}art/defense/${ui.themeId}.png`; ti.onload = () => { ui.bg = null; }; ui.tiles = ti;
@@ -226,7 +239,7 @@ function renderInfo() {
   if (!m) { ui.info.replaceChildren(h('small', 'Pokémon unten antippen, dann einen Bauplatz. Platzierte Pokémon antippen = trainieren.')); return; }
   const sh = shapeOf(m.dex), mv = moveOf(bdata(m.dex).move);
   ui.info.replaceChildren(h('b', m.nick || species(m.dex).name), h('span.type-chips.inline', species(m.dex).types.map((t) => typeChip(t))),
-    h('small', `${R().shapes[sh].icon} ${R().shapes[sh].name}: ${SHAPE_TEXT[sh]} · ${mv.name} (${mv.cat === 'phys' ? 'physisch' : 'speziell'})`));
+    h('small', `${R().shapes[sh].icon} ${R().shapes[sh].name}: ${SHAPE_TEXT[sh]} · ${mv.name} (${mv.cat === 'phys' ? 'physisch' : 'speziell'})${R().status?.byType?.[mv.type] ? ' · ' + R().status.byType[mv.type].name : ''}`));
 }
 function renderTop() {
   const w = game.progress(), k = `${game.lives}|${w.wave}|${game.ep}|${(st().ep || 0) + game.ep}`;
@@ -337,11 +350,28 @@ function draw(dt) {
   for (const { o, mine } of all) drawMon(x, o, mine, P(o), T, now2);
   // Fernschüsse
   for (const s of game.shots) { const [X, Y] = P(s), q = Math.max(4, T / 7); x.fillStyle = '#fff'; x.fillRect(X - q / 2 - 1, Y - q / 2 - 1, q + 2, q + 2); x.fillStyle = typeColor(s.type); x.fillRect(X - q / 2, Y - q / 2, q, q); }
-  // Strahlen/Kreuze/Hiebe
+  // Gerade und Kreuz: Strahlen breiten sich vom Pokémon aus in alle Arm-Richtungen gleichzeitig aus
   U.beams = U.beams.filter((b) => {
-    b.t += dt; if (b.t > 0.25) return false;
-    x.globalAlpha = 1 - b.t / 0.25; x.fillStyle = b.color;
-    for (const [a, c] of b.cells) x.fillRect(U.ox + a * T + T * 0.3, U.oy + c * T + T * 0.3, T * 0.4, T * 0.4);
+    b.t += dt; if (b.t > 0.3) return false;
+    const reach = Math.min(1, b.t / 0.12) * 9;
+    x.globalAlpha = 1 - Math.max(0, b.t - 0.12) / 0.18; x.fillStyle = b.color;
+    for (const [a, c] of b.cells) {
+      const d = Math.max(Math.abs(a + 0.5 - b.from.x), Math.abs(c + 0.5 - b.from.y));
+      if (d > reach) continue;
+      x.fillRect(U.ox + a * T + T * 0.28, U.oy + c * T + T * 0.28, T * 0.44, T * 0.44);
+      x.fillStyle = '#ffffff'; x.fillRect(U.ox + a * T + T * 0.42, U.oy + c * T + T * 0.42, T * 0.16, T * 0.16); x.fillStyle = b.color;
+    }
+    x.globalAlpha = 1;
+    return true;
+  });
+  // Radius: Ring-Welle, die sich bis zum Rand des Kreises ausbreitet
+  U.waves = U.waves.filter((wv) => {
+    wv.t += dt; if (wv.t > 0.45) return false;
+    const k = wv.t / 0.45, X = U.ox + wv.x * T, Y = U.oy + wv.y * T, rr = wv.r * T * (0.2 + 0.8 * Math.min(1, k * 1.4));
+    x.globalAlpha = 1 - k; x.strokeStyle = wv.color; x.lineWidth = Math.max(3, T / 8) * (1 - k * 0.5);
+    x.beginPath(); x.arc(X, Y, rr, 0, 7); x.stroke();
+    x.strokeStyle = '#ffffff'; x.lineWidth = Math.max(1, T / 20); x.beginPath(); x.arc(X, Y, rr * 0.92, 0, 7); x.stroke();
+    x.fillStyle = wv.color; x.globalAlpha = 0.12 * (1 - k); x.beginPath(); x.arc(X, Y, rr, 0, 7); x.fill();
     x.globalAlpha = 1;
     return true;
   });
@@ -375,11 +405,21 @@ function drawMon(x, o, mine, [X, Y], T, now2) {
     x.font = `600 ${Math.round(T * 0.2)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; x.lineWidth = 3; x.strokeStyle = 'rgba(40,25,20,.9)';
     x.strokeText('Lv' + o.level, X, Y + T * 0.46); x.fillStyle = '#fff6c0'; x.fillText('Lv' + o.level, X, Y + T * 0.46);
     if (trainState(o).ok) upArrow(x, X + T * 0.34, Y - T * 0.34, T, now2); // genug EP zum Trainieren
-  } else if (o.hp > 0 && (o.hp < o.maxHp || o.boss)) {
+  } else if (o.hp > 0) drawStatus(x, o, X, Y, T, now2);
+  if (!mine && o.hp > 0 && (o.hp < o.maxHp || o.boss)) {
     const bw = T * (o.boss ? 1 : 0.6), bh = Math.max(3, T / 14), by = Y - T * 0.5;
     x.fillStyle = '#2f2622'; x.fillRect(X - bw / 2 - 1, by - 1, bw + 2, bh + 2);
     x.fillStyle = o.boss ? '#ffb02e' : '#ef5d5d'; x.fillRect(X - bw / 2, by, (bw * o.hp) / o.maxHp, bh);
   }
+}
+// Statuseffekte am Gegner: Flämmchen, Giftblasen, Funken (Paralyse), „z“ (Schlaf), blauer Schimmer (Verlangsamung)
+function drawStatus(x, o, X, Y, T, now2) {
+  const q = Math.max(2, Math.round(T / 14)), t = game.t;
+  if (o.dots?.burn && Math.random() < 0.3) ui.fx.push({ x: o.x + (Math.random() - 0.5) * 0.4, y: o.y - 0.2, vx: 0, vy: -1.5, color: Math.random() < 0.5 ? '#ff7a3a' : '#ffd23f', life: 0.4 });
+  if (o.dots?.poison && Math.random() < 0.25) ui.fx.push({ x: o.x + (Math.random() - 0.5) * 0.4, y: o.y - 0.2, vx: 0, vy: -1, color: Math.random() < 0.5 ? '#a33ea1' : '#d79ae0', life: 0.5 });
+  if (t < (o.stunUntil || 0) && Math.floor(now2 / 90) % 2) { x.fillStyle = '#ffe066'; for (let i = 0; i < 3; i++) { const a = now2 / 120 + i * 2.1; x.fillRect(X + Math.cos(a) * T * 0.3, Y - T * 0.45 + Math.sin(a) * T * 0.08, q, q * 2); } }
+  if (t < (o.sleepUntil || 0)) { x.font = `600 ${Math.round(T * 0.26)}px 'Ziffern', 'Pixelify Sans', sans-serif`; x.textAlign = 'center'; const k = (now2 / 900) % 1; x.globalAlpha = 1 - k; x.lineWidth = 2; x.strokeStyle = 'rgba(30,30,60,.8)'; x.strokeText('z', X + T * (0.2 + k * 0.2), Y - T * (0.4 + k * 0.4)); x.fillStyle = '#e8f0ff'; x.fillText('z', X + T * (0.2 + k * 0.2), Y - T * (0.4 + k * 0.4)); x.globalAlpha = 1; }
+  if (t < (o.slowUntil || 0)) { x.fillStyle = 'rgba(120,190,255,.35)'; x.beginPath(); x.ellipse(X, Y + T * 0.2, T * 0.32, T * 0.12, 0, 0, 7); x.fill(); }
 }
 // kleiner grüner Pixel-Pfeil (pulsiert): dieses Pokémon kann trainiert werden
 function upArrow(x, X, Y, T, now2) {
@@ -395,12 +435,15 @@ function handleEvents() {
     if (ev.type === 'attack') {
       const u = ev.u, color = typeColor(moveOf(bdata(u.dex).move).type);
       u.lookAt = ev.target;
-      if (u.shape === 'line' || u.shape === 'cross') ui.beams.push({ cells: reachCells(u), color, t: 0 });
+      if (u.shape === 'line' || u.shape === 'cross') ui.beams.push({ cells: reachCells(u), color, t: 0, from: u });
+      if (u.shape === 'circle') ui.waves.push({ x: u.x, y: u.y, r: radiusOf(u.level), color, t: 0 });
       sfx.attack(moveOf(bdata(u.dex).move).type);
     } else if (ev.type === 'hit') {
       const col = ev.crit ? '#ffe066' : ev.eff > 1 ? '#ffd23f' : ev.eff < 1 ? '#d0c8bc' : '#ffffff';
       say(ev.e, String(ev.dmg), col, ev.crit || ev.eff > 1 ? 0.38 : 0.3); burst(ev.e, typeColor(ev.move.type), ev.crit ? 10 : 5); sfx.hit();
-    } else if (ev.type === 'defeat') { say(ev.e, `+${ev.ep} EP`, '#9fe8ff', 0.26, 1); burst(ev.e, '#ffffff', 12); sfx.ko(); }
+    } else if (ev.type === 'status') { say(ev.e, ev.name + '!', { burn: '#ffa75c', poison: '#d48ae0', paralysis: '#ffe066', sleep: '#cfe0ff', slow: '#9fd0ff' }[ev.kind], 0.22, 0.9); }
+    else if (ev.type === 'dot') { say(ev.e, String(ev.dmg), ev.kind === 'burn' ? '#ffa75c' : '#d48ae0', 0.22, 0.6); }
+    else if (ev.type === 'defeat') { say(ev.e, `+${ev.ep} EP`, '#9fe8ff', 0.26, 1); burst(ev.e, '#ffffff', 12); sfx.ko(); }
     else if (ev.type === 'leak') { message(`Ein wildes Pokémon ist durchgekommen! Noch ${game.lives} ♥`); haptic('strong'); sfx.lose(); }
     else if (ev.type === 'wave') { message(ev.last ? 'Letzte Welle – mit Boss!' : `Welle ${ev.wave + 1}`); sfx.wave(ev.last); haptic('medium'); }
     else if (ev.type === 'boss') { message('Ein Boss erscheint!'); haptic('strong'); }

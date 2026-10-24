@@ -171,11 +171,24 @@ export class Route {
     const r = this.damage(u, e, mult);
     e.hp -= r.dmg; e.hurtT = this.t;
     this.events.push({ type: 'hit', e, dmg: r.dmg, eff: r.eff, crit: r.crit, move: r.mv });
-    if (e.hp <= 0) {
-      const P = R().ep, ep = Math.round(P.perEnemy + e.level * P.perEnemyLevel) + (e.boss ? P.boss : 0);
-      this.ep += ep;
-      this.events.push({ type: 'defeat', e, ep });
-    }
+    const S = R().status?.byType?.[r.mv.type];
+    if (S && r.dmg > 0 && e.hp > 0 && this.rnd() < S.chance) this.applyStatus(e, S, u);
+    if (e.hp <= 0) this.defeat(e);
+  }
+
+  // Statuseffekte: Verbrennung/Gift (Schaden über Zeit), Paralyse und Schlaf (steht still), Verlangsamung
+  applyStatus(e, S, u) {
+    const until = this.t + S.seconds;
+    if (S.kind === 'burn' || S.kind === 'poison') (e.dots ||= {})[S.kind] = { until, dps: e.maxHp * S.pctPerSecond, from: u, tick: 0 };
+    else if (S.kind === 'paralysis') e.stunUntil = Math.max(e.stunUntil || 0, until);
+    else if (S.kind === 'sleep') e.sleepUntil = Math.max(e.sleepUntil || 0, until);
+    else if (S.kind === 'slow') { e.slowUntil = until; e.slowFactor = Math.min(e.slowUntil > this.t ? e.slowFactor || 1 : 1, S.factor); }
+    this.events.push({ type: 'status', e, kind: S.kind, name: S.name });
+  }
+  defeat(e) {
+    const P = R().ep, ep = Math.round(P.perEnemy + e.level * P.perEnemyLevel) + (e.boss ? P.boss : 0);
+    this.ep += ep;
+    this.events.push({ type: 'defeat', e, ep });
   }
 
   // ---- Simulation ----
@@ -191,7 +204,16 @@ export class Route {
     // Gegner laufen die Route entlang
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
-      e.s += E.tilesPerSecond * e.pace * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (e.boss ? 0.75 : 1) * dt;
+      for (const [kind, d] of Object.entries(e.dots || {})) { // Verbrennung, Gift
+        if (this.t >= d.until) { delete e.dots[kind]; continue; }
+        const dmg = d.dps * dt; e.hp -= dmg; d.tick += dmg;
+        if (d.tick >= Math.max(1, d.dps * 0.5)) { this.events.push({ type: 'dot', e, kind, dmg: Math.round(d.tick) }); d.tick = 0; }
+        if (e.hp <= 0) { e.hurtT = this.t; this.defeat(e); break; }
+      }
+      if (e.hp <= 0) continue;
+      if (this.t < (e.stunUntil || 0) || this.t < (e.sleepUntil || 0)) continue; // Paralyse/Schlaf: steht still
+      const slow = this.t < (e.slowUntil || 0) ? e.slowFactor || 1 : 1;
+      e.s += E.tilesPerSecond * e.pace * slow * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (e.boss ? 0.75 : 1) * dt;
       Object.assign(e, this.posAt(Math.max(0, e.s)));
       if (e.s >= this.length) { e.hp = 0; e.leaked = true; this.lives--; this.events.push({ type: 'leak', e }); if (this.lives <= 0) { this.over = { won: false }; return; } }
     }
@@ -205,11 +227,9 @@ export class Route {
       u.cd = S.cooldown / (levelSpeed(u.level) * spd);
       u.anim = { name: u.shape === 'adjacent' ? 'Attack' : 'Shoot', t0: this.t };
       const lead = inRange.reduce((a, b) => (b.s > a.s ? b : a));
-      if (u.shape === 'line' || u.shape === 'cross') { // trifft alle in der Linie bzw. auf den Kreuz-Armen
+      if (u.shape === 'line' || u.shape === 'cross' || u.shape === 'circle') {
+        // Gerade: ganze Strecke; Kreuz: alle vier Arme gleichzeitig; Radius: Welle, die alle im Kreis trifft
         for (const e of inRange) this.hit(u, e, S.mult);
-        this.events.push({ type: 'attack', u, shape: u.shape, target: lead });
-      } else if (u.shape === 'circle') { // Fernschuss auf ein Ziel
-        this.shots.push({ x: u.x, y: u.y - 0.2, target: lead, u, type: moveOf(bdata(u.dex).move).type });
         this.events.push({ type: 'attack', u, shape: u.shape, target: lead });
       } else { this.hit(u, lead, S.mult); this.events.push({ type: 'attack', u, shape: u.shape, target: lead }); }
     }
