@@ -25,7 +25,8 @@ export function calcStats(dex, level, ivs, evs) {
     return i === 0 ? core + level + 10 : core + 5;
   });
 }
-export const expForLevel = (dex, level) => CFG.battleData.growth[bdata(dex).growth][Math.min(level, 100)];
+// EP-Bedarf je Level (offizielle Tabelle bis 100; darüber kubisch fortgesetzt – kein Level-Limit)
+export const expForLevel = (dex, level) => { const g = CFG.battleData.growth[bdata(dex).growth]; return level <= 100 ? g[level] : Math.round(g[100] * Math.pow(level / 100, 3)); };
 // Vergleichswert für Tempo/Angriffspause: ein Pokémon mit Basiswert referenceBaseStat auf demselben Level
 const refStat = (level) => Math.floor(((2 * C().referenceBaseStat + 15) * level) / 100) + 5;
 

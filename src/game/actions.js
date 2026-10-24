@@ -125,7 +125,7 @@ export function toggleRouteFav(s, uid) {
 export function trainLevel(s, p, t, cost, dayKey) {
   const U = CFG.route.upgrade;
   s.route ||= { ep: 0, cleared: 0 };
-  if (p.level >= CFG.balance.level.max) return fail('Schon auf dem Höchstlevel.');
+  if (CFG.balance.level.max && p.level >= CFG.balance.level.max) return fail('Schon auf dem Höchstlevel.');
   if (s.route.day !== dayKey) { s.route.day = dayKey; s.route.today = {}; }
   const done = s.route.today[p.uid] || 0;
   if (done >= U.dailyPerPokemon) return fail(`Heute schon ${U.dailyPerPokemon}× trainiert – morgen geht es weiter.`);
@@ -133,7 +133,7 @@ export function trainLevel(s, p, t, cost, dayKey) {
   s.route.ep -= cost;
   s.route.today[p.uid] = done + 1;
   p.trainLevels = (p.trainLevels || 0) + 1;
-  p.level = Math.min(CFG.balance.level.max, p.level + 1);
+  p.level = Math.min(CFG.balance.level.max || Infinity, p.level + 1);
   return { ok: true, level: p.level };
 }
 

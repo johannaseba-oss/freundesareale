@@ -703,3 +703,26 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .bs-rec { color: #7a46b0; font-weight: 700; }
 .r-sort { display: flex; gap: 6px; align-items: center; margin: 4px 0; }
 .r-sort small { color: var(--ink-soft); }
+
+/* Pause: Schadensübersicht */
+.ds { margin-top: 12px; text-align: left; max-height: 46vh; overflow-y: auto; }
+.ds-h { display: block; margin: 10px 0 6px; font-size: 14px; }
+.ds-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.ds-row img { width: 34px; height: 34px; image-rendering: pixelated; }
+.ds-main { flex: 1; min-width: 0; }
+.ds-main b { font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.ds-bar { height: 6px; border-radius: 3px; background: rgba(0,0,0,.12); margin-top: 3px; overflow: hidden; }
+.ds-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f5a623, #ffd23f); }
+.ds-num { text-align: right; font-size: 12px; line-height: 1.1; }
+.ds-num small { display: block; opacity: .65; }
+.ds-tag { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 6px; color: #fff; }
+.ds-tag.top { background: #3aa655; }
+.ds-tag.low { background: #d9534f; }
+.ds-map { display: grid; gap: 2px; max-width: 320px; margin: 0 auto; }
+.ds-cell { aspect-ratio: 1; border-radius: 3px; background: rgba(0,0,0,.25); position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.ds-cell.empty { background: rgba(0,0,0,.1); }
+.ds-cell.none { background: transparent; }
+.ds-cell img { width: 62%; height: 62%; margin-bottom: 18%; image-rendering: pixelated; opacity: .9; }
+.ds-cell span { position: absolute; bottom: 0; right: 1px; font-size: 8px; font-weight: 700; color: #fff; text-shadow: 0 0 2px #000; }
+.ds-note { display: block; margin-top: 8px; opacity: .7; font-size: 11px; }
+.ds-tag.help { background: #8a8f98; }

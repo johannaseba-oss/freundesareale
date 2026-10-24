@@ -636,7 +636,17 @@
         2,
         3
       ]
-    }
+    },
+    "coinsPerWave": 10,
+    "_coinsPerWave": "Münzen je geschaffter Welle: Welle × coinsPerWave (Welle 10 = 100 Münzen)",
+    "legendary": {
+      "_hinweis": "Legendäre Gegner im Chaos: ab Welle fromWave+1 kann der Boss legendär sein (bossChance), ab Welle fromWave+11 auch einzelne normale Gegner (enemyChance je Gegner)",
+      "fromWave": 10,
+      "bossChance": 0.35,
+      "enemyChance": 0.02
+    },
+    "stageEvery": 10,
+    "_stageEvery": "Alle stageEvery Wellen wechseln Hintergrund und Musik"
   },
   "levelGap": 5,
   "_levelGap": "Eigene Pokémon starten höchstens levelGap Level unter den Gegnern der ersten Welle (sonst level)",

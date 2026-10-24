@@ -60,6 +60,8 @@ export function setMusic(key) {
   if (!want) { clearInterval(fadeTimer); if (music) music.pause(); playing = null; return; }
   start(want);
 }
+// anderes Stück aus derselben Liste erzwingen (z. B. neuer Abschnitt im Chaos-Modus)
+export function nextTrack() { if (unlocked && want && audioSettings.music > 0) start(want, true); }
 export const musicForLevel = (types) => (CFG.music?.byType[types?.[0]] ? 'track:' + CFG.music.byType[types[0]] : 'menu');
 export function setMusicVolume(v) {
   audioSettings.music = v; save();

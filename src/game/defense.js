@@ -219,6 +219,16 @@ export class Defense {
     if (ab?.type === 'heal') each((e) => dist(e, u) <= ab.radius, area, false);
     return { attack, area };
   }
+  // zwei eigene Pokémon tauschen ihre Plätze (Drag & Drop auf ein anderes Pokémon)
+  swapUnits(a, b) {
+    if (a === b || a.hp <= 0 || b.hp <= 0 || this.over) return false;
+    const pos = (u) => ({ col: u.col, row: u.row, x: u.x, y: u.y, dir: u.dir });
+    const pa = pos(a), pb = pos(b);
+    Object.assign(a, pb); Object.assign(b, pa);
+    a.placedAt = b.placedAt = this.t;
+    this.events.push({ type: 'place', u: a }, { type: 'place', u: b });
+    return true;
+  }
   // eigenes Pokémon auf ein anderes freies Feld verschieben (Drag & Drop)
   moveUnit(u, col, row) {
     if (u.hp <= 0 || this.over || (u.col === col && u.row === row) || !this.canPlace(col, row)) return false;
@@ -291,8 +301,9 @@ export class Defense {
       if (!(solo && this.enemies.some((e) => e.boss && e.hp > 0))) {
         this.bossWaves++;
         const at = this.t + spread * (0.35 + this.rnd() * 0.3), col = Math.floor(this.rnd() * D().grid.cols);
-        const strong = this.families.map((fm) => fm[fm.length - 1]);
-        this.queue.push({ at, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col, boss: true });
+        const strong = this.families.map((fm) => fm[fm.length - 1]), L = D().chaos.legendary;
+        const dex = this.wave + 1 > L.fromWave && this.rnd() < L.bossChance ? this.rollLegendary() : strong[Math.floor(this.rnd() * strong.length)];
+        this.queue.push({ at, dex, level: level + 3, col, boss: true });
         const n = solo ? 0 : Bo.guards[0] + Math.floor(this.rnd() * (Bo.guards[1] - Bo.guards[0] + 1));
         for (let g = 0; g < n; g++) {
           const gc = Math.max(0, Math.min(D().grid.cols - 1, col + (g % 2 ? 1 : -1) * Math.ceil((g + 1) / 2)));
@@ -315,8 +326,16 @@ export class Defense {
     this.families = pickFamilies({ types }, this.rnd);
     this.otherFamilies = pickFamilies({ types: all.filter((t) => !types.includes(t)) }, this.rnd); // für die Ausnahmen
   }
+  // legendäres Pokémon, bevorzugt passend zum Thema der Welle
+  rollLegendary() {
+    const legs = CFG.dex.filter((s) => s.rarity === 'legendaer' && bdata(s.dex)), th = this.theme || [];
+    const fit = legs.filter((s) => s.types.some((t) => th.includes(t)));
+    const pool = fit.length ? fit : legs;
+    return pool[Math.floor(this.rnd() * pool.length)].dex;
+  }
   // Gegnerart passend zur aktuellen Welle: früh Grundformen, später Entwicklungen
   rollEnemy() {
+    if (this.endless) { const L = D().chaos.legendary; if (this.wave + 1 > L.fromWave + 10 && this.rnd() < L.enemyChance) return this.rollLegendary(); }
     const p = this.waveP ?? 0;
     const weights = [Math.max(0.05, 1 - p * 0.9), 0.12 + p * 0.9, this.level.finalStage >= 3 ? Math.max(0, (p - 0.4) * 1.6) : 0];
     let r = this.rnd() * weights.reduce((a, b) => a + b, 0), stage = 1;
@@ -364,8 +383,15 @@ export class Defense {
     const w = weatherBoost(att.dex, this.weather);
     return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * w * (crit ? D().crit.mult : 1) * (0.9 + this.rnd() * 0.1))) : 0, eff, mv, crit };
   }
+  // Schadensstatistik (Pause-Übersicht): je Pokémon und je Feld, von dem aus angegriffen wurde
+  logDamage(from, dmg) {
+    if (!from?.dex || from.col == null || !(dmg > 0)) return;
+    from.dmg = (from.dmg || 0) + dmg; from.dmgSince ??= this.t;
+    const k = from.col + ',' + from.row; (this.cellDmg ||= {})[k] = (this.cellDmg[k] || 0) + dmg;
+  }
   hurtEnemy(e, dmg, eff, from, mv, crit = false) {
     if (e.hp <= 0) return;
+    this.logDamage(from, Math.min(dmg, e.hp));
     e.hp -= dmg; e.hurtT = this.t;
     if (mv?.type === 'Eis') { e.slowUntil = this.t + D().iceSlow.seconds; e.slowFactor = D().iceSlow.factor; }
     else if (mv?.type === 'Elektro' && !(this.t < e.slowUntil && e.slowFactor < D().elecSlow.factor)) { e.slowUntil = this.t + D().elecSlow.seconds; e.slowFactor = D().elecSlow.factor; }
@@ -383,7 +409,7 @@ export class Defense {
     const b = bdata(e.dex).exp, Ld = e.level, Lp = u.level;
     u.exp += Math.floor((Math.floor(((b * Ld) / 5) * Math.pow((2 * Ld + 10) / (Ld + Lp + 10), 2.5)) + 1) * (D().xp?.multiplier || 1));
     let up = false;
-    while (u.level < 100 && u.exp >= expForLevel(u.dex, u.level + 1)) { u.level++; up = true; }
+    while (u.exp >= expForLevel(u.dex, u.level + 1)) { u.level++; up = true; }
     if (!up) return;
     this.restat(u);
     this.events.push({ type: 'level', u, level: u.level });
@@ -542,6 +568,7 @@ export class Defense {
       for (const [type, st] of Object.entries(e.dots || {})) {
         if (this.t >= st.until) { delete e.dots[type]; continue; }
         const d = st.dps * dt;
+        this.logDamage(st.from, Math.min(d, e.hp));
         e.hp -= d; st.tick += d;
         if (st.tick >= Math.max(1, st.dps * 0.5)) { this.events.push({ type: 'dot', e, dot: type, dmg: Math.round(st.tick) }); st.tick = 0; }
         if (e.hp <= 0) { e.hurtT = this.t; this.events.push({ type: 'defeat', e }); if (st.from.hp > 0) this.reward(st.from, e); died = true; break; }

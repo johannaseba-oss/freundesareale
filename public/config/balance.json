@@ -103,8 +103,8 @@
     "_feeding": "Gefüttert wird mit Beeren (berries[].hunger = wie viel Hunger eine Beere stillt)."
   },
   "level": {
-    "_hinweis": "Level = 1 + volle Tage, die das Pokémon in einem für seinen Typ geeigneten Areal gelebt hat (mind. ein Typ passt; max = Höchstlevel). In ungeeigneten Arealen und im Beutel gibt es keinen Levelfortschritt.",
-    "max": 100
+    "_hinweis": "Level = 1 + volle Tage, die das Pokémon in einem für seinen Typ geeigneten Areal gelebt hat (mind. ein Typ passt), plus Route-Training. max = Höchstlevel (null = kein Limit). In ungeeigneten Arealen und im Beutel gibt es keinen Levelfortschritt.",
+    "max": null
   },
   "berries": [
     {

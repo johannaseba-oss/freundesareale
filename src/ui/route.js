@@ -10,6 +10,7 @@ import { typeColor, typeChip } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl, dirFromVector } from '../gfx/sprites.js';
 import { $, h, toast, confirmDialog, modal } from './dom.js';
 import { teamPicker } from './teampick.js';
+import { damageStats } from './dmgstats.js';
 import { haptic } from '../haptics.js';
 import { sfx, setMusic, musicForLevel } from '../audio.js';
 import { now, dayKey } from '../time.js';
@@ -156,7 +157,7 @@ function onField(e) {
 function trainState(m) {
   const cost = upgradeCost(m.level), have = (st().ep || 0) + (game?.ep || 0);
   const today = st().day === dayKey(now()) ? st().today?.[m.uid] || 0 : 0, left = Math.max(0, R().upgrade.dailyPerPokemon - today);
-  return { cost, have, left, ok: have >= cost && left > 0 && m.level < CFG.balance.level.max };
+  return { cost, have, left, ok: have >= cost && left > 0 && (!CFG.balance.level.max || m.level < CFG.balance.level.max) };
 }
 // Was ein Level mehr bringt: Tempo, Wucht (Angriffswert × Levelfaktor der Schadensformel), Radius
 function trainPreview(m) {
@@ -247,8 +248,10 @@ function dragPlaced(e, u) {
     ghost.style.transform = `translate(${ev.clientX - 26}px, ${ev.clientY - 40}px)`;
     const c = cellAt(ev.clientX, ev.clientY), si = c ? slotAt(c) : -1;
     const m = { dex: u.dex, level: u.level };
-    ui.drag = si >= 0 && game.slotFree(si) && game.slotAllows(si, u.dex) ? previewUnit(m, si) : null;
-    ui.dragBad = si >= 0 && game.slotFree(si) && !game.slotAllows(si, u.dex) ? si : -1;
+    const other = si >= 0 && si !== u.slot ? game.units.find((o) => o !== u && o.slot === si) : null;
+    const okSwap = other && game.slotAllows(si, u.dex) && game.slotAllows(u.slot, other.dex);
+    ui.drag = si >= 0 && ((game.slotFree(si) && game.slotAllows(si, u.dex)) || okSwap) ? previewUnit(m, si) : null;
+    ui.dragBad = si >= 0 && ((game.slotFree(si) && !game.slotAllows(si, u.dex)) || (other && !okSwap)) ? si : -1;
   };
   const up = (ev) => {
     window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
@@ -258,6 +261,8 @@ function dragPlaced(e, u) {
     const d = ui.drag, bad = ui.dragBad; ui.drag = null; ui.dragBad = -1;
     if (ev.type !== 'pointerup') return;
     if (bad >= 0) { toast(WATER_ONLY); return; }
+    const other = d && game.units.find((o) => o !== u && o.slot === d.slot);
+    if (other) { if (game.swapUnits(u, other)) { haptic('medium'); sfx.place(); ui.selUnit = u; renderInfo(); } return; }
     if (d && game.moveUnit(u, d.slot)) { haptic('medium'); sfx.place(); ui.selUnit = u; renderInfo(); }
   };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
@@ -527,9 +532,15 @@ function pauseMenu() {
     const resume = () => { close(); if (ui) ui.paused = false; };
     m.append(h('h3', '⏸ Pause'), h('p.note', 'Der Kampf ist angehalten. Deine bisher verdienten EP sind gesichert.'),
       h('div.row', h('button.btn', { onclick: () => { close(); if (ui) ui.paused = false; game.over = { won: false, gaveUp: true }; } }, 'Level verlassen'),
-        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')));
+        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')), routeStats());
     $('#modal').onclick = (e) => { if (e.target === $('#modal')) resume(); };
   });
+}
+// Schadensübersicht: Karte nur über den Bereich der Bauplätze
+function routeStats() {
+  const S = game.level.slots, cs = S.map((s) => s[0]), rs = S.map((s) => s[1]);
+  const at = new Map(S.map(([c, r], i) => [c + ',' + r, i]));
+  return damageStats({ units: game.units, cells: game.slotDmg, grid: { c0: Math.min(...cs), c1: Math.max(...cs), r0: Math.min(...rs), r1: Math.max(...rs) }, t: game.t, cellOf: (c, r) => at.get(c + ',' + r) ?? null });
 }
 async function giveUp() {
   if (!game || game.over) return;

@@ -103,6 +103,14 @@ export class Route {
     this.events.push({ type: 'place', u });
     return true;
   }
+  // zwei platzierte Pokémon tauschen ihre Bauplätze (Seerosen weiterhin nur für Wasser-Pokémon)
+  swapUnits(a, b) {
+    if (a === b || this.over || !this.slotAllows(b.slot, a.dex) || !this.slotAllows(a.slot, b.dex)) return false;
+    const sa = a.slot, sb = b.slot, place = (u, s) => { const [c, r] = this.level.slots[s]; u.slot = s; u.x = c + 0.5; u.y = r + 0.5; u.placedAt = this.t; u.face = this.bestFacing(u); };
+    place(a, sb); place(b, sa);
+    this.events.push({ type: 'place', u: a }, { type: 'place', u: b });
+    return true;
+  }
   // platziertes Pokémon auf einen anderen freien Bauplatz ziehen
   moveUnit(u, slot) {
     if (this.over || !this.slotFree(slot) || !this.slotAllows(slot, u.dex)) return false;
@@ -186,9 +194,16 @@ export class Route {
     const crit = eff > 0 && this.rnd() < R().crit.chance;
     return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * (crit ? R().crit.mult : 1) * (0.9 + this.rnd() * 0.1))) : 0, eff, mv, crit };
   }
+  // Schadensstatistik (Pause-Übersicht): je Pokémon und je Bauplatz
+  logDamage(u, dmg) {
+    if (!u?.dex || u.slot == null || !(dmg > 0)) return;
+    u.dmg = (u.dmg || 0) + dmg; u.dmgSince ??= this.t;
+    (this.slotDmg ||= {})[u.slot] = (this.slotDmg[u.slot] || 0) + dmg;
+  }
   hit(u, e, mult) {
     if (e.hp <= 0) return;
     const r = this.damage(u, e, mult);
+    this.logDamage(u, Math.min(r.dmg, e.hp));
     e.hp -= r.dmg; e.hurtT = this.t;
     this.events.push({ type: 'hit', e, dmg: r.dmg, eff: r.eff, crit: r.crit, move: r.mv });
     const S = R().status?.byType?.[r.mv.type];
@@ -227,7 +242,7 @@ export class Route {
       if (e.hp <= 0) continue;
       for (const [kind, d] of Object.entries(e.dots || {})) { // Verbrennung, Gift
         if (this.t >= d.until) { delete e.dots[kind]; continue; }
-        const dmg = d.dps * dt; e.hp -= dmg; d.tick += dmg;
+        const dmg = d.dps * dt; this.logDamage(d.from, Math.min(dmg, e.hp)); e.hp -= dmg; d.tick += dmg;
         if (d.tick >= Math.max(1, d.dps * 0.5)) { this.events.push({ type: 'dot', e, kind, dmg: Math.round(d.tick) }); d.tick = 0; }
         if (e.hp <= 0) { e.hurtT = this.t; this.defeat(e); break; }
       }

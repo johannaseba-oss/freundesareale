@@ -11,7 +11,8 @@ import { $, h, toast, confirmDialog, modal } from './dom.js';
 import { teamPicker } from './teampick.js';
 import { haptic } from '../haptics.js';
 import { drawWeather } from './weatherfx.js';
-import { sfx, setMusic, musicForLevel } from '../audio.js';
+import { sfx, setMusic, musicForLevel, nextTrack } from '../audio.js';
+import { damageStats } from './dmgstats.js';
 import { weatherInfo, weatherText, weatherBoost } from '../game/weather.js';
 
 const D = () => CFG.defense;
@@ -174,13 +175,15 @@ function pauseMenu() {
   ui.paused = true;
   modal((m, close) => {
     const resume = () => { close(); if (ui) ui.paused = false; };
+    const G = D().grid, side = G.side ? 1 : 0;
+    const stats = () => damageStats({ units: game.units, cells: game.cellDmg, grid: { c0: -side, c1: G.cols - 1 + side, r0: 0, r1: G.rows - 1 }, t: game.t });
     if (game.chaos) m.append(h('h3', '⏸ Pause'),
       h('p.note', 'Die Runde ist angehalten. Beim Verlassen wird sie gespeichert – im Chaos-Menü kannst du sie später genau hier fortsetzen.'),
       h('div.row', h('button.btn', { onclick: () => { close(); saveSuspended(); leaveSuspended(); } }, 'Speichern & verlassen'),
-        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')));
+        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')), stats());
     else m.append(h('h3', '⏸ Pause'), h('p.note', 'Die Runde ist angehalten.'),
       h('div.row', h('button.btn', { onclick: () => { close(); if (ui) ui.paused = false; game.over = { won: false, gaveUp: true }; } }, 'Aufgeben'),
-        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')));
+        h('button.btn.primary.big', { onclick: resume }, '▶ Weiter')), stats());
     $('#modal').onclick = (e) => { if (e.target === $('#modal')) resume(); };
   });
 }
@@ -319,6 +322,8 @@ function dragUnit(e, u) {
     ghost.remove(); ui.moving = null; ui.hover = null;
     const cell = ev.type === 'pointerup' ? cellAt(ev.clientX, ev.clientY) : null;
     if (!cell || (cell[0] === u.col && cell[1] === u.row)) return;
+    const other = game.units.find((o) => o !== u && o.col === cell[0] && o.row === cell[1] && o.hp > 0);
+    if (other) { if (game.swapUnits(u, other)) { haptic('medium'); handleEvents(); } return; }
     if (game.moveUnit(u, cell[0], cell[1])) { haptic('medium'); handleEvents(); } else toast('Dorthin kann es nicht.');
   };
   window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
@@ -503,13 +508,14 @@ function draw(dt) {
     if (U.hover) {
       // Reichweiten-Vorschau: wohin das Pokémon von hier aus angreift (rot) bzw. wohin seine Effekte reichen (blau)
       const pv = U.sel ? { dex: U.sel.dex, role: U.sel.role } : U.moving ? { dex: U.moving.dex, role: U.moving.role } : null;
-      if (pv && game.canPlace(...U.hover)) {
+      const swapT = U.moving && game.units.find((u) => u !== U.moving && u.col === U.hover[0] && u.row === U.hover[1] && u.hp > 0);
+      if (pv && (game.canPlace(...U.hover) || swapT)) {
         const { attack, area } = game.previewCells(pv.dex, pv.role, U.hover[0], U.hover[1]);
         x.fillStyle = 'rgba(120,200,255,.28)'; for (const [a, b] of area) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
         x.fillStyle = 'rgba(255,120,80,.30)'; for (const [a, b] of attack) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
       }
       const there = game.units.find((u) => u.col === U.hover[0] && u.row === U.hover[1] && u.hp > 0);
-      x.strokeStyle = game.canPlace(...U.hover) || (there && U.sel && game.canUpgrade(U.sel, there)) ? '#fff' : 'rgba(255,90,90,.9)'; x.lineWidth = 2; x.strokeRect(U.ox + U.hover[0] * T + 1, U.oy + U.hover[1] * T + 1, T - 2, T - 2);
+      x.strokeStyle = game.canPlace(...U.hover) || swapT || (there && U.sel && game.canUpgrade(U.sel, there)) ? '#fff' : 'rgba(255,90,90,.9)'; x.lineWidth = 2; x.strokeRect(U.ox + U.hover[0] * T + 1, U.oy + U.hover[1] * T + 1, T - 2, T - 2);
     }
   }
   const P = (o) => [U.ox + o.x * T, U.oy + o.y * T];
@@ -896,6 +902,8 @@ function handleEvents() {
       shake(T() * 0.3); ui.flash = 0.3; ui.freeze = 0.1; haptic('strong');
     } else if (ev.type === 'wave') {
       if (game.endless) saveChaosBest(ev.wave + 1);
+      if (game.endless && ev.wave > 0) waveCoins(ev.wave);
+      if (game.endless && ev.wave > 0 && ev.wave % D().chaos.stageEvery === 0) nextStage();
       banner(ev.final ? 'LETZTE WELLE!' : `WELLE ${ev.wave + 1}`, ev.final); sfx.wave(ev.final);
       if (ev.types?.length) message(`Jetzt kommen: ${ev.types.join(' & ')}`);
       if (ev.wave > 0 && ev.minRow >= D().grid.placeRows[0]) message('Eine weitere Reihe ist frei!');
@@ -917,6 +925,23 @@ function evolveFx(ev) {
   ui.flash = Math.max(ui.flash, 0.18); shake(T() * 0.06);
   message(`${species(ev.from).name} hat sich zu ${species(ev.to).name} entwickelt!`);
   sfx.evolve(); haptic('medium');
+}
+// Chaos: Münzen für die gerade geschaffte Welle (Welle × coinsPerWave)
+function waveCoins(done) {
+  const n = done * (D().chaos.coinsPerWave || 0);
+  if (!n) return;
+  app.act((s) => { s.coins += n; return { ok: true }; }, true);
+  sfx.coin(); message(`Welle ${done} geschafft: +${n} Münzen`);
+}
+// Chaos: neuer Abschnitt – anderer Hintergrund und anderes Musikstück
+function nextStage() {
+  const ids = Object.keys(CFG.defenseThemes.themes).filter((id) => id !== ui.themeId);
+  if (ids.length) {
+    ui.themeId = ids[Math.floor(Math.random() * ids.length)];
+    const ti = new Image(); ti.src = `${base}art/defense/${ui.themeId}.png`; ti.onload = () => { if (ui) ui.bg = null; }; ui.tiles = ti;
+  }
+  nextTrack();
+  setTimeout(() => ui && banner('NEUE GEGEND!', true), 1200);
 }
 function banner(text, big) {
   const el = h('div.d-banner' + (big ? '.final' : ''), text);
