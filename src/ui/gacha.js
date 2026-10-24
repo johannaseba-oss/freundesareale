@@ -1,4 +1,4 @@
-// Bildschirm "Automat" (Vollbild): Bälle des Wochen-Pools in der Glaskugel; welcher herauskommt, entscheidet die Physik. Den Drehknopf dreht man mit dem Finger
+// Bildschirm "Automat" (Vollbild): zufällig gefüllte Bälle in der Glaskugel; welcher herauskommt, entscheidet die Physik. Den Drehknopf dreht man mit dem Finger
 // (oder kurz antippen = automatisch drehen). Haptisches Feedback beim Drehen, beim Herausfallen und beim Öffnen.
 import { CFG, species, ballById, areaById } from '../config.js';
 import { app } from '../app.js';
