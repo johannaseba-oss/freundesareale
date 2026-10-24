@@ -3,8 +3,8 @@ import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import { canBattle, moveOf } from '../game/battle.js';
 import { speedOf, physBuff } from '../game/rocks.js';
-import { makeMap, walkable, spawnWild, moveWild, maxSteps, walkSpeed, walkedToday, makeFighter, battleTurn, moveCost, walkWin, walkDone, payMove } from '../game/walk.js';
-import { expectedEdges, pickTile } from './route.js';
+import { makeMap, walkable, spawnWild, moveWild, maxSteps, walkSpeed, walkedToday, makeFighter, battleTurn, moveCost, walkWin, walkDone, payMove, cellOf } from '../game/walk.js';
+import { renderTerrain, tilesImage, themeOf } from '../gfx/tiles2.js';
 import { typeColor } from '../game/types.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { iconImg } from '../gfx/icons.js';
@@ -39,29 +39,31 @@ export function renderWalkSetup(el, back) {
 }
 
 // ================= Karte =================
+// Planen: ganze Karte im Überblick, Route mit dem Finger zeichnen. Laufen: Kamera zoomt heran und folgt dem Trainer,
+// dein Pokémon läuft hinterher. Unten eine Pokéwalker-Anzeige mit Schrittzähler.
+const TS = 16; // Weltpixel je Feld (Tileset)
 function startWalk(p) {
   closeWalk();
   const rnd = Math.random, map = makeMap(rnd);
-  const canvas = h('canvas.arena-canvas');
-  const steps = h('span.wk-steps'), coins = h('span.wk-coins');
-  const undo = h('button.btn', { onclick: () => { if (ui.phase === 'plan' && ui.route.length > 1) { ui.route.pop(); haptic('tick'); } } }, '↶');
-  const clear = h('button.btn', { onclick: () => { if (ui.phase === 'plan') { ui.route = []; haptic('tick'); } } }, 'Löschen');
-  const go = h('button.btn.primary.big', { onclick: startWalking }, 'Los!');
-  const bar = h('div.wk-bar', undo, clear, go);
-  const hint = h('div.wk-hint', 'Zeichne vom 🏠 aus eine Runde und komm wieder zurück.');
-  const top = h('div.b-top', h('img.rk-top-por', { src: portraitUrl(p.dex), alt: '' }),
-    h('div.b-name', h('b', name(p)), h('small', `Lv ${p.level} · Ausdauer ${p.stamina || 1} · Tempo ${speedOf(p).level}`)),
-    steps, coins, h('button.b-btn', { onclick: leave, title: 'Beenden' }, '✕'));
-  const root = h('div.battle.walk', top, h('div.b-field', canvas, hint), bar);
+  const canvas = h('canvas.sl-canvas');
+  const lcd = h('div.pw-lcd', h('div.pw-l1'), h('div.pw-bar', h('i')), h('div.pw-l2'));
+  const undo = h('button.pw-btn', { onclick: () => { if (ui.phase === 'plan' && ui.route.length > 1) { ui.route.pop(); haptic('tick'); } }, title: 'Schritt zurück' }, '↶');
+  const clear = h('button.pw-btn', { onclick: () => { if (ui.phase === 'plan') { ui.route = []; haptic('tick'); } }, title: 'Route löschen' }, '🗑');
+  const go = h('button.pw-btn.go', { onclick: startWalking }, 'LOS');
+  const walker = h('div.pw', h('div.pw-body', h('div.pw-rim', lcd), h('div.pw-btns', undo, clear, go)));
+  const hint = h('div.wk-hint', 'Zeichne vom Startplatz aus eine Runde und komm wieder zurück.');
+  const chip = h('div.wk-chip', h('img', { src: portraitUrl(p.dex), alt: '' }), h('div', h('b', name(p)), h('small', `Lv ${p.level} · Ausdauer ${p.stamina || 1} · Tempo ${speedOf(p).level}`)));
+  const root = h('div.sl-full.walk2', canvas, hint, chip, h('button.sl-fab.right', { onclick: leave, title: 'Beenden' }, '✕'), walker);
   document.body.append(root);
   document.body.classList.add('in-battle');
   setMusic('menu');
   const me = makeFighter({ ...p, pbuff: physBuff(app.state, { uid: p.uid, dex: p.dex }, now()) }, p.level);
-  ui = { p, me, map, rnd, root, canvas, ctx: canvas.getContext('2d'), steps, coins, go, bar, hint, phase: 'plan', route: [], drawing: false,
-    wild: spawnWild(map, rnd, p.level), t: 0, s: 0, wins: 0, ep: 0, evs: [0, 0, 0, 0, 0, 0], last: performance.now(), raf: 0, max: maxSteps(p), speed: walkSpeed(p) };
+  const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`;
+  ui = { p, me, map, rnd, root, canvas, ctx: canvas.getContext('2d'), lcd, go, walker, hint, trainer: tr, phase: 'plan', route: [], drawing: false,
+    wild: spawnWild(map, rnd, p.level), t: 0, s: 0, wins: 0, ep: 0, evs: [0, 0, 0, 0, 0, 0], last: performance.now(), raf: 0, max: maxSteps(p), speed: walkSpeed(p), cam: null, bang: [] };
   loadSprites(p.dex, p.gender); for (const w of ui.wild) loadSprites(w.dex);
-  const ti = new Image(); ti.src = `${base}art/route/${map.theme}.png`; ti.onload = () => { if (ui) ui.bg = null; }; ui.tiles = ti;
-  ui.ro = new ResizeObserver(layout); ui.ro.observe(canvas.parentElement);
+  const ti = tilesImage(); if (!ti.complete) ti.addEventListener('load', () => { if (ui) ui.bg = null; }, { once: true });
+  ui.ro = new ResizeObserver(layout); ui.ro.observe(root);
   canvas.addEventListener('pointerdown', onDown);
   canvas.addEventListener('pointermove', onMove);
   const up = () => { if (ui) ui.drawing = false; };
@@ -79,24 +81,34 @@ function closeWalk() {
   setMusic('menu');
 }
 function layout() {
-  const { canvas, map } = ui, r = canvas.parentElement.getBoundingClientRect(), dpr = Math.min(3, window.devicePixelRatio || 1);
+  const { canvas, root, map } = ui, r = root.getBoundingClientRect(), dpr = Math.min(3, window.devicePixelRatio || 1);
   canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
   canvas.style.width = r.width + 'px'; canvas.style.height = r.height + 'px';
-  const fit = Math.min(r.width / map.cols, r.height / map.rows);
-  const m = Math.floor((fit * dpr) / 24), tile = m >= 1 ? (24 * m) / dpr : fit;
-  const snap = (v) => Math.round(v * dpr) / dpr;
-  Object.assign(ui, { dpr, w: r.width, h: r.height, tile, ox: snap((r.width - tile * map.cols) / 2), oy: snap((r.height - tile * map.rows) / 2), bg: null });
+  const foot = ui.walker.getBoundingClientRect().height || 120, top = 56;
+  // Überblick: ganze Karte zwischen oberer Leiste und Pokéwalker
+  const fitV = Math.min(r.width / (map.cols * TS), (r.height - foot - top) / (map.rows * TS));
+  Object.assign(ui, { dpr, w: r.width, h: r.height, foot, top, fitV, bg: ui.bg });
+  ui.cam ||= { x: (map.cols * TS) / 2, y: (map.rows * TS) / 2, v: fitV };
 }
-const cellAt = (e) => { const r = ui.canvas.getBoundingClientRect(); return [Math.floor((e.clientX - r.left - ui.ox) / ui.tile), Math.floor((e.clientY - r.top - ui.oy) / ui.tile)]; };
+// Kamera-Ziel: im Überblick die ganze Karte, beim Laufen nah am Trainer (am Kartenrand angehalten)
+function camTarget() {
+  const M = ui.map, mapW = M.cols * TS, mapH = M.rows * TS, viewH = ui.h - ui.foot - ui.top;
+  if (ui.phase === 'plan' || ui.over) return { x: mapW / 2, y: mapH / 2, v: ui.fitV };
+  const v = Math.max(ui.fitV, WK().zoom || 2), p = posAt(ui.s), hw = ui.w / 2 / v, hh = viewH / 2 / v;
+  return { x: Math.max(hw, Math.min(mapW - hw, (p.x + 0.5) * TS)), y: Math.max(hh, Math.min(mapH - hh, (p.y + 0.5) * TS)), v };
+}
+const toWorld = (e) => { const r = ui.canvas.getBoundingClientRect(), c = ui.cam; return [(e.clientX - r.left - ui.w / 2) / c.v + c.x, (e.clientY - r.top - ui.top - (ui.h - ui.foot - ui.top) / 2) / c.v + c.y]; };
+const cellAt = (e) => toWorld(e).map((v) => Math.floor(v / TS));
 const same = (a, b) => a && b && a[0] === b[0] && a[1] === b[1];
+const isHome = (c) => same(c, ui.map.home);
 
 // ---- Route zeichnen ----
 function onDown(e) {
   if (ui.phase !== 'plan') return;
   const c = cellAt(e), R = ui.route, last = R[R.length - 1];
-  if (!R.length) { if (same(c, ui.map.home)) { R.push(c); ui.drawing = true; haptic('tick'); } else toast('Fang beim 🏠 an.'); return; }
+  if (!R.length) { if (ui.map.g[c[1]]?.[c[0]] === 'C') { R.push([...ui.map.home]); ui.drawing = true; haptic('tick'); extend(c); } else toast('Fang am Startplatz an.'); return; }
   if (same(c, last)) { ui.drawing = true; return; }
-  if (Math.abs(c[0] - last[0]) + Math.abs(c[1] - last[1]) === 1) { ui.drawing = true; extend(c); return; }
+  if (Math.abs(c[0] - last[0]) + Math.abs(c[1] - last[1]) <= 2) { ui.drawing = true; extend(c); return; }
   toast('Zeichne am Ende deiner Route weiter.');
 }
 function onMove(e) { if (ui?.drawing && ui.phase === 'plan') extend(cellAt(e)); }
@@ -116,20 +128,23 @@ function extend(target) {
     if (R.length % 2) haptic('tick');
   }
 }
-const complete = () => ui.route.length > 2 && same(ui.route[ui.route.length - 1], ui.map.home);
+const complete = () => ui.route.length > 3 && isHome(ui.route[ui.route.length - 1]);
 
 function startWalking() {
   if (!ui || ui.phase !== 'plan') return;
-  if (!complete()) { toast('Die Route muss wieder am 🏠 enden.'); return; }
+  if (!complete()) { toast('Die Route muss wieder am Startplatz enden.'); return; }
   ui.phase = 'walk'; ui.s = 0; ui.drawing = false;
-  ui.bar.classList.add('hidden'); ui.hint.textContent = 'Unterwegs … Begegnungen führen zum Kampf!';
-  setTimeout(() => ui?.hint.classList.add('hidden'), 2500);
-  haptic('medium');
+  ui.walker.classList.add('walking'); ui.hint.textContent = 'Los geht’s! Wer euch begegnet, will kämpfen.';
+  setTimeout(() => ui?.hint.classList.add('hidden'), 2600);
+  haptic('medium'); sfx.place();
 }
-// Position auf der Route (Felder, s = zurückgelegte Schritte)
+// Position auf der Route (Felder, s = zurückgelegte Schritte); Blickrichtung 0 unten, 2 rechts, 4 oben, 6 links
 function posAt(s) {
-  const R = ui.route, i = Math.min(R.length - 2, Math.floor(s)), k = Math.min(1, s - i);
-  const a = R[i], b = R[i + 1] || a;
+  const R = ui.route;
+  if (!R.length) return { x: ui.map.home[0], y: ui.map.home[1], dir: 4 };
+  s = Math.max(0, s);
+  const i = Math.min(R.length - 2, Math.floor(s)), k = Math.min(1, s - i);
+  const a = R[Math.max(0, i)], b = R[i + 1] || a;
   return { x: a[0] + (b[0] - a[0]) * k, y: a[1] + (b[1] - a[1]) * k, dir: b[0] > a[0] ? 2 : b[0] < a[0] ? 6 : b[1] > a[1] ? 0 : 4 };
 }
 
@@ -141,87 +156,104 @@ function frame(dt) {
     if (ui.phase === 'walk') {
       ui.s = Math.min(ui.route.length - 1, ui.s + ui.speed * dt);
       const me = posAt(ui.s);
+      // „!“ über wilden Pokémon in der Nähe
+      for (const w of ui.wild) if (!w.gone && w.ignore < ui.t && Math.hypot(w.x - me.x, w.y - me.y) < 2.2 && !w.seen) { w.seen = ui.t; sfx.place(); }
       const hit = ui.wild.find((w) => !w.gone && w.ignore < ui.t && Math.hypot(w.x - me.x, w.y - me.y) < 0.7);
       if (hit) openBattle(hit);
       else if (ui.s >= ui.route.length - 1) finish(true);
     }
   }
-  const used = Math.max(0, ui.route.length - 1);
-  ui.steps.textContent = ui.phase === 'plan' ? `👣 ${used}/${ui.max}` : `👣 ${Math.floor(ui.s)}/${used}`;
-  ui.coins.replaceChildren(iconImg('coin', 2), ` ${app.state.coins}`);
-  if (ui.phase === 'plan') { ui.go.disabled = !complete(); }
+  // Kamera weich nachführen
+  const tg = camTarget(), c = ui.cam, k = Math.min(1, dt * (ui.phase === 'walk' ? 4 : 6));
+  c.x += (tg.x - c.x) * k; c.y += (tg.y - c.y) * k; c.v += (tg.v - c.v) * k;
+  renderLcd();
   draw();
 }
-
-// Hintergrund aus den Route-Tilesets (Autotiles), ganzzahlig vergrößert
-function buildBackground() {
-  const U = ui, S = 24, tiles = CFG.routeTiles.themes[U.map.theme].tiles, M = U.map;
-  const c = document.createElement('canvas'); c.width = Math.round(U.w * U.dpr); c.height = Math.round(U.h * U.dpr);
-  const Dp = Math.round(U.tile * U.dpr), ox = Math.round(U.ox * U.dpr), oy = Math.round(U.oy * U.dpr);
-  const c0 = Math.floor(-ox / Dp) - 1, r0 = Math.floor(-oy / Dp) - 1, c1 = Math.ceil((c.width - ox) / Dp), r1 = Math.ceil((c.height - oy) / Dp);
-  const lo = document.createElement('canvas'); lo.width = (c1 - c0 + 1) * S; lo.height = (r1 - r0 + 1) * S;
-  const x = lo.getContext('2d'); x.imageSmoothingEnabled = false;
-  const tAt = (cx, cy) => M.g[cy]?.[cx] || 'W';
-  for (let r = r0; r <= r1; r++) for (let col = c0; col <= c1; col++) {
-    const hsh = ((col * 73856093) ^ (r * 19349663)) >>> 0;
-    const k = pickTile(tiles, tAt(col, r), expectedEdges(tAt, col, r), hsh) || pickTile(tiles, 'F', 'FFFFFFFF', hsh);
-    if (k) x.drawImage(U.tiles, k.c * S, k.r * S, S, S, (col - c0) * S, (r - r0) * S, S, S);
+function renderLcd() {
+  const used = Math.max(0, ui.route.length - 1), [l1, bar, l2] = ui.lcd.children;
+  if (ui.phase === 'plan') {
+    l1.textContent = `👣 ${String(used).padStart(2, '0')} / ${ui.max}`;
+    bar.firstChild.style.width = Math.min(100, (used / ui.max) * 100) + '%';
+    l2.textContent = complete() ? 'RUNDE FERTIG – LOS!' : used ? 'ZURÜCK ZUM START' : 'START ANTIPPEN & ZIEHEN';
+    ui.go.disabled = !complete();
+  } else {
+    l1.textContent = `👣 ${String(Math.floor(ui.s)).padStart(2, '0')} / ${used}`;
+    bar.firstChild.style.width = (ui.s / Math.max(1, used)) * 100 + '%';
+    l2.textContent = `⚔ ${ui.wins}   ♥ ${Math.ceil(ui.me.hp)}/${ui.me.maxHp}`;
   }
-  const out = c.getContext('2d'); out.imageSmoothingEnabled = false;
-  out.drawImage(lo, 0, 0, lo.width, lo.height, ox + c0 * Dp, oy + r0 * Dp, lo.width * (Dp / S), lo.height * (Dp / S));
-  return c;
 }
-function drawMon(x, dex, gender, X, Y, dir, anim, ms) {
+
+// Weltkarte einmal in Originalgröße rendern (mit etwas Wald rundherum)
+const MARGIN = 6;
+function buildBackground() {
+  const M = ui.map;
+  return renderTerrain({ c0: -MARGIN, r0: -MARGIN, c1: M.cols - 1 + MARGIN, r1: M.rows - 1 + MARGIN, cellAt: (x, y) => cellOf(M, x, y), theme: M.theme, seed: (M.home[0] * 7 + M.cols) | 0 });
+}
+function drawMon(x, dex, gender, wx, wy, dir, anim, ms, inGrass) {
   const e = loadSprites(dex, gender);
   if (!e.ready) return;
-  const T = ui.tile, f = frameOf(e, anim, dir, ms);
-  let s = T / 17; if (e.anims.Idle.fh * s > T * 2.2) s = (T * 2.2) / e.anims.Idle.fh;
-  x.fillStyle = 'rgba(30,40,20,.3)'; x.beginPath(); x.ellipse(X, Y + T * 0.25, T * 0.3, T * 0.1, 0, 0, 7); x.fill();
-  x.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(X - (f.fw * s) / 2), Math.round(Y - T * 0.05 - (f.fh * s) / 2), Math.round(f.fw * s), Math.round(f.fh * s));
+  const f = frameOf(e, anim, dir, ms);
+  let s = TS / 22; if (e.anims.Idle.fh * s > TS * 1.9) s = (TS * 1.9) / e.anims.Idle.fh;
+  const X = (wx + 0.5) * TS, Y = (wy + 0.5) * TS;
+  x.fillStyle = 'rgba(20,30,10,.3)'; x.beginPath(); x.ellipse(X, Y + TS * 0.32, TS * 0.32, TS * 0.11, 0, 0, 7); x.fill();
+  x.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, X - (f.fw * s) / 2, Y + TS * 0.05 - (f.fh * s) / 2, f.fw * s, f.fh * s);
+  if (inGrass) grassOver(x, X, Y);
+}
+// hohes Gras verdeckt die Füße
+function grassOver(x, X, Y) {
+  const blk = CFG.tiles2.auto[themeOf(ui.map.theme).tall], im = tilesImage();
+  if (!blk || !im.complete) return;
+  x.drawImage(im, (blk[0] + 3) * TS, blk[1] * TS + 8, TS, 8, X - TS / 2, Y + TS * 0.12, TS, 8);
+}
+function drawTrainer(x, wx, wy, dir, moving, t) {
+  const im = ui.trainer;
+  if (!im.complete || !im.naturalWidth) return;
+  const row = { 0: 0, 6: 1, 2: 2, 4: 3 }[dir] ?? 0, fr = moving ? Math.floor(t * 7) % 4 : 0, s = 0.56;
+  const X = (wx + 0.5) * TS, Y = (wy + 0.5) * TS;
+  x.fillStyle = 'rgba(20,30,10,.3)'; x.beginPath(); x.ellipse(X, Y + TS * 0.34, TS * 0.3, TS * 0.1, 0, 0, 7); x.fill();
+  x.drawImage(im, fr * 64, row * 64, 64, 64, X - 32 * s, Y + TS * 0.38 - 58 * s, 64 * s, 64 * s);
+  if (cellOf(ui.map, Math.round(wx), Math.round(wy)) === 'T') grassOver(x, X, Y);
 }
 function draw() {
-  const U = ui, x = U.ctx, T = U.tile, t = performance.now();
+  const U = ui, x = U.ctx, t = performance.now(), c = U.cam, M = U.map;
   x.setTransform(U.dpr, 0, 0, U.dpr, 0, 0); x.imageSmoothingEnabled = false;
-  if (!U.bg && U.tiles.complete && U.tiles.naturalWidth) U.bg = buildBackground();
-  x.fillStyle = '#4b6a3c'; x.fillRect(0, 0, U.w, U.h);
-  if (U.bg) x.drawImage(U.bg, 0, 0, U.w, U.h);
-  const C = (cx, cy) => [U.ox + (cx + 0.5) * T, U.oy + (cy + 0.5) * T];
-  // Route: breite helle Linie mit Fußspuren; fertig = grün
+  x.fillStyle = '#2d4a24'; x.fillRect(0, 0, U.w, U.h);
+  if (!U.bg && tilesImage().complete) U.bg = buildBackground();
+  // Welt-Transformation
+  const midY = U.top + (U.h - U.foot - U.top) / 2;
+  x.setTransform(U.dpr * c.v, 0, 0, U.dpr * c.v, U.dpr * (U.w / 2 - c.x * c.v), U.dpr * (midY - c.y * c.v));
+  if (U.bg) x.drawImage(U.bg, -MARGIN * TS, -MARGIN * TS);
+  // Route: Fußspuren-Punkte, fertig = grün; gelaufener Teil verblasst
   const R = U.route;
   if (R.length) {
-    const ok = complete();
+    const ok = complete(), done = U.phase === 'walk' ? U.s : -1;
     x.lineCap = 'round'; x.lineJoin = 'round';
-    x.strokeStyle = 'rgba(40,30,20,.35)'; x.lineWidth = T * 0.42;
-    x.beginPath(); R.forEach((c, i) => { const [a, b] = C(c[0], c[1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }); x.stroke();
-    x.strokeStyle = ok ? 'rgba(140,235,140,.85)' : 'rgba(255,248,220,.85)'; x.lineWidth = T * 0.28; x.stroke();
-    // bereits gelaufener Teil dunkler
-    if (U.phase === 'walk' && U.s > 0) {
-      const me = posAt(U.s);
-      x.strokeStyle = 'rgba(120,90,50,.8)'; x.lineWidth = T * 0.18; x.beginPath();
-      for (let i = 0; i <= Math.floor(U.s); i++) { const [a, b] = C(R[i][0], R[i][1]); i ? x.lineTo(a, b) : x.moveTo(a, b); }
-      const [a, b] = C(me.x, me.y); x.lineTo(a, b); x.stroke();
-    }
-    // Endpunkt beim Zeichnen
-    if (U.phase === 'plan') { const l = R[R.length - 1], [a, b] = C(l[0], l[1]); x.fillStyle = '#fff'; x.beginPath(); x.arc(a, b, T * 0.18 + Math.sin(t / 150) * 2, 0, 7); x.fill(); }
+    x.strokeStyle = 'rgba(30,20,10,.35)'; x.lineWidth = 6;
+    x.beginPath(); R.forEach((p, i) => (i ? x.lineTo((p[0] + 0.5) * TS, (p[1] + 0.5) * TS) : x.moveTo((p[0] + 0.5) * TS, (p[1] + 0.5) * TS))); x.stroke();
+    x.strokeStyle = ok ? 'rgba(130,240,130,.95)' : 'rgba(255,250,225,.95)'; x.lineWidth = 3.5; x.setLineDash([2, 4]); x.lineDashOffset = -t / 60; x.stroke(); x.setLineDash([]);
+    if (done > 0) { x.strokeStyle = 'rgba(120,80,40,.7)'; x.lineWidth = 3.5; x.beginPath(); for (let i = 0; i <= Math.floor(done); i++) { const p = R[i]; i ? x.lineTo((p[0] + 0.5) * TS, (p[1] + 0.5) * TS) : x.moveTo((p[0] + 0.5) * TS, (p[1] + 0.5) * TS); } const me = posAt(done); x.lineTo((me.x + 0.5) * TS, (me.y + 0.5) * TS); x.stroke(); }
+    if (U.phase === 'plan') { const l = R[R.length - 1]; x.fillStyle = '#fff'; x.beginPath(); x.arc((l[0] + 0.5) * TS, (l[1] + 0.5) * TS, 3 + Math.sin(t / 150), 0, 7); x.fill(); x.strokeStyle = '#2d4a24'; x.lineWidth = 1; x.stroke(); }
   }
-  // Zuhause
-  { const [a, b] = C(U.map.home[0], U.map.home[1]); x.font = `${Math.round(T * 0.9)}px system-ui, sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('🏠', a, b); x.textBaseline = 'alphabetic'; }
-  // wilde Pokémon (nach Höhe sortiert)
+  // Startplatz-Markierung (Fahne)
+  { const X = (M.home[0] + 0.5) * TS, Y = (M.home[1] + 0.5) * TS; x.fillStyle = '#6b4a2a'; x.fillRect(X + 9, Y - 16, 1.5, 16); x.fillStyle = Math.floor(t / 300) % 2 ? '#e8453c' : '#f2655c'; x.beginPath(); x.moveTo(X + 10.5, Y - 16); x.lineTo(X + 18, Y - 13); x.lineTo(X + 10.5, Y - 10); x.fill(); }
+  // Figuren nach Höhe sortiert
   const list = U.wild.filter((w) => !w.gone).map((w) => ({ w, y: w.y }));
-  if (U.phase === 'walk' || R.length) list.push({ me: true, y: U.phase === 'walk' ? posAt(U.s).y : U.map.home[1] });
+  const walking = U.phase === 'walk' && !U.battle && !U.over;
+  const tp = posAt(U.phase === 'walk' ? U.s : 0), pp = U.phase === 'walk' ? posAt(U.s - 0.85) : { x: M.home[0] - 0.7, y: M.home[1], dir: 4 };
+  list.push({ trainer: true, y: tp.y }, { mon: true, y: pp.y });
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
-    if (o.me) {
-      const p = U.phase === 'walk' ? posAt(U.s) : { x: U.map.home[0], y: U.map.home[1] - 0.6, dir: 4 };
-      const [a, b] = C(p.x, p.y);
-      drawMon(x, U.p.dex, U.p.gender, a, b, p.dir, U.phase === 'walk' && !U.battle ? 'Walk' : 'Idle', t);
-    } else {
-      const w = o.w, [a, b] = C(w.x, w.y);
+    if (o.trainer) drawTrainer(x, tp.x, tp.y, U.phase === 'walk' ? tp.dir : 0, walking, t / 1000);
+    else if (o.mon) drawMon(x, U.p.dex, U.p.gender, pp.x, pp.y, U.phase === 'walk' ? pp.dir : 0, walking ? 'Walk' : 'Idle', t, cellOf(M, Math.round(pp.x), Math.round(pp.y)) === 'T');
+    else {
+      const w = o.w, inG = cellOf(M, Math.round(w.x), Math.round(w.y)) === 'T';
       if (w.ignore > U.t) x.globalAlpha = 0.5;
-      drawMon(x, w.dex, null, a, b, w.dir, w.k < 1 ? 'Walk' : 'Idle', t);
+      drawMon(x, w.dex, null, w.x, w.y, w.dir, w.k < 1 ? 'Walk' : 'Idle', t, inG);
       x.globalAlpha = 1;
-      x.font = `700 ${Math.round(T * 0.26)}px system-ui, sans-serif`; x.textAlign = 'center'; x.lineWidth = 3; x.strokeStyle = 'rgba(40,25,20,.9)';
-      x.strokeText('Lv' + w.level, a, b + T * 0.75); x.fillStyle = '#ffd0c0'; x.fillText('Lv' + w.level, a, b + T * 0.75);
+      const X = (w.x + 0.5) * TS, Y = (w.y + 0.5) * TS;
+      if (w.seen && U.t - w.seen < 1.2 && !U.battle) { const b = Math.min(1, (U.t - w.seen) * 6); x.fillStyle = '#fff'; x.strokeStyle = '#222'; x.lineWidth = 1; x.beginPath(); x.roundRect(X - 4, Y - 24 - b * 3, 8, 10, 2); x.fill(); x.stroke(); x.fillStyle = '#e8453c'; x.fillRect(X - 0.75, Y - 22 - b * 3, 1.5, 4.5); x.fillRect(X - 0.75, Y - 16.5 - b * 3, 1.5, 1.5); }
+      x.font = "600 5px 'Ziffern', sans-serif"; x.textAlign = 'center'; x.lineWidth = 2; x.strokeStyle = 'rgba(40,25,20,.85)';
+      x.strokeText('Lv' + w.level, X, Y + 13); x.fillStyle = '#ffe0d0'; x.fillText('Lv' + w.level, X, Y + 13);
     }
   }
 }
@@ -239,7 +271,7 @@ function openBattle(w) {
   const B = { w, foe, me: ui.me, fb: box(foe, false), mb: box(ui.me, true), scene, text: h('div.wb-text'), moves: h('div.wb-moves'), busy: false,
     shown: { p: ui.me.hp, w: foe.hp }, anim: { p: null, w: null }, hurt: { p: -9, w: -9 }, t0: performance.now() };
   B.el = h('div.wb', h('div.wb-stage', scene, B.fb.el, B.mb.el), B.text, B.moves);
-  ui.root.querySelector('.b-field').append(B.el);
+  ui.root.append(B.el);
   ui.battle = B;
   say(`Ein wildes ${species(foe.dex).name} (Lv ${foe.level}) greift an! Jede Attacke kostet Münzen – reicht es nicht, rennt ${name(ui.p)} vor Angst nach Hause.`);
   renderMoves(); updateBars(true);
@@ -320,9 +352,10 @@ function drawScene(B) {
   if (c.width !== Math.round(r.width * dpr)) { c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr); }
   const x = c.getContext('2d'), W = r.width, H = r.height, t = performance.now();
   x.setTransform(dpr, 0, 0, dpr, 0, 0); x.imageSmoothingEnabled = false;
-  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#cfeaf7'); g.addColorStop(0.45, '#e9f6d8'); g.addColorStop(1, '#a9d98a');
+  const pal = { schnee: ['#dfeefa', '#f4f8fb', '#cfe0ea', '#b9d2e2', '#e4eff6'], strand: ['#bfe6f7', '#f2ecd0', '#e6d6a0', '#d8c482', '#efe2b4'], herbst: ['#f3dcc0', '#f2ead0', '#c9c27a', '#b0a45c', '#d4cc8c'], nacht: ['#3a3f6a', '#5a6a5a', '#4a6a42', '#3c5a36', '#5a7a4c'], kirsch: ['#fbe0ec', '#f2f6dc', '#a9d98a', '#7fbf5f', '#9ad47a'] }[ui.map.theme] || ['#cfeaf7', '#e9f6d8', '#a9d98a', '#7fbf5f', '#9ad47a'];
+  const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, pal[0]); g.addColorStop(0.45, pal[1]); g.addColorStop(1, pal[2]);
   x.fillStyle = g; x.fillRect(0, 0, W, H);
-  const plat = (cx, cy, rw) => { x.fillStyle = '#7fbf5f'; x.beginPath(); x.ellipse(cx, cy, rw, rw * 0.28, 0, 0, 7); x.fill(); x.fillStyle = '#9ad47a'; x.beginPath(); x.ellipse(cx, cy - 3, rw * 0.9, rw * 0.22, 0, 0, 7); x.fill(); };
+  const plat = (cx, cy, rw) => { x.fillStyle = pal[3]; x.beginPath(); x.ellipse(cx, cy, rw, rw * 0.28, 0, 0, 7); x.fill(); x.fillStyle = pal[4]; x.beginPath(); x.ellipse(cx, cy - 3, rw * 0.9, rw * 0.22, 0, 0, 7); x.fill(); };
   plat(W * 0.72, H * 0.42, W * 0.2); plat(W * 0.28, H * 0.86, W * 0.24);
   const mon = (f, who, cx, cy, dir, size) => {
     const e = loadSprites(f.dex, f.gender);

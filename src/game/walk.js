@@ -14,39 +14,63 @@ export const maxSteps = (p) => W().stepsByStamina[(p.stamina || 1) - 1];
 export const walkSpeed = (p) => W().speedBySpeed[speedOf(p).level - 1];
 export const walkedToday = (s, uid, t) => (s.walk?.done?.[uid] || []).filter((d) => d === dayKey(t)).length >= W().walksPerDay;
 
-// ---- Karte: 'F' Wiese, 'W' Bäume, 'A' Wasser ----
-export function makeMap(rnd) {
+// ---- Karte: 'W' Wald, 'A' Wasser, 'P' Weg, 'T' hohes Gras (dort leben die wilden Pokémon), 'C' Startplatz, 'F' Wiese ----
+export function makeMap(rnd, theme = null) {
   const { cols, rows } = W().grid, M = W().map;
   const g = Array.from({ length: rows }, () => Array(cols).fill('F'));
-  const home = [Math.floor(cols / 2), rows - 2];
-  const nearHome = (x, y) => Math.abs(x - home[0]) <= 1 && Math.abs(y - home[1]) <= 1;
-  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (x === 0 || y === 0 || x === cols - 1 || y === rows - 1) g[y][x] = 'W';
-  const blob = (kind, size) => {
-    let x = 2 + Math.floor(rnd() * (cols - 4)), y = 2 + Math.floor(rnd() * (rows - 5));
+  const home = [Math.floor(cols / 2), rows - 4];
+  const inside = (x, y) => x > 1 && y > 1 && x < cols - 2 && y < rows - 2;
+  const nearHome = (x, y) => Math.abs(x - home[0]) <= 2 && Math.abs(y - home[1]) <= 2;
+  // Waldrand: zwei Felder breit, innen unregelmäßig
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    const d = Math.min(x, y, cols - 1 - x, rows - 1 - y);
+    if (d < 2 || (d === 2 && rnd() < 0.35)) g[y][x] = 'W';
+  }
+  // Flecken mit 2×2-Pinsel (sieht mit den Autotiles am besten aus)
+  const blob = (kind, size, avoid = []) => {
+    let x = 3 + Math.floor(rnd() * (cols - 7)), y = 3 + Math.floor(rnd() * (rows - 9));
     for (let i = 0; i < size; i++) {
-      for (const [dx, dy] of kind === 'A' ? [[0, 0], [1, 0], [0, 1], [1, 1]] : [[0, 0], [1, 0]]) {
+      for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
         const nx = x + dx, ny = y + dy;
-        if (nx > 0 && ny > 0 && nx < cols - 1 && ny < rows - 1 && !nearHome(nx, ny)) g[ny][nx] = kind;
+        if (inside(nx, ny) && !nearHome(nx, ny) && !avoid.includes(g[ny][nx])) g[ny][nx] = kind;
       }
       const d = Math.floor(rnd() * 4); x += [1, -1, 0, 0][d]; y += [0, 0, 1, -1][d];
-      x = Math.max(1, Math.min(cols - 2, x)); y = Math.max(1, Math.min(rows - 3, y));
+      x = Math.max(2, Math.min(cols - 4, x)); y = Math.max(2, Math.min(rows - 6, y));
     }
   };
-  for (let i = ibetween(rnd, M.ponds); i > 0; i--) blob('A', ibetween(rnd, [2, 4]));
-  for (let i = ibetween(rnd, M.treeBlobs); i > 0; i--) blob('W', ibetween(rnd, M.blobSize));
-  // nicht erreichbare Wiese wird zu Wald
+  for (let i = ibetween(rnd, M.ponds); i > 0; i--) blob('A', ibetween(rnd, M.pondSize));
+  for (let i = ibetween(rnd, M.treeBlobs); i > 0; i--) blob('W', ibetween(rnd, M.blobSize), ['A']);
+  for (let i = ibetween(rnd, M.tallPatches); i > 0; i--) blob('T', ibetween(rnd, M.tallSize), ['A', 'W']);
+  // Startplatz (gepflastert) unten in der Mitte
+  for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 1; dx++) g[home[1] + dy][home[0] + dx] = 'C';
+  // Wege vom Startplatz zu ein paar Zielen (Schlangenlinien), nur über Wiese und Gras
+  for (let i = ibetween(rnd, M.paths); i > 0; i--) {
+    let [x, y] = [home[0], home[1] - 2];
+    const tx = 3 + Math.floor(rnd() * (cols - 6)), ty = 3 + Math.floor(rnd() * (rows / 2));
+    for (let k = 0; k < 80 && (x !== tx || y !== ty); k++) {
+      if (g[y][x] === 'F' || g[y][x] === 'T') g[y][x] = 'P';
+      const horiz = rnd() < (Math.abs(tx - x) / (Math.abs(tx - x) + Math.abs(ty - y) + 0.01));
+      const nx = horiz ? x + Math.sign(tx - x) : x, ny = horiz ? y : y + Math.sign(ty - y);
+      if (!inside(nx, ny) || g[ny][nx] === 'A' || g[ny][nx] === 'W') break;
+      x = nx; y = ny;
+    }
+  }
+  // nicht erreichbare Felder werden zu Wald
   const seen = new Set([home.join()]), q = [home];
   while (q.length) {
     const [x, y] = q.pop();
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = x + dx, ny = y + dy, k = nx + ',' + ny;
-      if (g[ny]?.[nx] === 'F' && !seen.has(k)) { seen.add(k); q.push([nx, ny]); }
+      if (walkableCell(g[ny]?.[nx]) && !seen.has(k)) { seen.add(k); q.push([nx, ny]); }
     }
   }
-  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (g[y][x] === 'F' && !seen.has(x + ',' + y)) g[y][x] = 'W';
-  return { cols, rows, g, home, theme: M.themes[Math.floor(rnd() * M.themes.length)], free: [...seen].map((k) => k.split(',').map(Number)) };
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (walkableCell(g[y][x]) && !seen.has(x + ',' + y)) g[y][x] = 'W';
+  const th = theme || M.themes[Math.floor(rnd() * M.themes.length)];
+  return { cols, rows, g, home, theme: th, free: [...seen].map((k) => k.split(',').map(Number)) };
 }
-export const walkable = (map, x, y) => map.g[y]?.[x] === 'F';
+const walkableCell = (t) => t === 'F' || t === 'P' || t === 'T' || t === 'C';
+export const walkable = (map, x, y) => walkableCell(map.g[y]?.[x]);
+export const cellOf = (map, x, y) => map.g[y]?.[x] || 'W';
 
 // ---- Attacken: Signatur-Attacke + passende weitere, je nach stärkerem Angriffswert physisch oder speziell ----
 export function walkMoves(dex) {
@@ -78,18 +102,20 @@ export function wildPool(theme, level = 1) {
   const fit = ok.filter((s) => s.types.some((t) => types.includes(t)));
   return (fit.length ? fit : ok).map((s) => s.dex);
 }
-export function spawnWild(map, rnd, playerLevel, avoid = []) {
+export function spawnWild(map, rnd, playerLevel) {
   const out = [], n = ibetween(rnd, W().wild.count);
   const far = map.free.filter(([x, y]) => Math.abs(x - map.home[0]) + Math.abs(y - map.home[1]) > 5);
+  const grass = far.filter(([x, y]) => map.g[y][x] === 'T');
   for (let i = 0; i < n && far.length; i++) {
-    const [x, y] = far.splice(Math.floor(rnd() * far.length), 1)[0];
+    const pool0 = grass.length && rnd() < W().wild.inGrass ? grass : far;
+    const [x, y] = pool0.splice(Math.floor(rnd() * pool0.length), 1)[0];
     const level = Math.max(W().wild.minLevel, playerLevel + ibetween(rnd, W().wild.levelOffset));
     const pool = wildPool(map.theme, level), dex = pool[Math.floor(rnd() * pool.length)];
     out.push({ id: i + 1, dex, level, cx: x, cy: y, x, y, fx: x, fy: y, k: 1, next: between(rnd, W().wild.stepEvery), dir: 0, ignore: 0, gone: false });
   }
   return out;
 }
-// ein Schritt der wilden Pokémon: zufälliges freies Nachbarfeld, weich überblendet
+// ein Schritt der wilden Pokémon: zufälliges freies Nachbarfeld (im hohen Gras bleiben sie meist im Gras), weich überblendet
 export function moveWild(map, wild, dt, rnd) {
   for (const w of wild) {
     if (w.gone) continue;
@@ -97,7 +123,8 @@ export function moveWild(map, wild, dt, rnd) {
     if (w.k < 1) { w.k = Math.min(1, w.k + dt * 2.2); w.x = w.fx + (w.cx - w.fx) * w.k; w.y = w.fy + (w.cy - w.fy) * w.k; }
     if (w.next > 0 || w.k < 1) continue;
     w.next = between(rnd, W().wild.stepEvery);
-    const opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => walkable(map, w.cx + dx, w.cy + dy) && !(w.cx + dx === map.home[0] && w.cy + dy === map.home[1]));
+    let opts = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => walkable(map, w.cx + dx, w.cy + dy) && map.g[w.cy + dy][w.cx + dx] !== 'C');
+    if (map.g[w.cy][w.cx] === 'T' && rnd() < W().wild.stayInGrass) { const inG = opts.filter(([dx, dy]) => map.g[w.cy + dy][w.cx + dx] === 'T'); if (inG.length) opts = inG; }
     if (!opts.length) continue;
     const [dx, dy] = opts[Math.floor(rnd() * opts.length)];
     w.fx = w.cx; w.fy = w.cy; w.cx += dx; w.cy += dy; w.k = 0;

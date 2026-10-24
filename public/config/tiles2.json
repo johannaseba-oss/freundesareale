@@ -1,0 +1,639 @@
+{
+  "_hinweis": "Neues Karten-Tileset (public/art/tiles2.png, 16-px-Kacheln) für Route und Spaziergang. auto = Autotiles [Spalte, Zeile] der linken oberen Ecke: 3×3-Insel, rechts daneben Füllkachel (oben) und 2×2-Innenecken (darunter). Sprites = [x, y, Breite, Höhe] in Pixeln. Themen legen Boden, Weg, Wasser, hohes Gras, Bäume und Deko fest.",
+  "tile": 16,
+  "auto": {
+    "sand": [
+      0,
+      36
+    ],
+    "dirt": [
+      5,
+      36
+    ],
+    "lightGrass": [
+      10,
+      36
+    ],
+    "orangeSand": [
+      15,
+      36
+    ],
+    "cobble": [
+      20,
+      36
+    ],
+    "sandIce": [
+      0,
+      39
+    ],
+    "dirtIce": [
+      5,
+      39
+    ],
+    "snow": [
+      10,
+      39
+    ],
+    "waterGrass": [
+      0,
+      42
+    ],
+    "waterDirt": [
+      5,
+      42
+    ],
+    "waterStone": [
+      10,
+      42
+    ],
+    "beach": [
+      25,
+      36
+    ],
+    "tallGrass": [
+      9,
+      0
+    ],
+    "lakeGrass": [
+      25,
+      42
+    ],
+    "lakeDirt": [
+      30,
+      42
+    ],
+    "lakeStone": [
+      35,
+      42
+    ],
+    "tallSnow": [
+      14,
+      0
+    ]
+  },
+  "base": {
+    "grass": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        0
+      ]
+    ],
+    "lightGrass": [
+      [
+        6,
+        2
+      ],
+      [
+        7,
+        2
+      ]
+    ],
+    "snow": [
+      [
+        2,
+        0
+      ]
+    ]
+  },
+  "sprites": {
+    "tree": {
+      "green": [
+        0,
+        48,
+        32,
+        48
+      ],
+      "pink": [
+        32,
+        48,
+        32,
+        48
+      ],
+      "orange": [
+        64,
+        48,
+        32,
+        48
+      ],
+      "yellow": [
+        96,
+        48,
+        32,
+        48
+      ],
+      "snowGreen": [
+        128,
+        48,
+        32,
+        48
+      ],
+      "snow": [
+        160,
+        48,
+        32,
+        48
+      ],
+      "eggGreen": [
+        192,
+        48,
+        32,
+        48
+      ],
+      "eggPink": [
+        224,
+        48,
+        32,
+        48
+      ],
+      "eggOrange": [
+        256,
+        48,
+        32,
+        48
+      ],
+      "eggYellow": [
+        288,
+        48,
+        32,
+        48
+      ],
+      "eggSnowGreen": [
+        320,
+        48,
+        32,
+        48
+      ],
+      "eggSnow": [
+        352,
+        48,
+        32,
+        48
+      ],
+      "pine": [
+        384,
+        48,
+        32,
+        48
+      ],
+      "pineSnowGreen": [
+        416,
+        48,
+        32,
+        48
+      ],
+      "pineSnow": [
+        448,
+        48,
+        32,
+        48
+      ],
+      "palmS": [
+        560,
+        48,
+        32,
+        48
+      ],
+      "palmS2": [
+        592,
+        48,
+        32,
+        48
+      ]
+    },
+    "big": {
+      "green": [
+        0,
+        96,
+        48,
+        64
+      ],
+      "pink": [
+        48,
+        96,
+        48,
+        64
+      ],
+      "orange": [
+        96,
+        96,
+        48,
+        64
+      ],
+      "yellow": [
+        144,
+        96,
+        48,
+        64
+      ],
+      "snowGreen": [
+        192,
+        96,
+        48,
+        64
+      ],
+      "snow": [
+        240,
+        96,
+        48,
+        64
+      ],
+      "pine": [
+        288,
+        96,
+        48,
+        64
+      ],
+      "pineSnowGreen": [
+        336,
+        96,
+        48,
+        64
+      ],
+      "pineSnow": [
+        384,
+        96,
+        48,
+        64
+      ],
+      "palm": [
+        0,
+        160,
+        48,
+        64
+      ],
+      "palm2": [
+        48,
+        160,
+        48,
+        64
+      ],
+      "palm3": [
+        96,
+        160,
+        48,
+        64
+      ]
+    },
+    "deco": {
+      "fern": [
+        48,
+        32,
+        16,
+        16
+      ],
+      "plant": [
+        48,
+        0,
+        16,
+        16
+      ],
+      "icePlant": [
+        64,
+        0,
+        16,
+        16
+      ],
+      "iceFern": [
+        64,
+        32,
+        16,
+        16
+      ],
+      "sprout": [
+        48,
+        16,
+        16,
+        16
+      ],
+      "mushrooms": [
+        80,
+        32,
+        16,
+        16
+      ],
+      "stump": [
+        32,
+        32,
+        16,
+        16
+      ],
+      "snowman": [
+        32,
+        16,
+        16,
+        16
+      ],
+      "flowerRed": [
+        304,
+        32,
+        16,
+        16
+      ],
+      "flowerPink": [
+        320,
+        32,
+        16,
+        16
+      ],
+      "flowerWhite": [
+        336,
+        32,
+        16,
+        16
+      ],
+      "flowerYellow": [
+        352,
+        32,
+        16,
+        16
+      ],
+      "flowerBlue": [
+        368,
+        32,
+        16,
+        16
+      ],
+      "flowerViolet": [
+        384,
+        32,
+        16,
+        16
+      ],
+      "smallFlowers": [
+        304,
+        16,
+        16,
+        16
+      ],
+      "smallFlowers2": [
+        320,
+        16,
+        16,
+        16
+      ],
+      "smallFlowers3": [
+        336,
+        16,
+        16,
+        16
+      ],
+      "smallFlowers4": [
+        352,
+        16,
+        16,
+        16
+      ],
+      "leaves": [
+        400,
+        0,
+        16,
+        16
+      ],
+      "leaves2": [
+        416,
+        0,
+        16,
+        16
+      ],
+      "leaves3": [
+        400,
+        16,
+        16,
+        16
+      ],
+      "leaves4": [
+        432,
+        16,
+        16,
+        16
+      ],
+      "rock": [
+        0,
+        448,
+        16,
+        16
+      ],
+      "rockSmall": [
+        16,
+        448,
+        16,
+        16
+      ],
+      "rock2": [
+        48,
+        448,
+        16,
+        16
+      ],
+      "snowRock": [
+        80,
+        448,
+        16,
+        16
+      ],
+      "snowRock2": [
+        96,
+        448,
+        16,
+        16
+      ],
+      "tuft": [
+        480,
+        0,
+        16,
+        32
+      ],
+      "tuft2": [
+        496,
+        0,
+        16,
+        32
+      ],
+      "lily": [
+        448,
+        16,
+        16,
+        16
+      ],
+      "lily2": [
+        464,
+        16,
+        16,
+        16
+      ]
+    }
+  },
+  "themes": {
+    "wald": {
+      "base": "grass",
+      "path": "dirt",
+      "water": "waterGrass",
+      "tall": "tallGrass",
+      "trees": [
+        "green",
+        "green",
+        "eggGreen",
+        "pine"
+      ],
+      "big": [
+        "green",
+        "pine"
+      ],
+      "deco": [
+        "fern",
+        "plant",
+        "flowerRed",
+        "flowerYellow",
+        "smallFlowers",
+        "smallFlowers3",
+        "mushrooms",
+        "rock",
+        "sprout"
+      ]
+    },
+    "kirsch": {
+      "base": "grass",
+      "path": "sand",
+      "water": "waterGrass",
+      "tall": "tallGrass",
+      "trees": [
+        "pink",
+        "eggPink",
+        "pink",
+        "green"
+      ],
+      "big": [
+        "pink"
+      ],
+      "deco": [
+        "flowerPink",
+        "flowerWhite",
+        "smallFlowers2",
+        "smallFlowers",
+        "flowerViolet",
+        "sprout",
+        "leaves3"
+      ]
+    },
+    "herbst": {
+      "base": "grass",
+      "path": "dirt",
+      "water": "waterDirt",
+      "tall": "tallGrass",
+      "trees": [
+        "orange",
+        "yellow",
+        "eggOrange",
+        "eggYellow"
+      ],
+      "big": [
+        "orange",
+        "yellow"
+      ],
+      "deco": [
+        "leaves",
+        "leaves2",
+        "leaves4",
+        "mushrooms",
+        "stump",
+        "rock2",
+        "fern"
+      ]
+    },
+    "schnee": {
+      "base": "snow",
+      "path": "dirtIce",
+      "water": "waterStone",
+      "tall": "tallSnow",
+      "trees": [
+        "snow",
+        "snowGreen",
+        "pineSnow",
+        "pineSnowGreen",
+        "eggSnow"
+      ],
+      "big": [
+        "snow",
+        "pineSnow",
+        "pineSnowGreen"
+      ],
+      "deco": [
+        "snowRock",
+        "snowRock2",
+        "icePlant",
+        "iceFern",
+        "snowman"
+      ]
+    },
+    "strand": {
+      "base": "lightGrass",
+      "path": "beach",
+      "water": "waterGrass",
+      "tall": "tallGrass",
+      "trees": [
+        "palmS",
+        "palmS2"
+      ],
+      "big": [
+        "palm",
+        "palm2",
+        "palm3"
+      ],
+      "deco": [
+        "rock",
+        "rockSmall",
+        "flowerYellow",
+        "smallFlowers4",
+        "plant"
+      ]
+    },
+    "nacht": {
+      "base": "grass",
+      "path": "dirt",
+      "water": "waterStone",
+      "tall": "tallGrass",
+      "trees": [
+        "pine",
+        "eggGreen",
+        "green"
+      ],
+      "big": [
+        "pine",
+        "green"
+      ],
+      "deco": [
+        "mushrooms",
+        "fern",
+        "rock2",
+        "stump",
+        "flowerBlue"
+      ],
+      "tint": "rgba(30,30,90,.38)"
+    }
+  },
+  "byType": {
+    "Pflanze": "wald",
+    "Käfer": "wald",
+    "Normal": "wald",
+    "Fee": "kirsch",
+    "Psycho": "kirsch",
+    "Feuer": "herbst",
+    "Boden": "herbst",
+    "Kampf": "herbst",
+    "Gestein": "herbst",
+    "Eis": "schnee",
+    "Stahl": "schnee",
+    "Wasser": "strand",
+    "Elektro": "strand",
+    "Flug": "strand",
+    "Geist": "nacht",
+    "Unlicht": "nacht",
+    "Gift": "nacht",
+    "Drache": "nacht"
+  },
+  "decoChance": 0.12
+}

@@ -11,6 +11,7 @@ import { loadSprites, frameOf, portraitUrl, dirFromVector } from '../gfx/sprites
 import { $, h, toast, confirmDialog, modal } from './dom.js';
 import { teamPicker } from './teampick.js';
 import { damageStats } from './dmgstats.js';
+import { renderTerrain, tilesImage, themeForType } from '../gfx/tiles2.js';
 import { physBuff } from '../game/rocks.js';
 import { haptic } from '../haptics.js';
 import { sfx, setMusic, musicForLevel } from '../audio.js';
@@ -99,10 +100,9 @@ function openField() {
   setMusic(musicForLevel(game.level.types));
   ui = { root, canvas, ctx: canvas.getContext('2d'), bar, info, msg, livesEl, epEl, waveEl, sel: null, selUnit: null, fx: [], texts: [], beams: [], waves: [], last: performance.now(), raf: 0 };
   for (const m of game.team) loadSprites(m.dex, m.gender);
-  // Thema je Level: nach Gegner-Typ, sonst reihum (Wald, Herbstwald, Dunkler Wald, Eishöhle)
-  const RT = CFG.routeTiles, ids = Object.keys(RT.themes);
-  ui.themeId = RT.byType[game.level.types[0]] && RT.themes[RT.byType[game.level.types[0]]] ? RT.byType[game.level.types[0]] : ids[(game.level.n - 1) % ids.length];
-  const ti = new Image(); ti.src = `${base}art/route/${ui.themeId}.png`; ti.onload = () => { ui.bg = null; }; ui.tiles = ti;
+  // Gebiet je Level nach Gegner-Typ (Wald, Kirschblüte, Herbst, Schnee, Strand, Nachtwald – tiles2.json)
+  ui.themeId = themeForType(game.level.types[0]);
+  const ti = tilesImage(); if (!ti.complete) ti.addEventListener('load', () => { if (ui) ui.bg = null; }, { once: true }); ui.tiles = ti;
   ui.ro = new ResizeObserver(() => layout()); ui.ro.observe(canvas.parentElement);
   canvas.addEventListener('pointerdown', onField);
   layout();
@@ -126,7 +126,7 @@ function layout() {
   canvas.width = Math.round(r.width * dpr); canvas.height = Math.round(r.height * dpr);
   canvas.style.width = r.width + 'px'; canvas.style.height = r.height + 'px';
   const fit = Math.min(r.width / (G.cols + 0.6), r.height / (G.rows + 0.4));
-  const m = Math.floor((fit * dpr) / 24), tile = m >= 1 ? (24 * m) / dpr : Math.floor(fit); // ganzzahlige Pixel wie im PokeDefense
+  const m = Math.floor((fit * dpr) / 16), tile = m >= 1 ? (16 * m) / dpr : Math.floor(fit); // ganzzahlige Pixel (16-px-Tileset)
   const snap = (v) => Math.round(v * dpr) / dpr;
   Object.assign(ui, { dpr, w: r.width, h: r.height, tile, ox: snap((r.width - tile * G.cols) / 2), oy: snap((r.height - tile * G.rows) / 2), bg: null });
 }
@@ -326,54 +326,53 @@ export function pickTile(tiles, t, exp, h) {
   }
   return best.length ? best[h % best.length] : null;
 }
-// Hintergrund aus den PMD-Tilesets (Autotiles) in Original-Pixelgröße zeichnen und ganzzahlig vergrößern;
-// darauf Seerosen (Wasser-Plätze) und Holzpodeste (Bauplätze)
+// Hintergrund aus dem 16-px-Tileset (gfx/tiles2.js): Weg, Teiche, Wald ringsum, Deko; darauf Seerosen (Wasser-Plätze)
+// und Holzpodeste (Bauplätze) – alles in Original-Pixelgröße gezeichnet und ganzzahlig vergrößert
 function buildBackground() {
-  const U = ui, G = R().grid, S = 24, tiles = CFG.routeTiles.themes[U.themeId].tiles;
+  const U = ui, G = R().grid, S = 16;
   const c = document.createElement('canvas');
   c.width = Math.round(U.w * U.dpr); c.height = Math.round(U.h * U.dpr);
   const Dp = Math.round(U.tile * U.dpr), ox = Math.round(U.ox * U.dpr), oy = Math.round(U.oy * U.dpr);
   const c0 = Math.floor(-ox / Dp) - 1, r0 = Math.floor(-oy / Dp) - 1, c1 = Math.ceil((c.width - ox) / Dp), r1 = Math.ceil((c.height - oy) / Dp);
-  const lo = document.createElement('canvas'); lo.width = (c1 - c0 + 1) * S; lo.height = (r1 - r0 + 1) * S;
+  const k = (x, y) => x + ',' + y, cells = new Map();
+  for (const [x, y] of game.level.water || []) cells.set(k(x, y), 'A');
+  for (const [x, y] of pathCells(game.level.path)) cells.set(k(x, y), 'P');
+  for (const [x, y, w] of game.level.slots) if (w !== 'w') cells.set(k(x, y), 'X');
+  for (const [x, y] of game.level.water || []) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!cells.has(k(x + dx, y + dy))) cells.set(k(x + dx, y + dy), 'F'); // Ufer
+  // Bauplätze bekommen eine kleine Lichtung, damit der Wald sie nicht verdeckt
+  for (const [x, y, w] of game.level.slots) if (w !== 'w') for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0]]) if (!cells.has(k(x + dx, y + dy))) cells.set(k(x + dx, y + dy), 'F');
+  const first = game.level.path[0], last = game.level.path[game.level.path.length - 1];
+  const cellAt = (x, y) => cells.get(k(x, y)) || ((x === first[0] && y < 0) || (x === last[0] && y >= G.rows) || (y === first[1] && x < 0 && first[0] <= 0) || (y === last[1] && x >= G.cols && last[0] >= G.cols - 1) ? 'P' : 'W');
+  const lo = renderTerrain({ c0, r0, c1, r1, cellAt, theme: U.themeId, seed: game.level.n * 31 + 7 });
   const x = lo.getContext('2d'); x.imageSmoothingEnabled = false;
   const X = (col) => (col - c0) * S, Y = (r) => (r - r0) * S;
-  const hash = (a, b) => (((a * 73856093) ^ (b * 19349663) ^ (game.level.n * 83492791)) >>> 0);
-  const tAt = terrainAt();
-  for (let r = r0; r <= r1; r++) for (let col = c0; col <= c1; col++) {
-    const t = tAt(col, r), h = hash(col, r);
-    const k = pickTile(tiles, t, expectedEdges(tAt, col, r), h) || pickTile(tiles, 'F', 'FFFFFFFF', h);
-    if (k) x.drawImage(U.tiles, k.c * S, k.r * S, S, S, X(col), Y(r), S, S);
-  }
-  const P = (col, r, X0, Y0, color) => { x.fillStyle = color; x.fillRect(X0 + col, Y0 + r, 1, 1); };
+  const P = (px, py, color) => { x.fillStyle = color; x.fillRect(px, py, 1, 1); };
   // Seerosen (nur Wasser-Pokémon): grünes Blatt mit Kerbe und kleiner Blüte
   for (const [a, b, w] of game.level.slots) {
     if (w !== 'w') continue;
-    const cx = X(a) + 12, cy = Y(b) + 13;
-    for (let yy = -9; yy <= 9; yy++) for (let xx = -10; xx <= 10; xx++) {
-      const d = (xx * xx) / 100 + (yy * yy) / 81;
-      if (d > 1 || (xx > 0 && Math.abs(yy) < (xx / 3))) continue; // Kerbe nach rechts
-      P(cx + xx - X(a), cy + yy - Y(b), X(a), Y(b), d > 0.8 ? '#2e6b2a' : (xx + yy) % 5 === 0 ? '#5fae45' : '#4f9a3a');
+    const cx = X(a) + 8, cy = Y(b) + 8;
+    for (let yy = -6; yy <= 6; yy++) for (let xx = -7; xx <= 7; xx++) {
+      const d = (xx * xx) / 49 + (yy * yy) / 36;
+      if (d > 1 || (xx > 0 && Math.abs(yy) < xx / 3)) continue; // Kerbe nach rechts
+      P(cx + xx, cy + yy, d > 0.75 ? '#2e6b2a' : (xx + yy) % 5 === 0 ? '#5fae45' : '#4f9a3a');
     }
-    x.fillStyle = 'rgba(10,30,60,.3)'; x.fillRect(cx - 9, cy + 9, 18, 1);
-    x.fillStyle = '#ffb3d0'; x.fillRect(cx - 5, cy - 6, 3, 3); x.fillStyle = '#fff0f6'; x.fillRect(cx - 4, cy - 5, 1, 1);
+    x.fillStyle = 'rgba(10,30,60,.3)'; x.fillRect(cx - 6, cy + 6, 12, 1);
+    x.fillStyle = '#ffb3d0'; x.fillRect(cx - 4, cy - 4, 2, 2); x.fillStyle = '#fff0f6'; x.fillRect(cx - 4, cy - 4, 1, 1);
   }
   // Bauplätze: Holzpodeste aus Brettern mit Nägeln, Kontur und Schatten
   for (const [a, b, w] of game.level.slots) {
     if (w === 'w') continue;
-    const L = X(a) + 2, T0 = Y(b) + 2, W = 20, H = 19;
-    x.fillStyle = 'rgba(20,30,10,.35)'; x.fillRect(L + 1, T0 + 3, W, H); // Schatten
-    x.fillStyle = '#4a2f1c'; x.fillRect(L, T0, W, H); // Kontur
-    for (let k = 0; k < 4; k++) { // vier Bretter
-      const by = T0 + 1 + k * 4 + (k > 0 ? 0 : 0), col = k % 2 ? '#b07842' : '#c08a4e';
-      x.fillStyle = col; x.fillRect(L + 1, by, W - 2, 4);
-      x.fillStyle = '#d7a466'; x.fillRect(L + 1, by, W - 2, 1); // Lichtkante
-      x.fillStyle = '#7b4e29'; x.fillRect(L + 1, by + 3, W - 2, 1); // Fuge
-      x.fillStyle = '#5c3a20'; x.fillRect(L + 3 + ((k * 7 + a * 3) % 9), by + 1, 1, 1); // Maserung
-      x.fillStyle = '#e8d2a6'; x.fillRect(L + 2, by + 1, 1, 1); x.fillRect(L + W - 3, by + 1, 1, 1); // Nägel
+    const L = X(a) + 1, T0 = Y(b) + 1, W = 14, H = 13;
+    x.fillStyle = 'rgba(20,30,10,.35)'; x.fillRect(L + 1, T0 + 2, W, H);
+    x.fillStyle = '#4a2f1c'; x.fillRect(L, T0, W, H);
+    for (let q = 0; q < 3; q++) {
+      const by = T0 + 1 + q * 4;
+      x.fillStyle = q % 2 ? '#b07842' : '#c08a4e'; x.fillRect(L + 1, by, W - 2, 4);
+      x.fillStyle = '#d7a466'; x.fillRect(L + 1, by, W - 2, 1);
+      x.fillStyle = '#7b4e29'; x.fillRect(L + 1, by + 3, W - 2, 1);
+      x.fillStyle = '#e8d2a6'; x.fillRect(L + 2, by + 1, 1, 1); x.fillRect(L + W - 3, by + 1, 1, 1);
     }
-    x.fillStyle = '#8a5a30'; x.fillRect(L + 1, T0 + 17, W - 2, 1); // untere Kante
   }
-  // ganzzahlig vergrößert aufs Bild
   const out = c.getContext('2d'); out.imageSmoothingEnabled = false;
   out.drawImage(lo, 0, 0, lo.width, lo.height, ox + c0 * Dp, oy + r0 * Dp, lo.width * (Dp / S), lo.height * (Dp / S));
   return c;

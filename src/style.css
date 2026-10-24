@@ -809,3 +809,24 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .stone-ico { image-rendering: pixelated; }
 .stone-big { display: grid; place-items: center; margin-top: 4px; animation: up .4s ease-out; }
 .stone-tab { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Spaziergang (neu): Vollbild-Karte + Pokéwalker */
+.walk2 .wk-hint { top: calc(60px + var(--safe-t)); z-index: 3; }
+.wk-chip { position: absolute; left: 10px; top: calc(8px + var(--safe-t)); display: flex; align-items: center; gap: 6px; background: rgba(255,251,234,.92); border: 2px solid var(--line); border-radius: 22px; padding: 2px 12px 2px 2px; max-width: calc(100% - 70px); }
+.wk-chip img { width: 36px; height: 36px; image-rendering: pixelated; border-radius: 50%; background: #e9f3d6; }
+.wk-chip div { display: flex; flex-direction: column; line-height: 1.1; }
+.wk-chip small { font-size: 11px; color: var(--ink-soft); }
+.pw { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: grid; place-items: center; padding: 0 12px calc(10px + var(--safe-b)); pointer-events: none; }
+.pw-body { pointer-events: auto; width: min(100%, 380px); background: linear-gradient(#ffffff, #e7e9ee); border: 3px solid #b8323a; border-radius: 46px 46px 28px 28px; box-shadow: 0 4px 0 #7d1c22, 0 8px 18px rgba(0,0,0,.35); padding: 10px 14px; display: flex; align-items: center; gap: 12px; }
+.pw-rim { flex: 1; background: #3a3f48; border-radius: 14px; padding: 5px; }
+.pw-lcd { background: #b9c8a0; border-radius: 9px; padding: 5px 9px; color: #27321c; font-family: 'Ziffern', monospace; box-shadow: inset 0 2px 4px rgba(0,0,0,.25); }
+.pw-l1 { font-size: 22px; line-height: 1; letter-spacing: 1px; }
+.pw-l2 { font-size: 11px; margin-top: 2px; letter-spacing: .5px; }
+.pw-bar { height: 5px; background: rgba(39,50,28,.2); border-radius: 3px; margin-top: 3px; overflow: hidden; }
+.pw-bar i { display: block; height: 100%; background: #27321c; }
+.pw-btns { display: flex; gap: 6px; }
+.pw-btn { width: 40px; height: 40px; border-radius: 50%; border: none; background: radial-gradient(circle at 35% 30%, #f0f2f5, #a9adb6); box-shadow: 0 3px 0 #6c707a; font-size: 17px; color: #333; padding: 0; }
+.pw-btn.go { width: 52px; height: 52px; background: radial-gradient(circle at 35% 30%, #ff8a8a, #d0303a); color: #fff; font: inherit; font-weight: 800; box-shadow: 0 3px 0 #7d1c22; }
+.pw-btn:disabled { filter: grayscale(.7); opacity: .6; }
+.pw.walking .pw-btns { display: none; }
+.walk2 .wb { z-index: 6; }

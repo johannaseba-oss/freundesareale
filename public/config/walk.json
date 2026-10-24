@@ -1,15 +1,15 @@
 {
   "_hinweis": "Spaziergang (wie bei Nintendogs): Route auf der Karte einzeichnen – vom Zuhause (🏠) los und wieder zurück. Ausdauer (1–5) bestimmt die maximale Länge, Tempo (1–5, wie im Felsbrecher) die Geschwindigkeit. Wilde Pokémon wandern umher; wer ihnen begegnet, kämpft rundenbasiert wie im klassischen Pokémon-Spiel – jede Attacke kostet Münzen.",
   "grid": {
-    "cols": 15,
-    "rows": 21
+    "cols": 20,
+    "rows": 28
   },
   "stepsByStamina": [
-    24,
-    32,
-    40,
-    50,
-    62
+    34,
+    46,
+    58,
+    72,
+    90
   ],
   "_stepsByStamina": "maximale Schritte (Felder) der Route bei Ausdauer 1–5",
   "speedBySpeed": [
@@ -23,31 +23,49 @@
   "walksPerDay": 1,
   "_walksPerDay": "Spaziergänge je Pokémon und Tag",
   "map": {
-    "_hinweis": "Zufallskarte: treeBlobs Baumgruppen (Größe blobSize), ponds Teiche; Rand = Bäume. Themen = Tilesets aus route_tiles.json.",
+    "_hinweis": "Zufallskarte mit dem 16-px-Tileset: Waldrand, treeBlobs Waldstücke (blobSize), ponds Teiche (pondSize), tallPatches Flecken hohes Gras (tallSize) – dort leben die wilden Pokémon –, paths Wege vom Startplatz aus. themes = Gebiete aus tiles2.json.",
     "treeBlobs": [
-      7,
-      10
+      4,
+      6
     ],
     "blobSize": [
       3,
-      9
+      8
     ],
     "ponds": [
       1,
       2
     ],
+    "pondSize": [
+      2,
+      5
+    ],
+    "tallPatches": [
+      4,
+      6
+    ],
+    "tallSize": [
+      3,
+      7
+    ],
+    "paths": [
+      2,
+      3
+    ],
     "themes": [
       "wald",
+      "kirsch",
       "herbst",
-      "nachtwald",
-      "eis"
+      "schnee",
+      "strand",
+      "nacht"
     ]
   },
   "wild": {
-    "_hinweis": "count = Anzahl wilder Pokémon [min, max]; stepEvery = Sekunden je Schritt [min, max]; Level = Level deines Pokémon + levelOffset [min, max], mindestens minLevel. maxStage: je nach Gegnerlevel nur Grundformen bzw. erste Entwicklungen. themeTypes: Typen der wilden Pokémon je Kartenthema.",
+    "_hinweis": "count = Anzahl wilder Pokémon [min, max]; inGrass = Anteil, der im hohen Gras startet; stayInGrass = Chance, im Gras zu bleiben; stepEvery = Sekunden je Schritt; Level = Level deines Pokémon + levelOffset, mindestens minLevel; maxStage nach Gegnerlevel; themeTypes = Typen je Gebiet.",
     "count": [
-      4,
-      6
+      5,
+      8
     ],
     "stepEvery": [
       0.55,
@@ -66,23 +84,35 @@
         "Normal",
         "Flug"
       ],
+      "kirsch": [
+        "Fee",
+        "Psycho",
+        "Normal",
+        "Pflanze"
+      ],
       "herbst": [
         "Normal",
         "Boden",
         "Feuer",
-        "Käfer"
+        "Kampf"
       ],
-      "nachtwald": [
+      "schnee": [
+        "Eis",
+        "Wasser",
+        "Stahl",
+        "Normal"
+      ],
+      "strand": [
+        "Wasser",
+        "Elektro",
+        "Flug",
+        "Normal"
+      ],
+      "nacht": [
         "Geist",
         "Unlicht",
         "Gift",
         "Psycho"
-      ],
-      "eis": [
-        "Eis",
-        "Wasser",
-        "Normal",
-        "Stahl"
       ]
     },
     "maxStage": {
@@ -90,7 +120,9 @@
       "18": 2,
       "36": 3,
       "_hinweis": "höchste Entwicklungsstufe wilder Pokémon ab Gegnerlevel (Schlüssel)"
-    }
+    },
+    "inGrass": 0.75,
+    "stayInGrass": 0.8
   },
   "battle": {
     "_hinweis": "Attacken-Preis in Münzen = max(minCost, round(Stärke² / coinDiv)) – starke Attacken sind teuer (Stärke 40 ≈ 10, 80 ≈ 40, 120 ≈ 90). Wer eine gewählte Attacke nicht bezahlen kann: das Pokémon bekommt Angst und rennt nach Hause – der Spaziergang gilt als nicht geschafft. Fliehen: Chance fleeBase + (eigene Init / gegnerische Init − 1) × fleeSpeed, zwischen fleeMin und fleeMax.",
@@ -107,5 +139,7 @@
     "epPerLevel": 0.5,
     "epPerStep": 0.5,
     "evMult": 1
-  }
+  },
+  "zoom": 3,
+  "_zoom": "Beim Laufen: Pixel-Vergrößerung der Kamera (folgt dem Trainer)"
 }
