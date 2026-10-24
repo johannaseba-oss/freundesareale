@@ -726,3 +726,21 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .ds-cell span { position: absolute; bottom: 0; right: 1px; font-size: 8px; font-weight: 700; color: #fff; text-shadow: 0 0 2px #000; }
 .ds-note { display: block; margin-top: 8px; opacity: .7; font-size: 11px; }
 .ds-tag.help { background: #8a8f98; }
+
+/* Felsbrecher */
+.rk-info { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--ink-soft); margin: 4px 2px 8px; }
+.rk-row .rk-por { width: 48px; height: 48px; image-rendering: pixelated; }
+.rk-row .bs-row-text { flex: 1; min-width: 0; }
+.rk-stat { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.rk-stat .k { width: 42px; color: var(--ink-soft); }
+.rk-dots { color: #d9822b; letter-spacing: 1px; width: 58px; }
+.rk-stat .bar { flex: 1; height: 6px; max-width: 120px; }
+.bar.rk i { background: #d9822b; }
+.rk-tabs { display: flex; gap: 6px; margin: 8px 0; }
+.rk-shop { max-height: 52vh; overflow-y: auto; }
+.rk-shop-text { flex: 1; min-width: 0; }
+.rk-shop-text small { color: var(--ink-soft); font-size: 11px; }
+.rocks .rk-top-por { width: 34px; height: 34px; image-rendering: pixelated; }
+.rocks .rk-score { font-weight: 800; font-size: 17px; color: var(--ink); }
+.rocks .rk-lives { color: #ff6b6b; font-size: 16px; letter-spacing: 1px; }
+.rocks .b-field { touch-action: none; }
