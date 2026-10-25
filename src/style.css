@@ -855,3 +855,14 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 @keyframes minusUp { from { opacity: 1; transform: translate(-50%, 0) scale(1.2); } to { opacity: 0; transform: translate(-50%, 40px) scale(.9); } }
 .sl-fly { position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none; height: 24px !important; image-rendering: pixelated; }
 .sl-coins.rise { color: #8dff7a; }
+
+/* Chaos-Rangliste: klein und schlicht */
+.cb { display: flex; flex-wrap: wrap; gap: 4px; }
+.cb.hidden { display: none; }
+.cb-chip { display: inline-flex; align-items: center; gap: 2px; background: rgba(255,251,234,.88); border: 2px solid rgba(80,60,40,.35); border-radius: 12px; padding: 0 6px 0 1px; font-size: 12px; line-height: 1; }
+.cb-chip b { font-family: 'Ziffern', monospace; font-size: 14px; }
+.cb-chip.me { border-color: #f2b93b; background: #fff1c9; box-shadow: 0 0 0 1px #f2b93b; }
+.cb-head { image-rendering: pixelated; }
+.cb.ingame { position: absolute; left: 6px; top: 6px; z-index: 3; max-width: 60%; pointer-events: none; opacity: .92; }
+.cb-menu { display: grid; gap: 4px; margin: 4px 0 8px; }
+.cb-menu > small { color: var(--ink-soft); }

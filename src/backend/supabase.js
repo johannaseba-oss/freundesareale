@@ -51,5 +51,7 @@ export function createSupabaseBackend(url, anonKey) {
     },
     async createBackup() { return unwrap(await sb.rpc('create_backup')); },
     async restoreBackup(id) { return unwrap(await sb.rpc('restore_backup', { p_backup_id: id })); },
+    // Chaos-Rangliste (supabase/chaos_board.sql); fehlt die Funktion, gibt es keine Anzeige
+    async chaosBoard() { const { data, error } = await sb.rpc('chaos_board'); return error ? null : data; },
   };
 }

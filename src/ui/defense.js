@@ -13,6 +13,7 @@ import { haptic } from '../haptics.js';
 import { drawWeather } from './weatherfx.js';
 import { sfx, setMusic, musicForLevel, nextTrack } from '../audio.js';
 import { damageStats } from './dmgstats.js';
+import { loadChaosBoard, boardEl } from './chaosboard.js';
 import { physBuff } from '../game/rocks.js';
 import { fxOf } from '../game/items.js';
 import { now } from '../time.js';
@@ -90,7 +91,6 @@ function renderRoadmap(el, back) {
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
     h('p.note', 'Tippe auf das leuchtende Level. Die Punkte zeigen die Typen der Gegner.'),
-    h('button.btn.chaos-btn', { onclick: startChaos }, '🎲 Chaos-Modus – Pokébälle statt Sterne', suspended() ? h('small.chaos-best', '⏸ Pausierte Runde wartet') : null, app.state.defense?.chaosBest ? h('small.chaos-best', `Rekord: Welle ${app.state.defense.chaosBest}`) : null),
     roadMap(L, done, (lv) => { chosen = lv; renderDefenseSetup(el, back); el.scrollTop = 0; })));
 }
 // Bestätigung mit Rollen, Kosten und Fähigkeit – dann geht es aufs Feld
@@ -134,10 +134,12 @@ function offerLoaner(el, back) {
 }
 
 // Chaos-Modus: Pokébälle statt Sterne, endlose Wellen; jede große Welle bringt andere Gegner-Typen
+export function openChaos() { startChaos(); }
 function startChaos() {
   const best = app.state.defense?.chaosBest, sus = suspended();
   modal((m, close) => {
-    m.append(h('h3', '🎲 Chaos-Modus'),
+    const bwrap = h('div.cb-menu', h('small', 'Rekorde aller Trainer:innen'), boardEl(null)); loadChaosBoard(true).then((list) => { if (list) bwrap.lastChild.replaceWith(boardEl(list, { myBest: app.state.defense?.chaosBest || 0, max: 12 })); });
+    m.append(h('h3', '🎲 Chaos-Modus'), bwrap,
       h('p.note', 'Statt Sternen fallen Pokébälle! Jeder Ball enthält ein zufälliges Pokémon, das du genau einmal einsetzen kannst – danach kommen andere. Einsetzen kostet nichts.'),
       h('p.note', `Endlose Wellen: Mit jeder großen Welle wechseln die Gegner-Typen – mit ein paar Ausnahmen.${best ? ` Rekord: Welle ${best}.` : ''}`),
       ...(sus ? [h('button.btn.primary.big.chaos-resume', { onclick: () => { close(); resumeChaos(); } }, '▶ Pausierte Runde fortsetzen', h('small', suspendedLabel(sus)))] : []),
@@ -224,9 +226,10 @@ function openField(themeId = null) {
   const pauseBtn = h('button.b-btn.d-pause', { onclick: pauseMenu, title: 'Pause' }, '⏸');
   const top = h('div.b-top', starsEl, waveEl, livesEl, h('span.b-weather.d-weather'), pauseBtn, h('button.b-btn', { onclick: giveUp, title: 'Aufgeben' }, '🏳'));
   // Normale Level: Vorbereitung ohne Zeitlimit, erst mit „Los!“ beginnen Sternenregen und Wellen. Chaos: Countdown.
+  const board = game.chaos ? boardEl(null) : null; // Chaos-Rangliste (lädt gleich nach)
   const go = game.chaos ? h('div.d-countdown') : h('button.btn.primary.big.d-go', { onclick: () => { go.remove(); game.started = true; message('Los! Sammle Sterne und verteidige deinen Trainer.'); haptic('medium'); } }, 'Los!');
   const info = h('div.d-info');
-  const root = h('div.battle.defense' + (game.chaos ? '.chaos' : ''), top, h('div.b-field', canvas, go), info, cards, msg);
+  const root = h('div.battle.defense' + (game.chaos ? '.chaos' : ''), top, h('div.b-field', canvas, go, board), info, cards, msg);
   document.body.append(root);
   document.body.classList.add('in-battle');
   const levelMusic = game.chaos ? 'chaos' : musicForLevel(game.theme); // je Level ein passendes Stück
@@ -239,6 +242,7 @@ function openField(themeId = null) {
   ui.themeId = themeId && TH.themes[themeId] ? themeId : game.chaos ? ids[Math.floor(Math.random() * ids.length)] : TH.byType[game.theme[0]] || 'wald';
   const ti = new Image(); ti.src = `${base}art/defense/${ui.themeId}.png`; ti.onload = () => { ui.bg = null; }; ui.tiles = ti;
   ui.ro = new ResizeObserver(() => layout()); ui.ro.observe(canvas.parentElement);
+  if (game.chaos) { ui.boardEl = board; loadChaosBoard(true).then((list) => { if (ui && list) { ui.board = list; ui.boardKey = ''; } }); }
   canvas.addEventListener('pointerdown', onField);
   canvas.addEventListener('pointermove', (e) => { ui.hover = ui.sel ? cellAt(e.clientX, e.clientY) : null; });
   buildCards();
@@ -465,6 +469,11 @@ function renderTop() {
   const w = game.waveProgress();
   ui.waveEl.firstChild.textContent = cd ? `Angriff in ${cd} s` : !w.wave ? 'Vorbereitung' : w.total ? `Welle ${w.wave}/${w.total}` : `Welle ${w.wave} · ${(game.theme || []).join(' & ')}`;
   ui.waveEl.lastChild.firstChild.style.width = (w.total ? w.wave / w.total : (w.wave % 5) / 5) * 100 + '%';
+  // Chaos-Rangliste: eigene Zahl wächst mit der laufenden Welle
+  if (ui.board && ui.boardEl) {
+    const mine = Math.max(app.state.defense?.chaosBest || 0, w.wave || 0), bk = mine + '|' + ui.board.length;
+    if (ui.boardKey !== bk) { ui.boardKey = bk; const el = boardEl(ui.board, { myBest: mine, max: 5, cls: '.ingame' }); ui.boardEl.replaceWith(el); ui.boardEl = el; }
+  }
 }
 function message(text) {
   const el = h('div', text);

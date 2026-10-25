@@ -43,6 +43,11 @@ export function createDevBackend() {
     },
     async listBackups() { return db().backups.filter((b) => b.user === uid()).reverse().slice(0, 100).map(({ id, version, reason, created_at }) => ({ id, version, reason, created_at })); },
     async createBackup() { const d = db(), s = d.saves[uid()]; d.backups.push({ id: d.seq++, user: uid(), data: s.data, version: s.version, reason: 'manuell', created_at: new Date().toISOString() }); put(d); return { ok: true }; },
+    async chaosBoard() {
+      const d = db(), me = uid();
+      return Object.entries(d.saves).map(([id, s]) => ({ me: id === me, name: s.data?.profile?.name || 'Trainer', sprite: s.data?.profile?.sprite || 1, best: s.data?.defense?.chaosBest || 0 }))
+        .filter((r) => r.best > 0 || r.me).sort((a, b) => b.best - a.best).slice(0, 30);
+    },
     async restoreBackup(bid) {
       const d = db(), id = uid(), b = d.backups.find((x) => x.id === bid && x.user === id), cur = d.saves[id];
       d.backups.push({ id: d.seq++, user: id, data: cur.data, version: cur.version, reason: 'vor_wiederherstellung', created_at: new Date().toISOString() });
