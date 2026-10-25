@@ -104,8 +104,10 @@ function showHelp() {
   const ch = chances(ui.bet);
   modal((m, close) => {
     m.append(h('h3', '🎰 Gewinne'),
-      h('p.note', `Einsatz ${SL().bets[ui.bet]} Münzen (antippen der Bälle unten ändert ihn). Münzen gibt es nie zurück – nur Pokémon und Entwicklungssteine. Mehr Einsatz = bessere Chancen.`),
+      h('p.note', `Einsatz ${SL().bets[ui.bet]} Münzen (antippen der Bälle unten ändert ihn). Drei gleiche: Pokémon, Steine oder Items. Zwei gleiche: Replay = Gratisspiel, sonst 20 % des Einsatzes zurück. Mehr Einsatz = bessere Chancen auf die Hauptgewinne.`),
       h('div.sl-legend', ch.map(({ o, p }) => h('div.sl-row', h('span.sl-syms', spriteCanvas(RECT[o.symbol], 1), spriteCanvas(RECT[o.symbol], 1), spriteCanvas(RECT[o.symbol], 1)), h('span', o.label), h('small', `${(p * 100).toFixed(p < 0.01 ? 2 : 1)} %`)))),
+      h('div.sl-row', h('span.sl-syms', spriteCanvas(RECT.replay, 1), spriteCanvas(RECT.replay, 1)), h('span', 'Zwei Replay: Gratisspiel'), h('small', `${Math.round((SL().pairs?.replayChance || 0) * 100)} %`)),
+      h('div.sl-row', h('span.sl-syms', spriteCanvas(RECT.cherry, 1), spriteCanvas(RECT.cherry, 1)), h('span', `Zwei gleiche: ${SL().pairs?.refundPct || 20} % zurück`), h('small', `${Math.round((SL().pairs?.refundChance || 0) * 100)} %`)),
       h('p.note', 'Alles andere: leider nichts.'),
       h('div.row', h('button.btn.primary', { onclick: close }, 'OK')));
   });
@@ -114,25 +116,26 @@ function showHelp() {
 // ================= Spielen =================
 function startSpin() {
   if (!ui || ui.phase !== 'idle') return;
-  const betIdx = ui.bet;
+  const free = (app.state.slots?.free || 0) > 0, betIdx = free ? app.state.slots.freeBet ?? ui.bet : ui.bet;
   const r = app.act((s, t) => {
-    const sp = spin(s, betIdx, false);
-    if (!sp.ok) return sp;
-    return { ok: true, outcome: sp.outcome, prize: sp.outcome ? claim(s, t, sp.outcome) : null };
+    if (free) s.slots.free--;
+    const sp = spin(s, betIdx, free);
+    if (!sp.ok) { if (free) s.slots.free++; return sp; }
+    return { ...sp, prize: sp.outcome ? claim(s, t, sp.outcome) : null };
   }, true);
   if (r.ok === false) return;
-  sfx.coin(); haptic('medium');
-  payFx(r.bet || SL().bets[betIdx]);
+  haptic('medium');
+  if (free) { floatText('GRATIS!', '#7dff6a'); sfx.place(); } else { sfx.coin(); payFx(r.bet || SL().bets[betIdx]); }
   ui.result = r; ui.phase = 'spin'; ui.t = 0; ui.pippi = 'spin'; ui.pippiT = 0; ui.msg = ''; ui.press = 0.25;
   // Zielsymbole: Gewinn = dreimal dasselbe, Niete = nie drei gleiche (manchmal zwei gleiche als Spannung)
+  // Zielsymbole: Hauptgewinn = dreimal dasselbe; Paar = zwei gleiche + ein anderes; Niete = drei verschiedene
   let targets;
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   if (r.outcome) targets = [0, 1, 2].map(() => r.outcome.symbol);
-  else {
-    const pick = () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)];
-    targets = [pick(), pick(), pick()];
-    if (Math.random() < 0.3) targets[1] = targets[0];
-    if (targets[0] === targets[1] && targets[1] === targets[2]) targets[2] = SYMBOLS[(SYMBOLS.indexOf(targets[2]) + 1 + Math.floor(Math.random() * 5)) % SYMBOLS.length];
-  }
+  else if (r.pair) {
+    const sym = r.pair === 'replay' ? 'replay' : r.sym, other = shuffle(SYMBOLS.filter((x) => x !== sym))[0];
+    const odd = Math.floor(Math.random() * 3); targets = [0, 1, 2].map((i) => (i === odd ? other : sym));
+  } else targets = shuffle([...SYMBOLS]).slice(0, 3);
   ui.reels.forEach((rl, i) => Object.assign(rl, { spinning: true, target: targets[i], ease: null, speed: 14 + i * 1.5 }));
 }
 // Walze i anhalten: rutscht bis zum nächsten Feld, auf dem das Zielsymbol in der Mitte steht
@@ -167,9 +170,9 @@ function frame(dt) {
   if (ui.coinShown !== target) {
     const d = target - ui.coinShown, step = Math.sign(d) * Math.max(1, Math.ceil(Math.abs(d) * Math.min(1, dt * 3.2)));
     ui.coinShown = Math.abs(step) >= Math.abs(d) ? target : ui.coinShown + step;
-    if (d < 0 && ui.time >= ui.tickAt) { ui.tickAt = ui.time + 0.06; sfx.coin(); }
-    ui.coinBox.classList.toggle('drop', d < 0);
-  } else ui.coinBox.classList.remove('drop');
+    if (ui.time >= ui.tickAt) { ui.tickAt = ui.time + 0.06; sfx.coin(); }
+    ui.coinBox.classList.toggle('drop', d < 0); ui.coinBox.classList.toggle('rise', d > 0);
+  } else ui.coinBox.classList.remove('drop', 'rise');
   ui.coinNum.textContent = ui.coinShown.toLocaleString('de-DE');
   for (const [i, rl] of ui.reels.entries()) {
     if (!rl.spinning) continue;
@@ -191,6 +194,15 @@ function afterStop() {
   if (stopped.length < 3) return;
   ui.phase = 'result';
   const r = ui.result;
+  if (!r.outcome && r.pair) { // Paar: kleiner Gewinn (Gratisspiel oder 20 % zurück)
+    ui.flash = 1.2; ui.pippi = 'win'; ui.pippiT = 0; ui.hop = 0.01; sfx.win(); haptic('medium');
+    ui.reels.forEach((rl, i) => { if (rl.target === (r.pair === 'replay' ? 'replay' : r.sym)) setTimeout(() => ui?.puffs.push({ x: WIN[i][0] + WIN_W / 2, y: WIN[i][1] + 48, t: 0 }), i * 120); });
+    if (r.pair === 'replay') { ui.msg = 'GRATISSPIEL!'; floatText('GRATISSPIEL!', '#7dff6a'); }
+    else { ui.msg = `+${r.back} MÜNZEN`; floatText(`+${r.back}`, '#7dff6a'); }
+    ui.msgT = 0; burstConfetti(25);
+    setTimeout(() => { if (ui) { ui.phase = 'idle'; ui.pippi = 'idle'; ui.msg = ''; } }, 1500);
+    return;
+  }
   if (!r.outcome) {
     ui.pippi = 'lose'; ui.pippiT = 0; ui.msg = 'Leider nichts …'; ui.msgT = 0; sfx.bite();
     setTimeout(() => { if (ui) { ui.phase = 'idle'; ui.pippi = 'idle'; ui.msg = ''; } }, 1300);
@@ -257,6 +269,14 @@ function draw(dt) {
   for (const [i, rl] of ui.reels.entries()) drawReel(x, B, i, rl);
   x.fillStyle = ui.flash > 0 && Math.floor(ui.flash * 8) % 2 ? 'rgba(255,60,60,.9)' : 'rgba(255,60,60,.45)';
   x.fillRect(40, 34 + 48 - 0.5, 180, 1); // Gewinnlinie
+  if (ui.phase === 'result' && ui.result?.pair && ui.flash > 0) {
+    const sym = ui.result.pair === 'replay' ? 'replay' : ui.result.sym, rr = RECT[sym], z = 1.08 + Math.sin(T * 10) * 0.08;
+    WIN.forEach(([wx, wy], i) => {
+      if (ui.reels[i].target !== sym) return;
+      x.strokeStyle = `hsl(${(T * 300 + i * 60) % 360}, 95%, 65%)`; x.lineWidth = 2; x.strokeRect(wx + 1.5, wy + 32.5, WIN_W - 3, 31);
+      x.drawImage(sheet, rr[0], rr[1], rr[2], rr[3], wx + WIN_W / 2 - (rr[2] * z) / 2, wy + 48 - (rr[3] * z) / 2, rr[2] * z, rr[3] * z);
+    });
+  }
   if (ui.win && ui.result?.outcome) {
     const sym = RECT[ui.result.outcome.symbol], z = 1.12 + Math.sin(T * 10) * 0.12;
     WIN.forEach(([wx, wy], i) => {
@@ -357,6 +377,12 @@ function drawPippi(x, B, dt, T) {
   B(fr, -(fr[2] * k) / 2, -fr[3] * k, k);
   x.restore();
 }
+// schwebender Text unter der Münzanzeige (−100, +20, GRATIS!)
+function floatText(text, color) {
+  const el = h('div.sl-minus', { style: { color } }, text);
+  ui.root.append(el);
+  setTimeout(() => el.remove(), 1100);
+}
 // ---- Einsatz: Münzen fliegen von der Anzeige in den Automaten, „−100“ schwebt davon ----
 function payFx(bet) {
   const box = ui.coinBox.getBoundingClientRect(), cr = ui.canvas.getBoundingClientRect();
@@ -423,7 +449,9 @@ function drawStart(x, T, dt) {
   x.fillStyle = g; x.beginPath(); x.ellipse(cx, cy + d, R, R * 0.62, 0, 0, 7); x.fill();
   if (!down) { const p = 0.5 + Math.sin(T * 4) * 0.5; x.strokeStyle = `rgba(255,240,200,${0.3 + p * 0.5})`; x.lineWidth = 1.5; x.beginPath(); x.ellipse(cx, cy, R + 2 + p * 2, R * 0.62 + 2 + p * 1.5, 0, 0, 7); x.stroke(); }
   x.font = "700 10px 'Ziffern', sans-serif"; x.textAlign = 'center'; x.fillStyle = '#fff'; x.strokeStyle = '#6a0a18'; x.lineWidth = 2;
-  x.strokeText('START', cx, cy + 3 + d); x.fillText('START', cx, cy + 3 + d);
+  const lbl = (app.state.slots?.free || 0) > 0 ? 'GRATIS' : 'START';
+  if (lbl === 'GRATIS') x.font = "700 9px 'Ziffern', sans-serif";
+  x.strokeText(lbl, cx, cy + 3 + d); x.fillText(lbl, cx, cy + 3 + d);
 }
 
 // ================= Beutel: Steine & Items =================

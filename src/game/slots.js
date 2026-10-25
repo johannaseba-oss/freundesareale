@@ -1,6 +1,6 @@
-// Spielautomat: Einsatz (mind. 100 Münzen, nie Münzen zurück) → Ergebnis wird beim Start ausgelost, die Walzen
-// zeigen es nur an. Gewinne: Pokémon (Spielautomat-exklusive Mysteriöse/Trio-Legendäre/Jirachi oder seltene),
-// EP, Entwicklungssteine (dauerhafte Entwicklung) oder ein Freispiel. Werte in slots.json.
+// Spielautomat: Einsatz (mind. 100 Münzen) → Ergebnis wird beim Start ausgelost, die Walzen zeigen es nur an.
+// Drei gleiche: Pokémon (Spielautomat-exklusive Mysteriöse/Trio-Legendäre/Jirachi oder seltene), Entwicklungssteine, Items.
+// Zwei gleiche: Replay = Gratisspiel, sonst 20 % des Einsatzes zurück. Werte in slots.json.
 import { CFG, species } from '../config.js';
 import { bdata, calcStats, stonesFor, stoneEvolution, stoneName } from './battle.js';
 import { addCaught } from './actions.js';
@@ -29,14 +29,24 @@ export function rollOutcome(betIdx, rnd = Math.random) {
 const asFighter = (p) => ({ ...p, stats: calcStats(p.dex, p.level || 1, p.ivs || [0, 0, 0, 0, 0, 0], p.evs || [0, 0, 0, 0, 0, 0]) });
 export const stoneTargets = (s, stone) => s.pokemon.filter((p) => bdata(p.dex) && stoneEvolution(asFighter(p), stone));
 
-// Spiel bezahlen (Freispiel kostet nichts) und Ergebnis auslosen
+// Spiel bezahlen (Gratisspiel kostet nichts) und Ergebnis auslosen: erst Hauptgewinn (drei gleiche), sonst vielleicht ein Paar
+// pair: 'replay' (zwei Replay → Gratisspiel) oder 'refund' (zwei gleiche andere → refundPct % zurück)
 export function spin(s, betIdx, free, rnd = Math.random) {
   const bet = S().bets[betIdx];
   if (!free && s.coins < bet) return { ok: false, msg: `Ein Spiel kostet mindestens ${bet} Münzen.` };
   if (!free) s.coins -= bet;
   s.slots ||= { spins: 0, wins: {} };
   s.slots.spins++;
-  return { ok: true, outcome: rollOutcome(betIdx, rnd) };
+  const outcome = rollOutcome(betIdx, rnd);
+  if (outcome) return { ok: true, outcome, bet };
+  const P = S().pairs || {}, r = rnd();
+  if (r < (P.replayChance || 0)) { s.slots.free = (s.slots.free || 0) + 1; s.slots.freeBet = betIdx; return { ok: true, outcome: null, pair: 'replay', bet }; }
+  if (r < (P.replayChance || 0) + (P.refundChance || 0)) {
+    const back = Math.round((bet * (P.refundPct || 20)) / 100); s.coins += back;
+    const pool = SYMBOLS.filter((x) => x !== 'replay');
+    return { ok: true, outcome: null, pair: 'refund', sym: pool[Math.floor(rnd() * pool.length)], back, bet };
+  }
+  return { ok: true, outcome: null, pair: null, bet };
 }
 
 // Gewinn gutschreiben → Beschreibung für die Anzeige

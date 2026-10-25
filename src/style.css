@@ -854,3 +854,4 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .sl-minus { position: absolute; left: 50%; top: calc(54px + var(--safe-t)); transform: translateX(-50%); z-index: 3; color: #ff6b6b; font: 700 24px 'Ziffern', monospace; text-shadow: 0 2px 0 #3a0c1e; pointer-events: none; animation: minusUp 1.1s ease-out forwards; }
 @keyframes minusUp { from { opacity: 1; transform: translate(-50%, 0) scale(1.2); } to { opacity: 0; transform: translate(-50%, 40px) scale(.9); } }
 .sl-fly { position: fixed; left: 0; top: 0; z-index: 30; pointer-events: none; height: 24px !important; image-rendering: pixelated; }
+.sl-coins.rise { color: #8dff7a; }
