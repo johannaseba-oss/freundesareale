@@ -70,7 +70,7 @@ export function openSheet(p) {
     h('div', title, species2, sub),
     favBtn,
     h('button.btn.small.close', { onclick: closeSheet }, '✕'));
-  // getragenes Item (wirkt für die ganze Art)
+  // getragenes Item (wirkt für alle eigenen Pokémon dieser Pokédex-Nummer)
   const itemRow = h('div.sheet-item');
   const renderItem = () => {
     const own = p.held ? itemById(p.held) : null, eff = heldOf(app.state, { uid: p.uid, dex: p.dex });
@@ -78,7 +78,7 @@ export function openSheet(p) {
     if (itemRow.dataset.k === key) return;
     itemRow.dataset.k = key;
     const bag = () => import('./slots.js').then((m) => m.openBag(null, { tab: 'items', uid: p.uid }));
-    if (own) itemRow.replaceChildren(h('img.item-ico', { src: itemSprite(own), alt: '' }), h('div', h('b', own.name), h('small', own.desc + ' (gilt für alle ' + sp.name + ')')),
+    if (own) itemRow.replaceChildren(h('img.item-ico', { src: itemSprite(own), alt: '' }), h('div', h('b', own.name), h('small', own.desc + ' – gilt für alle deine ' + sp.name + ' (Gegner nie)')),
       h('button.btn.small', { onclick: () => { app.act((s) => takeItem(s, p.uid), true); haptic('tick'); } }, 'Abnehmen'), h('button.btn.small', { onclick: bag }, 'Ändern'));
     else if (eff) itemRow.replaceChildren(h('img.item-ico', { src: itemSprite(eff), alt: '' }), h('div', h('b', eff.name), h('small', `Ein anderes ${sp.name} trägt es – der Effekt gilt auch hier.`)), h('button.btn.small', { onclick: bag }, 'Eigenes geben'));
     else itemRow.replaceChildren(h('div', h('b', 'Kein Item'), h('small', 'Items gibt es nur im Spielautomaten (🍒🍒🍒).')), h('button.btn.small', { onclick: bag }, 'Item geben'));

@@ -438,7 +438,7 @@ function stoneWon(stone) {
 function itemWon(it) {
   modal((m, close) => {
     m.append(h('div.stone-big', h('img.item-ico', { src: itemSprite(it), alt: '', style: { width: '72px', height: '72px' } })), h('h3', `${it.name}!`),
-      h('p.note', it.desc, ' Gib es einem Pokémon zum Tragen – alle Pokémon dieser Art bekommen den Effekt.'),
+      h('p.note', it.desc, ' Gib es einem Pokémon zum Tragen – alle deine Pokémon genau dieser Sorte (z. B. alle deine Owei) haben dann den Effekt, Gegner nie.'),
       h('div.row', h('button.btn', { onclick: close }, 'Später'), h('button.btn.primary', { onclick: () => { close(); openBag(null, { tab: 'items', item: it.id }); } }, 'Jetzt geben')));
   });
 }
@@ -481,7 +481,7 @@ export function openBag(focus = null, opts = {}) {
         const it = itemById(sel);
         const mons = favFirst((opts.uid ? app.state.pokemon.filter((p) => p.uid === opts.uid) : app.state.pokemon.filter((p) => canBattle(p.dex))).sort((a, b) => a.dex - b.dex));
         parts.push(h('div.rk-tabs.wrap', inv.map(([x, n]) => h('button.btn.small.stone-tab' + (x.id === sel ? '.primary' : ''), { onclick: () => renderItems(x.id) }, h('img.item-ico', { src: itemSprite(x), alt: '' }), `${x.name} ×${n}`))),
-          h('p.note', h('b', it.name + ': '), it.desc, ' Gilt für alle Pokémon dieser Art.'),
+          h('p.note', h('b', it.name + ': '), it.desc, ' Gilt für alle deine Pokémon genau dieser Sorte (z. B. alle deine Owei) – nicht für andere desselben Typs und nie für Gegner.'),
           h('div.inv', mons.map((p) => h('div.stone-row',
             h('img', { src: portraitUrl(p.dex), alt: '' }),
             h('div', h('b', p.fav ? '★ ' : '', pname(p)), h('small', p.held ? `trägt ${itemById(p.held)?.name}` : `Lv ${p.level}`)),

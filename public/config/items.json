@@ -1,38 +1,345 @@
 {
-  "_hinweis": "Items zum Tragen (nur aus dem Spielautomaten, Symbol Kirschen). Ein Item wirkt für die ganze Art: Gibst du es einem Pokémon, haben alle Pokémon dieser Art den Effekt – auch gezogene (z. B. im Chaos-Modus). Bilder: public/art/items/<sprite>.png (PokeAPI-Sprites). fx: physMult/spezMult/dmgMult = Schaden ×, type+typeMult = Attacken dieses Typs ×, superMult = sehr effektive Treffer ×, speedMult = Tempo/Initiative ×, critAdd = Volltreffer-Stufe +, regen = Heilung (Anteil KP je Runde bzw. je regenEvery Sekunden), lifesteal = Anteil des Schadens als Heilung, recoil = Rückstoß (Spaziergang), sash = überlebt einen K.O.-Treffer, helmet = Angreifer verliert Anteil seiner KP, flinch = Chance zurückzuschrecken / kurz zu stocken, quick = Chance, sofort wieder anzugreifen bzw. zuerst zu handeln, expMult = EP ×, coinMult = Münzen im Areal ×. weight = Häufigkeit im Spielautomaten.",
+  "_hinweis": "Items zum Tragen (nur aus dem Spielautomaten, Symbol Kirschen). Ein Item wirkt für genau dieses Pokémon (gleiche Pokédex-Nummer, nicht gleicher Typ): Gibst du z. B. deinem Owei ein Item, haben alle deine Owei, die du in einem Minispiel einsetzt (auch gezogene im Chaos-Modus), den Effekt. Gegner bekommen nie Items. B. im Chaos-Modus). Bilder: public/art/items/<sprite>.png (PokeAPI-Sprites). fx: physMult/spezMult/dmgMult = Schaden ×, type+typeMult = Attacken dieses Typs ×, superMult = sehr effektive Treffer ×, speedMult = Tempo/Initiative ×, critAdd = Volltreffer-Stufe +, regen = Heilung (Anteil KP je Runde bzw. je regenEvery Sekunden), lifesteal = Anteil des Schadens als Heilung, recoil = Rückstoß (Spaziergang), sash = überlebt einen K.O.-Treffer, helmet = Angreifer verliert Anteil seiner KP, flinch = Chance zurückzuschrecken / kurz zu stocken, quick = Chance, sofort wieder anzugreifen bzw. zuerst zu handeln, expMult = EP ×, coinMult = Münzen im Areal ×. weight = Häufigkeit im Spielautomaten.",
   "regenEvery": 2,
   "held": [
-    { "id": "leftovers", "name": "Überreste", "sprite": "leftovers", "desc": "Heilt in jeder Runde 1/16 der KP.", "fx": { "regen": 0.0625 }, "weight": 6 },
-    { "id": "choice-band", "name": "Wahlband", "sprite": "choice-band", "desc": "Physische Attacken machen 50 % mehr Schaden.", "fx": { "physMult": 1.5 }, "weight": 4 },
-    { "id": "choice-specs", "name": "Wahlglas", "sprite": "choice-specs", "desc": "Spezielle Attacken machen 50 % mehr Schaden.", "fx": { "spezMult": 1.5 }, "weight": 4 },
-    { "id": "choice-scarf", "name": "Wahlschal", "sprite": "choice-scarf", "desc": "Initiative bzw. Angriffstempo +50 %.", "fx": { "speedMult": 1.5 }, "weight": 4 },
-    { "id": "life-orb", "name": "Leben-Orb", "sprite": "life-orb", "desc": "Attacken machen 30 % mehr Schaden; im Spaziergang kostet jeder Treffer 1/10 der KP.", "fx": { "dmgMult": 1.3, "recoil": 0.1 }, "weight": 3 },
-    { "id": "focus-sash", "name": "Fokusgurt", "sprite": "focus-sash", "desc": "Übersteht einmal pro Kampf einen K.O.-Treffer mit 1 KP.", "fx": { "sash": true }, "weight": 4 },
-    { "id": "scope-lens", "name": "Scope-Linse", "sprite": "scope-lens", "desc": "Erhöht die Volltreffer-Chance.", "fx": { "critAdd": 1 }, "weight": 5 },
-    { "id": "quick-claw", "name": "Flinkklaue", "sprite": "quick-claw", "desc": "Handelt manchmal (20 %) zuerst bzw. greift sofort noch einmal an.", "fx": { "quick": 0.2 }, "weight": 5 },
-    { "id": "kings-rock", "name": "King-Stein", "sprite": "kings-rock", "desc": "Getroffene Gegner schrecken manchmal (10 %) zurück.", "fx": { "flinch": 0.1 }, "weight": 5 },
-    { "id": "expert-belt", "name": "Expertengurt", "sprite": "expert-belt", "desc": "Sehr effektive Treffer machen 20 % mehr Schaden.", "fx": { "superMult": 1.2 }, "weight": 5 },
-    { "id": "lucky-egg", "name": "Glücks-Ei", "sprite": "lucky-egg", "desc": "Bringt 50 % mehr Erfahrung bzw. EP.", "fx": { "expMult": 1.5 }, "weight": 4 },
-    { "id": "amulet-coin", "name": "Münzamulett", "sprite": "amulet-coin", "desc": "Produziert im Areal 50 % mehr Münzen.", "fx": { "coinMult": 1.5 }, "weight": 3 },
-    { "id": "shell-bell", "name": "Muschelglocke", "sprite": "shell-bell", "desc": "Heilt um 1/8 des angerichteten Schadens.", "fx": { "lifesteal": 0.125 }, "weight": 5 },
-    { "id": "rocky-helmet", "name": "Beulenhelm", "sprite": "rocky-helmet", "desc": "Wer es mit Körperkontakt angreift, verliert 1/6 seiner KP.", "fx": { "helmet": 0.1667 }, "weight": 4 },
-    { "id": "silk-scarf", "name": "Seidenschal", "sprite": "silk-scarf", "desc": "Normal-Attacken +20 %.", "fx": { "type": "Normal", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "charcoal", "name": "Holzkohle", "sprite": "charcoal", "desc": "Feuer-Attacken +20 %.", "fx": { "type": "Feuer", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "mystic-water", "name": "Zauberwasser", "sprite": "mystic-water", "desc": "Wasser-Attacken +20 %.", "fx": { "type": "Wasser", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "miracle-seed", "name": "Wundersaat", "sprite": "miracle-seed", "desc": "Pflanzen-Attacken +20 %.", "fx": { "type": "Pflanze", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "magnet", "name": "Magnet", "sprite": "magnet", "desc": "Elektro-Attacken +20 %.", "fx": { "type": "Elektro", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "never-melt-ice", "name": "Ewiges Eis", "sprite": "never-melt-ice", "desc": "Eis-Attacken +20 %.", "fx": { "type": "Eis", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "black-belt", "name": "Schwarzgurt", "sprite": "black-belt", "desc": "Kampf-Attacken +20 %.", "fx": { "type": "Kampf", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "poison-barb", "name": "Giftstich", "sprite": "poison-barb", "desc": "Gift-Attacken +20 %.", "fx": { "type": "Gift", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "soft-sand", "name": "Pudersand", "sprite": "soft-sand", "desc": "Boden-Attacken +20 %.", "fx": { "type": "Boden", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "sharp-beak", "name": "Hackattack", "sprite": "sharp-beak", "desc": "Flug-Attacken +20 %.", "fx": { "type": "Flug", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "twisted-spoon", "name": "Krümmlöffel", "sprite": "twisted-spoon", "desc": "Psycho-Attacken +20 %.", "fx": { "type": "Psycho", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "silver-powder", "name": "Silberstaub", "sprite": "silver-powder", "desc": "Käfer-Attacken +20 %.", "fx": { "type": "Käfer", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "hard-stone", "name": "Granitstein", "sprite": "hard-stone", "desc": "Gestein-Attacken +20 %.", "fx": { "type": "Gestein", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "spell-tag", "name": "Bannsticker", "sprite": "spell-tag", "desc": "Geist-Attacken +20 %.", "fx": { "type": "Geist", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "dragon-fang", "name": "Drachenzahn", "sprite": "dragon-fang", "desc": "Drachen-Attacken +20 %.", "fx": { "type": "Drache", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "black-glasses", "name": "Schattenglas", "sprite": "black-glasses", "desc": "Unlicht-Attacken +20 %.", "fx": { "type": "Unlicht", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "metal-coat", "name": "Metallmantel", "sprite": "metal-coat", "desc": "Stahl-Attacken +20 %.", "fx": { "type": "Stahl", "typeMult": 1.2 }, "weight": 3 },
-    { "id": "fairy-feather", "name": "Feendaune", "sprite": "fairy-feather", "desc": "Feen-Attacken +20 %.", "fx": { "type": "Fee", "typeMult": 1.2 }, "weight": 3 }
+    {
+      "id": "leftovers",
+      "name": "Überreste",
+      "sprite": "leftovers",
+      "desc": "Heilt in jeder Runde 1/16 der KP.",
+      "fx": {
+        "regen": 0.0625
+      },
+      "weight": 6
+    },
+    {
+      "id": "choice-band",
+      "name": "Wahlband",
+      "sprite": "choice-band",
+      "desc": "Physische Attacken machen 50 % mehr Schaden.",
+      "fx": {
+        "physMult": 1.5
+      },
+      "weight": 4
+    },
+    {
+      "id": "choice-specs",
+      "name": "Wahlglas",
+      "sprite": "choice-specs",
+      "desc": "Spezielle Attacken machen 50 % mehr Schaden.",
+      "fx": {
+        "spezMult": 1.5
+      },
+      "weight": 4
+    },
+    {
+      "id": "choice-scarf",
+      "name": "Wahlschal",
+      "sprite": "choice-scarf",
+      "desc": "Initiative bzw. Angriffstempo +50 %.",
+      "fx": {
+        "speedMult": 1.5
+      },
+      "weight": 4
+    },
+    {
+      "id": "life-orb",
+      "name": "Leben-Orb",
+      "sprite": "life-orb",
+      "desc": "Attacken machen 30 % mehr Schaden; im Spaziergang kostet jeder Treffer 1/10 der KP.",
+      "fx": {
+        "dmgMult": 1.3,
+        "recoil": 0.1
+      },
+      "weight": 3
+    },
+    {
+      "id": "focus-sash",
+      "name": "Fokusgurt",
+      "sprite": "focus-sash",
+      "desc": "Übersteht einmal pro Kampf einen K.O.-Treffer mit 1 KP.",
+      "fx": {
+        "sash": true
+      },
+      "weight": 4
+    },
+    {
+      "id": "scope-lens",
+      "name": "Scope-Linse",
+      "sprite": "scope-lens",
+      "desc": "Erhöht die Volltreffer-Chance.",
+      "fx": {
+        "critAdd": 1
+      },
+      "weight": 5
+    },
+    {
+      "id": "quick-claw",
+      "name": "Flinkklaue",
+      "sprite": "quick-claw",
+      "desc": "Handelt manchmal (20 %) zuerst bzw. greift sofort noch einmal an.",
+      "fx": {
+        "quick": 0.2
+      },
+      "weight": 5
+    },
+    {
+      "id": "kings-rock",
+      "name": "King-Stein",
+      "sprite": "kings-rock",
+      "desc": "Getroffene Gegner schrecken manchmal (10 %) zurück.",
+      "fx": {
+        "flinch": 0.1
+      },
+      "weight": 5
+    },
+    {
+      "id": "expert-belt",
+      "name": "Expertengurt",
+      "sprite": "expert-belt",
+      "desc": "Sehr effektive Treffer machen 20 % mehr Schaden.",
+      "fx": {
+        "superMult": 1.2
+      },
+      "weight": 5
+    },
+    {
+      "id": "lucky-egg",
+      "name": "Glücks-Ei",
+      "sprite": "lucky-egg",
+      "desc": "Bringt 50 % mehr Erfahrung bzw. EP.",
+      "fx": {
+        "expMult": 1.5
+      },
+      "weight": 4
+    },
+    {
+      "id": "amulet-coin",
+      "name": "Münzamulett",
+      "sprite": "amulet-coin",
+      "desc": "Produziert im Areal 50 % mehr Münzen.",
+      "fx": {
+        "coinMult": 1.5
+      },
+      "weight": 3
+    },
+    {
+      "id": "shell-bell",
+      "name": "Muschelglocke",
+      "sprite": "shell-bell",
+      "desc": "Heilt um 1/8 des angerichteten Schadens.",
+      "fx": {
+        "lifesteal": 0.125
+      },
+      "weight": 5
+    },
+    {
+      "id": "rocky-helmet",
+      "name": "Beulenhelm",
+      "sprite": "rocky-helmet",
+      "desc": "Wer es mit Körperkontakt angreift, verliert 1/6 seiner KP.",
+      "fx": {
+        "helmet": 0.1667
+      },
+      "weight": 4
+    },
+    {
+      "id": "silk-scarf",
+      "name": "Seidenschal",
+      "sprite": "silk-scarf",
+      "desc": "Normal-Attacken +20 %.",
+      "fx": {
+        "type": "Normal",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "charcoal",
+      "name": "Holzkohle",
+      "sprite": "charcoal",
+      "desc": "Feuer-Attacken +20 %.",
+      "fx": {
+        "type": "Feuer",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "mystic-water",
+      "name": "Zauberwasser",
+      "sprite": "mystic-water",
+      "desc": "Wasser-Attacken +20 %.",
+      "fx": {
+        "type": "Wasser",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "miracle-seed",
+      "name": "Wundersaat",
+      "sprite": "miracle-seed",
+      "desc": "Pflanzen-Attacken +20 %.",
+      "fx": {
+        "type": "Pflanze",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "magnet",
+      "name": "Magnet",
+      "sprite": "magnet",
+      "desc": "Elektro-Attacken +20 %.",
+      "fx": {
+        "type": "Elektro",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "never-melt-ice",
+      "name": "Ewiges Eis",
+      "sprite": "never-melt-ice",
+      "desc": "Eis-Attacken +20 %.",
+      "fx": {
+        "type": "Eis",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "black-belt",
+      "name": "Schwarzgurt",
+      "sprite": "black-belt",
+      "desc": "Kampf-Attacken +20 %.",
+      "fx": {
+        "type": "Kampf",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "poison-barb",
+      "name": "Giftstich",
+      "sprite": "poison-barb",
+      "desc": "Gift-Attacken +20 %.",
+      "fx": {
+        "type": "Gift",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "soft-sand",
+      "name": "Pudersand",
+      "sprite": "soft-sand",
+      "desc": "Boden-Attacken +20 %.",
+      "fx": {
+        "type": "Boden",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "sharp-beak",
+      "name": "Hackattack",
+      "sprite": "sharp-beak",
+      "desc": "Flug-Attacken +20 %.",
+      "fx": {
+        "type": "Flug",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "twisted-spoon",
+      "name": "Krümmlöffel",
+      "sprite": "twisted-spoon",
+      "desc": "Psycho-Attacken +20 %.",
+      "fx": {
+        "type": "Psycho",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "silver-powder",
+      "name": "Silberstaub",
+      "sprite": "silver-powder",
+      "desc": "Käfer-Attacken +20 %.",
+      "fx": {
+        "type": "Käfer",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "hard-stone",
+      "name": "Granitstein",
+      "sprite": "hard-stone",
+      "desc": "Gestein-Attacken +20 %.",
+      "fx": {
+        "type": "Gestein",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "spell-tag",
+      "name": "Bannsticker",
+      "sprite": "spell-tag",
+      "desc": "Geist-Attacken +20 %.",
+      "fx": {
+        "type": "Geist",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "dragon-fang",
+      "name": "Drachenzahn",
+      "sprite": "dragon-fang",
+      "desc": "Drachen-Attacken +20 %.",
+      "fx": {
+        "type": "Drache",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "black-glasses",
+      "name": "Schattenglas",
+      "sprite": "black-glasses",
+      "desc": "Unlicht-Attacken +20 %.",
+      "fx": {
+        "type": "Unlicht",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "metal-coat",
+      "name": "Metallmantel",
+      "sprite": "metal-coat",
+      "desc": "Stahl-Attacken +20 %.",
+      "fx": {
+        "type": "Stahl",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    },
+    {
+      "id": "fairy-feather",
+      "name": "Feendaune",
+      "sprite": "fairy-feather",
+      "desc": "Feen-Attacken +20 %.",
+      "fx": {
+        "type": "Fee",
+        "typeMult": 1.2
+      },
+      "weight": 3
+    }
   ]
 }

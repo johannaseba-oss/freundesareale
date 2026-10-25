@@ -1,5 +1,6 @@
-// Getragene Items (config/items.json): ein Pokémon trägt höchstens ein Item (p.held = Item-ID). Der Effekt gilt für die ganze Art –
-// alle Pokémon dieser Art (auch gezogene ohne eigenes Item, z. B. im Chaos-Modus) haben ihn. Items gibt es nur im Spielautomaten.
+// Getragene Items (config/items.json): ein Pokémon trägt höchstens ein Item (p.held = Item-ID). Der Effekt gilt für genau dieses
+// Pokémon (gleiche Pokédex-Nummer, nicht gleicher Typ): alle EIGENEN Pokémon dieser Nummer, die man in einem Minispiel einsetzt
+// (auch gezogene im Chaos-Modus), haben ihn – Gegner nie. Items gibt es nur im Spielautomaten.
 import { CFG } from '../config.js';
 
 const I = () => CFG.items;
@@ -7,7 +8,7 @@ export const heldItems = () => I().held;
 export const itemById = (id) => I().held.find((x) => x.id === id) || null;
 export const itemSprite = (it) => `${import.meta.env.BASE_URL}art/items/${it.sprite}.png`;
 
-// Item für ein Pokémon: eigenes Item zuerst, sonst das Item eines anderen Pokémon derselben Art
+// Item für ein eigenes Pokémon: eigenes Item zuerst, sonst das Item eines anderen eigenen Pokémon mit derselben Pokédex-Nummer
 export function heldOf(s, { uid = null, dex }) {
   if (!s?.pokemon) return null;
   const own = uid != null ? s.pokemon.find((p) => p.uid === uid) : null;
