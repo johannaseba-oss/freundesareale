@@ -16,7 +16,7 @@ export function collectWithFx(list, posOf) {
     if (!pos) continue;
     fly('coin', pos, coins, '#hud-coins');
     for (const [id, n] of Object.entries(berries)) fly('berry', { x: pos.x + 10, y: pos.y }, n, '#hud-bag', berryUrl(id));
-    for (const d of r.dropped || []) if (d.uid === p.uid) { fly('berry', { x: pos.x - 10, y: pos.y - 10 }, 1, '#hud-bag', berryUrl(d.berry)); toast(`Glück gehabt – eine ${CFG.balance.berries.find((x) => x.id === d.berry)?.name || 'Beere'}!`); }
+    for (const d of r.dropped || []) if (d.uid === p.uid) fly('berry', { x: pos.x - 10, y: pos.y - 10 }, 1, '#hud-bag', berryUrl(d.berry)); // Glücksbeere fliegt still in den Beutel
   }
   app.refresh(); // Anzeige zählt erst beim Ankommen der Münzen hoch
   return r;
