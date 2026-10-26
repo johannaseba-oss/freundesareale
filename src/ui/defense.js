@@ -860,6 +860,7 @@ function buzz(kind) {
   haptic(kind);
 }
 
+const aimDist = (u, e) => (u.dir ? Math.abs(e.x - u.x) : Math.abs(u.y - e.y));
 function handleEvents() {
   for (const ev of game.events) {
     if (ev.type === 'shoot') { if (!ev.melee) sfx.attack(ev.moveType); burstAt({ x: ev.u.x + (ev.u.dir || 0) * 0.3, y: ev.u.y - (ev.u.dir ? 0.15 : 0.45) }, ev.moveType, 3, 0.5, 0.6); continue; }
@@ -872,10 +873,24 @@ function handleEvents() {
     if (ev.type === 'lifeBought') { message(`♥ Leben gekauft – du hast jetzt ${game.lives}.`); sfx.levelUp(); continue; }
     if (ev.type === 'statusArea') { // 3×3-Fläche um das Pokémon kurz aufleuchten lassen
       const a = ev.area, u = ev.u, sleep = ev.kind === 'sleep';
-      ui.areas.push({ x: u.x - a - 0.5, y: u.y - a - 0.5, w: 2 * a + 1, h: 2 * a + 1, color: sleep ? '#cfe0ff' : '#f95587', t: 0, dur: 0.6 });
-      for (let i = 0; i < 10; i++) burstAt({ x: u.x + (Math.random() - 0.5) * (2 * a + 1), y: u.y + (Math.random() - 0.5) * (2 * a + 1) }, sleep ? 'Fee' : 'Psycho', 1, 0.4, 0.8);
+      const aura = ev.kind === 'aura';
+      ui.areas.push({ x: u.x - a - 0.5, y: u.y - a - 0.5, w: 2 * a + 1, h: 2 * a + 1, color: aura ? '#ff8a3a' : sleep ? '#cfe0ff' : '#f95587', t: 0, dur: 0.6 });
+      for (let i = 0; i < 10; i++) burstAt({ x: u.x + (Math.random() - 0.5) * (2 * a + 1), y: u.y + (Math.random() - 0.5) * (2 * a + 1) }, aura ? 'Feuer' : sleep ? 'Fee' : 'Psycho', 1, 0.4, 0.8);
       continue;
     }
+    if (ev.type === 'cone') { // Flächenattacke: Felder geradeaus und schräg vor dem Pokémon aufleuchten lassen
+      const u = ev.u, d = u.dir, col = typeColor(ev.moveType);
+      for (let f = 1; f <= ev.range; f++) for (let l = -f; l <= f; l++) {
+        const cx = d ? u.x + d * f : u.x + l, cy = d ? u.y + l : u.y - f;
+        ui.areas.push({ x: cx - 0.5, y: cy - 0.5, w: 1, h: 1, color: col, t: 0, dur: 0.55 });
+        burstAt({ x: cx, y: cy }, ev.moveType, 2, 0.35, 0.9);
+      }
+      sfx.attack(ev.moveType);
+      continue;
+    }
+    if (ev.type === 'coneStatus') { const tx = { slow: ['verlangsamt', '#e8e8ff'], paralysis: ['paralysiert!', '#ffe066'], poison: ['vergiftet', '#d48ae0'], freeze: ['verlangsamt', '#9fe0ff'], frozen: ['eingefroren!', '#bff0ff'], atkDown: ['Angriff ↓↓', '#ff9a8a'], confuse: ['verwirrt!', '#f95587'] }[ev.kind]; if (tx && Math.random() < 0.5) say(ev.e, tx[0], tx[1], 0.22, 0.8, -0.9); continue; }
+    if (ev.type === 'switchMelee') { ring(ev.u, '#ffb43a', 0.15, 0.7, 0.3); continue; }
+    if (ev.type === 'snipe') { ui.beams.push({ u: ev.u, length: Math.max(1, Math.round(aimDist(ev.u, ev.target))), fx: 'psycho', t: 0 }); continue; }
     if (ev.type === 'cloud') { // Giftwolke: Fläche vor dem Pokémon
       const u = ev.u, r = ev.range, w = ev.width, d = u.dir;
       const rect = d ? { x: d > 0 ? u.x + 0.3 : u.x - 0.3 - r, y: u.y - w / 2, w: r, h: w } : { x: u.x - w / 2, y: u.y - 0.3 - r, w, h: r };
@@ -885,7 +900,7 @@ function handleEvents() {
     }
     if (ev.type === 'level') { say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
     if (ev.type === 'evolve') { evolveFx(ev); continue; }
-    if (ev.type === 'dot') { say(ev.e, String(ev.dmg), { Gift: '#d48ae0', Feuer: '#ffa75c', Elektro: '#ffe066' }[ev.dot] || '#ffffff', 0.24, 0.6, -0.3); burst(ev.e, ev.dot, 4, 0.6, 0.7); continue; }
+    if (ev.type === 'dot') { say(ev.e, String(ev.dmg), { Gift: '#d48ae0', Feuer: '#ffa75c', Elektro: '#ffe066', Blaufeuer: '#7fc8ff' }[ev.dot] || '#ffffff', 0.24, 0.6, -0.3); burst(ev.e, ev.dot === 'Blaufeuer' ? 'Wasser' : ev.dot, ev.dot === 'Blaufeuer' ? 7 : 4, 0.6, 0.7); continue; }
     if (ev.type === 'handFull') { toast(`Höchstens ${D().chaos.handMax} Karten – setz erst eins ein.`); continue; }
     if (ev.type === 'collect' && ev.drop.dex) { const p = dropPos(ev.drop); say({ x: p.x, y: p.y }, species(ev.drop.dex).name + '!', '#ffffff', 0.28, 1); }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }

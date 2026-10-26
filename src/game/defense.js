@@ -28,6 +28,7 @@ export function roleOf(dex) {
   const R = D().roles, ab = abilityOf(dex);
   if (ab?.type === 'shield') return 'mauer';
   if (ab?.type === 'reactive') return 'explosiv';
+  if (ab?.type === 'cone') return 'fernkampf'; // Flächenattacke: greift immer an (auch frühere Sammler/Explosive)
   for (const r of ['produzent', 'explosiv', 'mauer']) if (R[r].dex.includes(dex)) return r;
   return moveOf(bdata(dex).move)?.range === 'nah' ? 'nahkampf' : 'fernkampf';
 }
@@ -212,12 +213,14 @@ export class Defense {
     const box = (a) => (e) => Math.abs(e.x - u.x) <= a + 0.5 && Math.abs(e.y - u.y) <= a + 0.5;
     if (role === 'explosiv') each(this.chaos ? box(D().chaos.explosionArea) : (e) => dist(e, u) <= (ab?.type === 'reactive' ? ab.radius : evolved(dex) ? R.explosiv.radiusBig : R.explosiv.radiusSmall) + 0.3, area);
     else if (role === 'nahkampf' || role === 'fernkampf') {
-      const range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : rule ? rule.range : R[role].range;
+      let range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : ab?.type === 'cone' ? ab.range + 0.3 : ab?.type === 'switch' ? R.fernkampf.range : rule ? rule.range : R[role].range;
+      if (ab?.type === 'backline') range += ab.rangeBonus || 0;
       const lat = rule?.width ? rule.width / 2 : 0.5;
-      each((e) => { const a = aim(u, e); return a.lat < lat && a.fwd >= -0.3 && a.fwd <= range && (u.dir || e.y < u.y + 0.3); }, attack);
+      each((e) => { const a = aim(u, e); return a.lat < (ab?.type === 'cone' ? Math.max(0.5, a.fwd + 0.5) : lat) && a.fwd >= -0.3 && a.fwd <= range && (u.dir || e.y < u.y + 0.3); }, attack);
     }
     if (this.chaos && (ab?.type === 'sleep' || ab?.type === 'confuse')) each(box(D().chaos.statusArea.area), area);
     if (ab?.type === 'heal') each((e) => dist(e, u) <= ab.radius, area, false);
+    if (ab?.type === 'aura') each(box(1), area, false);
     return { attack, area };
   }
   // zwei eigene Pokémon tauschen ihre Plätze (Drag & Drop auf ein anderes Pokémon)
@@ -392,6 +395,8 @@ export class Defense {
   }
   hurtEnemy(e, dmg, eff, from, mv, crit = false) {
     if (e.hp <= 0) return;
+    const fab = from?.dex ? abilityOf(from.dex) : null;
+    if (fab?.type === 'bluefire' && mv) { dmg = Math.max(1, Math.round(dmg * fab.mult)); (e.dots ||= {}).Blaufeuer = { until: this.t + fab.seconds, dps: e.maxHp * fab.pctPerSecond, from, tick: 0 }; }
     this.logDamage(from, Math.min(dmg, e.hp));
     if (from?.item?.lifesteal && from.hp > 0) from.hp = Math.min(from.maxHp, from.hp + Math.min(dmg, e.hp) * from.item.lifesteal); // Muschelglocke
     if (from?.item?.flinch && this.rnd() < from.item.flinch) e.sleepUntil = Math.max(e.sleepUntil || 0, this.t + 0.6); // King-Stein: stockt kurz
@@ -420,6 +425,18 @@ export class Defense {
     if (evo) { const from = u.dex; u.dex = evo.to; this.restat(u); this.events.push({ type: 'evolve', u, from, to: evo.to }); }
   }
   // Schlaf/Verwirrung auf einen Gegner anwenden
+  // Wirkung einer Flächenattacke (cone) auf einen Gegner
+  coneStatus(e, ab, u) {
+    if (e.hp <= 0 || this.rnd() >= (ab.chance ?? 1)) return;
+    const k = ab.status, until = this.t + ab.seconds;
+    if (k === 'slow') { e.slowUntil = until; e.slowFactor = ab.factor || 0.5; }
+    else if (k === 'paralysis') { e.sleepUntil = Math.max(e.sleepUntil || 0, until); e.paraUntil = until; }
+    else if (k === 'poison') (e.dots ||= {}).Gift = { until, dps: e.maxHp * (D().dots?.Gift?.pctPerSecond || 0.02), from: u, tick: 0 };
+    else if (k === 'freeze') { e.slowUntil = until; e.slowFactor = ab.factor || 0.5; if (this.rnd() < (ab.freezeChance || 0)) { e.sleepUntil = Math.max(e.sleepUntil || 0, this.t + (ab.freezeSeconds || 1)); e.frozenUntil = this.t + (ab.freezeSeconds || 1); } }
+    else if (k === 'atkDown') { e.atkDownUntil = until; e.atkDownFactor = ab.factor || 0.5; }
+    else if (k === 'confuse') e.confusedUntil = until;
+    this.events.push({ type: 'coneStatus', e, kind: e.frozenUntil > this.t && k === 'freeze' ? 'frozen' : k });
+  }
   applyStatus(e, ab) {
     if (ab?.type === 'confuse') { e.confusedUntil = this.t + ab.seconds; this.events.push({ type: 'confuse', e }); }
     if (ab?.type === 'sleep' && this.t >= (e.sleepUntil || 0)) { e.sleepUntil = this.t + ab.seconds; this.events.push({ type: 'sleep', e }); }
@@ -504,6 +521,14 @@ export class Defense {
         for (const o of this.units) if (o.hp > 0 && o.hp < o.maxHp && dist(o, u) <= ab.radius) { const amt = Math.max(1, Math.round(o.maxHp * ab.pct)); o.hp = Math.min(o.maxHp, o.hp + amt); healed.push({ o, amt }); }
         this.events.push({ type: 'heal', u, radius: ab.radius, healed });
       }
+      if (ab?.type === 'aura' && this.t >= (u.nextAura || 0)) {
+        u.nextAura = this.t + ab.every;
+        const near = this.inArea(u, 1);
+        if (near.length) {
+          this.events.push({ type: 'statusArea', u, area: 1, kind: 'aura' });
+          for (const e of near) { const r = this.damage(u, u.level, e, ab.mult); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); if (e.hp > 0) (e.dots ||= {}).Feuer = { until: this.t + ab.burnSeconds, dps: e.maxHp * ab.burnPct, from: u, tick: 0 }; }
+        }
+      }
       // Chaos: Schlafpuder & Co. wirken auf alle Gegner im 3×3-Bereich um das Pokémon
       if (this.chaos && (ab?.type === 'sleep' || ab?.type === 'confuse') && this.t >= (u.nextStatus || 0)) {
         const SA = D().chaos.statusArea, near = this.inArea(u, SA.area);
@@ -527,22 +552,37 @@ export class Defense {
       u.cd -= dt;
       if (u.cd > 0) continue;
       const mv = moveOf(bdata(u.dex).move), rule = this.chaos ? D().chaos.moves?.[mv.name] : null; // Chaos: durchdringende Attacken
-      const melee = u.role === 'nahkampf', range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : rule ? rule.range : R[u.role].range;
+      let melee = u.role === 'nahkampf', range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : ab?.type === 'cone' ? ab.range + 0.3 : rule ? rule.range : R[u.role].range;
+      if (ab?.type === 'switch') { melee = false; range = R.fernkampf.range; }
+      if (ab?.type === 'backline') range += ab.rangeBonus || 0;
       // nächster Gegner in Angriffsrichtung (Mitte: die eigene Spalte hinauf, Seitenfeld: quer über die Reihe)
       let target = null, best = Infinity;
       for (const e of this.enemies) {
         if (e.hp <= 0 || e.y < -0.2) continue;
         const a = aim(u, e);
-        if (a.lat < (rule?.width ? rule.width / 2 : 0.5) && a.fwd >= -0.3 && a.fwd <= range && a.fwd < best) { target = e; best = a.fwd; }
+        const latMax = ab?.type === 'cone' ? Math.max(0.5, a.fwd + 0.5) : rule?.width ? rule.width / 2 : 0.5; // Fläche: geradeaus + schräg
+        const score = ab?.type === 'backline' ? -a.fwd : a.fwd; // Fernsicht: die hintersten zuerst
+        if (a.lat < latMax && a.fwd >= -0.3 && a.fwd <= range && score < best) { target = e; best = score; }
       }
       if (!target) continue;
+      // Kampfwechsel: kommt ein Gegner nah, wird aus Fernkampf Nahkampf
+      const close = ab?.type === 'switch' && aim(u, target).fwd <= ab.meleeRange;
+      if (close) melee = true;
       const spd = u.stats[5] / refSpeed(u.level);
-      u.cd = (R[u.role].cooldown * tempoOf(u.dex)) / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3))) / (u.item?.speedMult || 1); // Wahlschal
+      u.cd = (R[u.role].cooldown * tempoOf(u.dex)) / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3))) / (u.item?.speedMult || 1) * (close ? ab.meleeCd : 1); // Wahlschal, Kampfwechsel
       if (u.item?.quick && this.rnd() < u.item.quick) u.cd *= 0.3; // Flinkklaue: gleich noch einmal
       u.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
       this.events.push({ type: 'shoot', u, moveType: mv.type, melee });
       const [dx, dy] = u.dir ? [u.dir, 0] : [0, -1], x0 = u.x + dx * 0.3, y0 = u.y + dy * 0.3;
-      if (ab?.type === 'beam') { // Strahl: trifft alle Gegner in length Feldern
+      if (ab?.type === 'cone') { // Flächenattacke: geradeaus, schräg links und schräg rechts
+        this.events.push({ type: 'cone', u, range: ab.range, moveType: mv.type, status: ab.status });
+        for (const e of this.enemies) { const a = aim(u, e); if (e.hp > 0 && a.fwd > -0.3 && a.fwd <= ab.range + 0.3 && a.lat < Math.max(0.5, a.fwd + 0.5)) { const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); this.coneStatus(e, ab, u); } }
+      } else if (ab?.type === 'switch') {
+        if (close) { const r = this.damage(u, u.level, target, ab.meleeMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); this.events.push({ type: 'switchMelee', u }); }
+        else this.projectiles.push({ x: x0, y: y0, vx: dx * 6, vy: dy * 6, dist: 0, from: u, type: mv.type, range: 99, left: 1, hits: new Set(), mult: ab.rangedMult });
+      } else if (ab?.type === 'backline') {
+        const r = this.damage(u, u.level, target, R[u.role].damageMult || 1); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); this.events.push({ type: 'snipe', u, target, moveType: mv.type });
+      } else if (ab?.type === 'beam') { // Strahl: trifft alle Gegner in length Feldern
         this.events.push({ type: 'beam', u, length: ab.length, fx: ab.fx });
         for (const e of this.enemies) { const a = aim(u, e); if (e.hp > 0 && a.lat < 0.5 && a.fwd > -0.2 && a.fwd <= ab.length + 0.3) { const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); } }
       } else if (ab?.type === 'boomerang') {
@@ -560,7 +600,7 @@ export class Defense {
       for (const e of this.enemies) {
         if (p.left <= 0 || e.hp <= 0 || p.hits.has(e.id) || Math.abs(e.x - p.x) > 0.45 || Math.abs(e.y - p.y) > 0.35) continue;
         p.hits.add(e.id); p.left--;
-        const r = this.damage(p.from, p.from.level, e, R.fernkampf.damageMult); this.hurtEnemy(e, r.dmg, r.eff, p.from, r.mv, r.crit);
+        const r = this.damage(p.from, p.from.level, e, R.fernkampf.damageMult * (p.mult || 1)); this.hurtEnemy(e, r.dmg, r.eff, p.from, r.mv, r.crit);
       }
       return p.left > 0 && p.dist <= p.range + 0.3 && p.y > -1 && p.x > -2 && p.x < G.cols + 2;
     });
@@ -600,6 +640,7 @@ export class Defense {
         if (e.cd <= 0) {
           e.cd = E.biteCooldown * tempoOf(e.dex); e.anim = { name: 'Attack', t0: this.t };
           const r = this.damage(e, e.level, block);
+          if (this.t < (e.atkDownUntil || 0)) r.dmg = Math.max(1, Math.round(r.dmg * (e.atkDownFactor || 0.5))); // Brüller
           if (block.item?.sash && !block.sashUsed && r.dmg >= block.hp) { r.dmg = block.hp - 1; block.sashUsed = true; } // Fokusgurt
           block.hp -= r.dmg; block.hurtT = this.t;
           if (block.item?.helmet) this.hurtEnemy(e, Math.max(1, Math.round(e.maxHp * block.item.helmet)), 1, block, null); // Beulenhelm

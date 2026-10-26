@@ -297,24 +297,89 @@
       "fx": "wasser",
       "mult": 1.2
     },
+    "10": {
+      "type": "cone",
+      "name": "Fadenschuss",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "slow",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.45
+    },
     "11": {
-      "type": "shield",
-      "name": "Kokon-Panzer",
-      "text": "extrem harter Panzer – ein Schild gegen Gegner",
-      "hpMult": 16
+      "type": "cone",
+      "name": "Fadenschuss",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "slow",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.45
     },
     "12": {
-      "type": "sleep",
-      "name": "Schlafpuder",
-      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
-      "chance": 0.25,
-      "seconds": 4
+      "type": "cone",
+      "name": "Giftpuder",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.6,
+      "seconds": 5
+    },
+    "13": {
+      "type": "cone",
+      "name": "Fadenschuss",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "slow",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.45
     },
     "14": {
-      "type": "shield",
-      "name": "Kokon-Panzer",
-      "text": "extrem harter Panzer – ein Schild gegen Gegner",
-      "hpMult": 16
+      "type": "cone",
+      "name": "Fadenschuss",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "slow",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.45
+    },
+    "15": {
+      "type": "cone",
+      "name": "Giftpuder",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.6,
+      "seconds": 5
+    },
+    "25": {
+      "type": "cone",
+      "name": "Donnerwelle",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner paralysieren (bleiben kurz stehen)",
+      "range": 2,
+      "mult": 0.8,
+      "status": "paralysis",
+      "chance": 0.3,
+      "seconds": 1.5
+    },
+    "26": {
+      "type": "cone",
+      "name": "Donnerwelle",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner paralysieren (bleiben kurz stehen)",
+      "range": 2,
+      "mult": 0.8,
+      "status": "paralysis",
+      "chance": 0.3,
+      "seconds": 1.5
     },
     "40": {
       "type": "heal",
@@ -325,25 +390,54 @@
       "pct": 0.15
     },
     "43": {
-      "type": "sleep",
-      "name": "Schlafpuder",
-      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
-      "chance": 0.25,
-      "seconds": 4
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
     },
     "44": {
-      "type": "sleep",
-      "name": "Schlafpuder",
-      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
-      "chance": 0.25,
-      "seconds": 4
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
     },
     "45": {
-      "type": "sleep",
-      "name": "Schlafpuder",
-      "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
-      "chance": 0.25,
-      "seconds": 4
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
+    "48": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
+    "49": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
     },
     "54": {
       "type": "confuse",
@@ -431,6 +525,26 @@
       "pierce": 3,
       "backMult": 0.6
     },
+    "109": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
+    "110": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
     "113": {
       "type": "heal",
       "name": "Heilende Aura",
@@ -439,12 +553,57 @@
       "radius": 1.6,
       "pct": 0.15
     },
+    "122": {
+      "type": "cone",
+      "name": "Konfustrahl",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner verwirren",
+      "range": 2,
+      "mult": 0.8,
+      "status": "confuse",
+      "chance": 0.2,
+      "seconds": 5
+    },
+    "167": {
+      "type": "cone",
+      "name": "Fadenschuss",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "slow",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.45
+    },
+    "168": {
+      "type": "cone",
+      "name": "Fadenschuss",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "slow",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.45
+    },
     "182": {
       "type": "sleep",
       "name": "Schlafpuder",
       "text": "Chance, dass getroffene Gegner eine Weile einschlafen",
       "chance": 0.25,
       "seconds": 4
+    },
+    "225": {
+      "type": "cone",
+      "name": "Eiswolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt und friert Gegner manchmal kurz ein",
+      "range": 2,
+      "mult": 0.8,
+      "status": "freeze",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.5,
+      "freezeChance": 0.25,
+      "freezeSeconds": 1
     },
     "242": {
       "type": "heal",
@@ -453,6 +612,28 @@
       "every": 6,
       "radius": 1.6,
       "pct": 0.15
+    },
+    "261": {
+      "type": "cone",
+      "name": "Brüller",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "range": 2,
+      "mult": 0.8,
+      "status": "atkDown",
+      "chance": 1,
+      "seconds": 5,
+      "factor": 0.5
+    },
+    "262": {
+      "type": "cone",
+      "name": "Brüller",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "range": 2,
+      "mult": 0.8,
+      "status": "atkDown",
+      "chance": 1,
+      "seconds": 5,
+      "factor": 0.5
     },
     "266": {
       "type": "shield",
@@ -473,11 +654,286 @@
       "text": "extrem harter Panzer – ein Schild gegen Gegner",
       "hpMult": 16
     },
+    "303": {
+      "type": "cone",
+      "name": "Brüller",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "range": 2,
+      "mult": 0.8,
+      "status": "atkDown",
+      "chance": 1,
+      "seconds": 5,
+      "factor": 0.5
+    },
+    "310": {
+      "type": "cone",
+      "name": "Donnerwelle",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner paralysieren (bleiben kurz stehen)",
+      "range": 2,
+      "mult": 0.8,
+      "status": "paralysis",
+      "chance": 0.3,
+      "seconds": 1.5
+    },
+    "361": {
+      "type": "cone",
+      "name": "Eiswolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt und friert Gegner manchmal kurz ein",
+      "range": 2,
+      "mult": 0.8,
+      "status": "freeze",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.5,
+      "freezeChance": 0.25,
+      "freezeSeconds": 1
+    },
+    "362": {
+      "type": "cone",
+      "name": "Eiswolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt und friert Gegner manchmal kurz ein",
+      "range": 2,
+      "mult": 0.8,
+      "status": "freeze",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.5,
+      "freezeChance": 0.25,
+      "freezeSeconds": 1
+    },
+    "403": {
+      "type": "cone",
+      "name": "Brüller",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "range": 2,
+      "mult": 0.8,
+      "status": "atkDown",
+      "chance": 1,
+      "seconds": 5,
+      "factor": 0.5
+    },
+    "404": {
+      "type": "cone",
+      "name": "Brüller",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "range": 2,
+      "mult": 0.8,
+      "status": "atkDown",
+      "chance": 1,
+      "seconds": 5,
+      "factor": 0.5
+    },
+    "405": {
+      "type": "cone",
+      "name": "Brüller",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "range": 2,
+      "mult": 0.8,
+      "status": "atkDown",
+      "chance": 1,
+      "seconds": 5,
+      "factor": 0.5
+    },
+    "434": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
+    "435": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
+    "447": {
+      "type": "switch",
+      "name": "Kampfwechsel",
+      "text": "greift aus der Ferne etwas schwächer an – kommt ein Gegner nah, wechselt es in den Nahkampf (viel stärker und schneller)",
+      "rangedMult": 0.75,
+      "meleeRange": 1.2,
+      "meleeMult": 1.7,
+      "meleeCd": 0.55
+    },
+    "448": {
+      "type": "switch",
+      "name": "Kampfwechsel",
+      "text": "greift aus der Ferne etwas schwächer an – kommt ein Gegner nah, wechselt es in den Nahkampf (viel stärker und schneller)",
+      "rangedMult": 0.75,
+      "meleeRange": 1.2,
+      "meleeMult": 1.7,
+      "meleeCd": 0.55
+    },
+    "459": {
+      "type": "cone",
+      "name": "Eiswolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt und friert Gegner manchmal kurz ein",
+      "range": 2,
+      "mult": 0.8,
+      "status": "freeze",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.5,
+      "freezeChance": 0.25,
+      "freezeSeconds": 1
+    },
+    "479": {
+      "type": "cone",
+      "name": "Donnerwelle",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner paralysieren (bleiben kurz stehen)",
+      "range": 2,
+      "mult": 0.8,
+      "status": "paralysis",
+      "chance": 0.3,
+      "seconds": 1.5
+    },
+    "517": {
+      "type": "cone",
+      "name": "Konfustrahl",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner verwirren",
+      "range": 2,
+      "mult": 0.8,
+      "status": "confuse",
+      "chance": 0.2,
+      "seconds": 5
+    },
+    "518": {
+      "type": "cone",
+      "name": "Konfustrahl",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner verwirren",
+      "range": 2,
+      "mult": 0.8,
+      "status": "confuse",
+      "chance": 0.2,
+      "seconds": 5
+    },
     "541": {
       "type": "shield",
       "name": "Kokon-Panzer",
       "text": "extrem harter Panzer – ein Schild gegen Gegner",
       "hpMult": 16
+    },
+    "543": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
+    "544": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
+    "545": {
+      "type": "cone",
+      "name": "Giftwolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – vergiftet getroffene Gegner",
+      "range": 2,
+      "mult": 0.8,
+      "status": "poison",
+      "chance": 0.7,
+      "seconds": 5
+    },
+    "577": {
+      "type": "backline",
+      "name": "Fernsicht",
+      "text": "greift zuerst die hintersten Gegner in Reichweite an statt die vordersten",
+      "rangeBonus": 1.5
+    },
+    "578": {
+      "type": "backline",
+      "name": "Fernsicht",
+      "text": "greift zuerst die hintersten Gegner in Reichweite an statt die vordersten",
+      "rangeBonus": 1.5
+    },
+    "579": {
+      "type": "backline",
+      "name": "Fernsicht",
+      "text": "greift zuerst die hintersten Gegner in Reichweite an statt die vordersten",
+      "rangeBonus": 1.5
+    },
+    "595": {
+      "type": "cone",
+      "name": "Donnerwelle",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner paralysieren (bleiben kurz stehen)",
+      "range": 2,
+      "mult": 0.8,
+      "status": "paralysis",
+      "chance": 0.3,
+      "seconds": 1.5
+    },
+    "596": {
+      "type": "cone",
+      "name": "Donnerwelle",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner paralysieren (bleiben kurz stehen)",
+      "range": 2,
+      "mult": 0.8,
+      "status": "paralysis",
+      "chance": 0.3,
+      "seconds": 1.5
+    },
+    "607": {
+      "type": "bluefire",
+      "name": "Blaues Feuer",
+      "text": "schwächerer Treffer, aber blaues Feuer brennt extrem stark nach (viel mehr Schaden pro Sekunde als normales Feuer)",
+      "mult": 0.55,
+      "seconds": 5,
+      "pctPerSecond": 0.07
+    },
+    "608": {
+      "type": "bluefire",
+      "name": "Blaues Feuer",
+      "text": "schwächerer Treffer, aber blaues Feuer brennt extrem stark nach (viel mehr Schaden pro Sekunde als normales Feuer)",
+      "mult": 0.55,
+      "seconds": 5,
+      "pctPerSecond": 0.07
+    },
+    "609": {
+      "type": "bluefire",
+      "name": "Blaues Feuer",
+      "text": "schwächerer Treffer, aber blaues Feuer brennt extrem stark nach (viel mehr Schaden pro Sekunde als normales Feuer)",
+      "mult": 0.55,
+      "seconds": 5,
+      "pctPerSecond": 0.07
+    },
+    "615": {
+      "type": "cone",
+      "name": "Eiswolke",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – verlangsamt und friert Gegner manchmal kurz ein",
+      "range": 2,
+      "mult": 0.8,
+      "status": "freeze",
+      "chance": 1,
+      "seconds": 3,
+      "factor": 0.5,
+      "freezeChance": 0.25,
+      "freezeSeconds": 1
+    },
+    "637": {
+      "type": "aura",
+      "name": "Glutaura",
+      "text": "alle Gegner auf den 9 Feldern um Ramoth bekommen laufend Feuerschaden",
+      "every": 1,
+      "mult": 0.45,
+      "burnSeconds": 3,
+      "burnPct": 0.025
     },
     "665": {
       "type": "shield",
@@ -492,7 +948,38 @@
       "chance": 0.25,
       "seconds": 4
     },
-    "_hinweis": "Sonderfähigkeiten einzelner Pokémon (Pokédex-Nummer). Typen: beam (Strahl über length Felder, durchschlägt), shield (Panzer, hpMult statt Mauer-Faktor), confuse (chance auf Verwirrung für seconds), reactive (explodiert bei Angriff), boomerang (hin und zurück, pierce Gegner je Richtung), heal (heilt pct der KP im radius alle every s), sleep (chance, dass Gegner seconds lang schlafen). Neue Einträge einfach ergänzen."
+    "677": {
+      "type": "cone",
+      "name": "Konfustrahl",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner verwirren",
+      "range": 2,
+      "mult": 0.8,
+      "status": "confuse",
+      "chance": 0.2,
+      "seconds": 5
+    },
+    "678": {
+      "type": "cone",
+      "name": "Konfustrahl",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – kann Gegner verwirren",
+      "range": 2,
+      "mult": 0.8,
+      "status": "confuse",
+      "chance": 0.2,
+      "seconds": 5
+    },
+    "715": {
+      "type": "cone",
+      "name": "Brüller",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "range": 2,
+      "mult": 0.8,
+      "status": "atkDown",
+      "chance": 1,
+      "seconds": 5,
+      "factor": 0.5
+    },
+    "_hinweis": "Sonderfähigkeiten einzelner Pokémon (Pokédex-Nummer). Typen: beam (Strahl über length Felder, durchschlägt), shield (Panzer, hpMult statt Mauer-Faktor), confuse (chance auf Verwirrung für seconds), reactive (explodiert bei Angriff), boomerang (hin und zurück, pierce Gegner je Richtung), heal (heilt pct der KP im radius alle every s), sleep (chance, dass Gegner seconds lang schlafen), cone (Flächenattacke geradeaus + schräg links/rechts bis range Felder, mult = Schaden ×; status slow|paralysis|poison|freeze|atkDown|confuse mit chance für seconds, factor = Verlangsamung bzw. Angriff ×), switch (Fernkampf rangedMult, ab meleeRange Feldern Nahkampf meleeMult und Abklingzeit × meleeCd), backline (greift die hintersten Gegner in Reichweite zuerst an, rangeBonus = mehr Reichweite), bluefire (Treffer × mult, dafür starkes Nachbrennen pctPerSecond der KP für seconds), aura (alle every s Schaden × mult auf alle Gegner der 9 Felder ringsum plus Verbrennung). Neue Einträge einfach ergänzen."
   },
   "elecSlow": {
     "factor": 0.8,
