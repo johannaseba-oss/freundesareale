@@ -33,6 +33,8 @@ export function roleOf(dex) {
   return moveOf(bdata(dex).move)?.range === 'nah' ? 'nahkampf' : 'fernkampf';
 }
 const evolved = (dex) => species(dex).stage > 1;
+// Grund- oder Baby-Pokémon (Liste chaos.basicDex aus den offiziellen Artdaten; Pokémon ohne Entwicklung zählen nicht dazu)
+const evolvesLater = (dex) => !!D().chaos.basicDex?.includes(dex);
 
 // Sternenkosten und Aufladezeit
 export function costOf(dex) {
@@ -272,8 +274,9 @@ export class Defense {
     return drop.value;
   }
   dropStar(x, y, fromY, value) {
-    // im Chaos-Modus fällt statt eines Sterns ein Pokéball mit einem zufälligen Pokémon
-    const dex = this.chaos ? randomDex(this.rnd, undefined, D().chaos.cards?.weights) : null;
+    // im Chaos-Modus fällt statt eines Sterns ein Pokéball mit einem zufälligen Pokémon (ab noBasicFromWave keine Grund-/Baby-Pokémon)
+    const late = this.endless && this.wave + 1 >= (D().chaos.noBasicFromWave ?? Infinity);
+    const dex = this.chaos ? randomDex(this.rnd, late ? (p) => !evolvesLater(p.dex) : undefined, D().chaos.cards?.weights) : null;
     this.drops.push({ id: this.nextId++, x, y, fromY, value, born: this.t, dex });
   }
 
@@ -522,7 +525,7 @@ export class Defense {
     const moreWaves = this.endless || this.wave < this.waves.length - 1;
     if (this.chaos) { // Chaos: alle bigEvery s eine große Welle, dazwischen kleine Gruppen
       const F = D().chaos.flow;
-      if (moreWaves && this.t >= this.nextWaveAt) { this.startWave(); this.nextWaveAt = this.t + F.bigEvery; this.nextTrickle = this.t + F.bigSpread; }
+      if (moreWaves && this.t >= this.nextWaveAt) { this.startWave(); this.nextWaveAt = this.t + F.bigEvery; this.nextTrickle = this.t + F.bigSpread + (F.calm ? this.between(F.calm) : 0); } // danach eine ruhige Phase
       else if (moreWaves && this.wave >= 0 && this.t >= this.nextTrickle) { this.trickle(); this.nextTrickle = this.t + this.between(F.trickleEvery) * (1 - (1 - (F.trickleLate ?? 1)) * (this.waveP ?? 0)); }
     } else if (moreWaves && this.t >= this.nextWaveAt && !this.queue.length) {
       this.startWave();
