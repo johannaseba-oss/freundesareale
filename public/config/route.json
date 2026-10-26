@@ -191,5 +191,7 @@
   },
   "water": {
     "_hinweis": "Seerosen im Teich: dort dürfen nur Pokémon mit Typ Wasser stehen (Wasser-Pokémon können aber auch auf normale Plätze)."
-  }
+  },
+  "legendaryDamageMult": 1.25,
+  "_legendaryDamageMult": "Legendäre Pokémon machen so viel mehr Schaden (1.25 = +25 %)"
 }

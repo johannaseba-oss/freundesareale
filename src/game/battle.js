@@ -69,7 +69,7 @@ export function damageOf(att, def, mv, rnd, atkMult = 1, defMult = 1) {
   // damit Verteidigung schon auf niedrigen Leveln spürbar zählt
   const ratio = Math.pow(A / D, C().defenseExponent ?? 1);
   const base = (Math.floor((2 * att.level) / 5 + 2) * mv.power / 50 + 2) * ratio * (att.tower ? B().tower.damageMultiplier ?? 1 : 1);
-  const stab = species(att.dex).types.includes(mv.type) ? C().stab : 1;
+  const stab = (species(att.dex).types.includes(mv.type) ? C().stab : 1) * (species(att.dex).rarity === 'legendaer' ? B().legendaryDamageMult || 1 : 1); // Legendäre: mehr Schaden
   const eff = effectiveness(mv.type, species(def.dex).types);
   const [r0, r1] = C().damageRandom;
   return { dmg: eff ? Math.max(1, Math.floor(base * stab * eff * itemDamageMult(att.item, mv, eff) * (r0 + rnd() * (r1 - r0)))) : 0, eff };

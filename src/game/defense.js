@@ -221,6 +221,8 @@ export class Defense {
     if (this.chaos && (ab?.type === 'sleep' || ab?.type === 'confuse')) each(box(D().chaos.statusArea.area), area);
     if (ab?.type === 'heal') each((e) => dist(e, u) <= ab.radius, area, false);
     if (ab?.type === 'aura') each(box(1), area, false);
+    const TK = D().telekinesis;
+    if (TK?.enabled && (role === 'nahkampf' || role === 'fernkampf') && species(dex).types.includes('Psycho') && !TK.except?.includes(ab?.type)) { attack.length = 0; each(() => true, attack); }
     return { attack, area };
   }
   // zwei eigene Pokémon tauschen ihre Plätze (Drag & Drop auf ein anderes Pokémon)
@@ -384,7 +386,7 @@ export class Defense {
     const eff = effectiveness(mv.type, species(def.dex).types);
     const base = (Math.floor((2 * attLevel) / 5 + 2) * mv.power * A / Dv) / 50 + 2;
     const crit = eff > 0 && this.rnd() < itemCritChance(att.item, D().crit.chance); // Volltreffer (Scope-Linse erhöht)
-    const w = weatherBoost(att.dex, this.weather) * itemDamageMult(att.item, mv, eff); // getragenes Item
+    const w = weatherBoost(att.dex, this.weather) * itemDamageMult(att.item, mv, eff) * (att.role && species(att.dex).rarity === 'legendaer' ? D().legendaryDamageMult || 1 : 1); // Item, Legendäre
     return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * w * (crit ? D().crit.mult : 1) * (0.9 + this.rnd() * 0.1))) : 0, eff, mv, crit };
   }
   // Schadensstatistik (Pause-Übersicht): je Pokémon und je Feld, von dem aus angegriffen wurde
@@ -555,6 +557,20 @@ export class Defense {
       let melee = u.role === 'nahkampf', range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : ab?.type === 'cone' ? ab.range + 0.3 : rule ? rule.range : R[u.role].range;
       if (ab?.type === 'switch') { melee = false; range = R.fernkampf.range; }
       if (ab?.type === 'backline') range += ab.rangeBonus || 0;
+      // Telekinese: Psycho-Pokémon treffen den Gegner, der am weitesten vorgedrungen ist – egal welche Spalte
+      const TK = D().telekinesis, tele = TK?.enabled && species(u.dex).types.includes('Psycho') && !TK.except?.includes(ab?.type);
+      if (tele) {
+        let far = null;
+        for (const e of this.enemies) if (e.hp > 0 && e.y > -0.2 && (!far || e.y > far.y)) far = e;
+        if (!far) continue;
+        const spd = u.stats[5] / refSpeed(u.level);
+        u.cd = (R[u.role].cooldown * tempoOf(u.dex)) / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3))) / (u.item?.speedMult || 1);
+        if (u.item?.quick && this.rnd() < u.item.quick) u.cd *= 0.3;
+        u.anim = { name: 'Shoot', t0: this.t };
+        this.events.push({ type: 'telekinesis', u, target: far });
+        const r = this.damage(u, u.level, far, (R[u.role].damageMult || 1) * (TK.mult || 1)); this.hurtEnemy(far, r.dmg, r.eff, u, r.mv, r.crit);
+        continue;
+      }
       // nächster Gegner in Angriffsrichtung (Mitte: die eigene Spalte hinauf, Seitenfeld: quer über die Reihe)
       let target = null, best = Infinity;
       for (const e of this.enemies) {

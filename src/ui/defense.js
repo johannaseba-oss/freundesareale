@@ -889,6 +889,7 @@ function handleEvents() {
       continue;
     }
     if (ev.type === 'coneStatus') { const tx = { slow: ['verlangsamt', '#e8e8ff'], paralysis: ['paralysiert!', '#ffe066'], poison: ['vergiftet', '#d48ae0'], freeze: ['verlangsamt', '#9fe0ff'], frozen: ['eingefroren!', '#bff0ff'], atkDown: ['Angriff ↓↓', '#ff9a8a'], confuse: ['verwirrt!', '#f95587'] }[ev.kind]; if (tx && Math.random() < 0.5) say(ev.e, tx[0], tx[1], 0.22, 0.8, -0.9); continue; }
+    if (ev.type === 'telekinesis') { const t = ev.target; ring(t, '#f95587', 0.1, 0.8, 0.35); ring(ev.u, '#f95587', 0.1, 0.5, 0.25); burst(t, 'Psycho', 8, 0.9, 0.8); sfx.attack('Psycho'); continue; }
     if (ev.type === 'switchMelee') { ring(ev.u, '#ffb43a', 0.15, 0.7, 0.3); continue; }
     if (ev.type === 'snipe') { ui.beams.push({ u: ev.u, length: Math.max(1, Math.round(aimDist(ev.u, ev.target))), fx: 'psycho', t: 0 }); continue; }
     if (ev.type === 'cloud') { // Giftwolke: Fläche vor dem Pokémon

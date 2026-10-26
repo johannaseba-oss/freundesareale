@@ -1162,5 +1162,19 @@
     "max": 1.6,
     "slowFrom": 1.2,
     "fastBelow": 0.8
-  }
+  },
+  "telekinesis": {
+    "_hinweis": "Psycho-Pokémon greifen per Telekinese immer den Gegner an, der am weitesten vorgedrungen ist – egal auf welcher Spalte und ohne Reichweitengrenze. Ausgenommen: Pokémon mit eigener Zielwahl/Fläche (except = Fähigkeitstypen).",
+    "enabled": true,
+    "except": [
+      "cone",
+      "backline",
+      "beam",
+      "boomerang",
+      "switch"
+    ],
+    "mult": 1
+  },
+  "legendaryDamageMult": 1.25,
+  "_legendaryDamageMult": "Eigene legendäre Pokémon machen so viel mehr Schaden (1.25 = +25 %)"
 }

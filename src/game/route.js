@@ -190,7 +190,7 @@ export class Route {
   damage(u, e, mult) {
     const mv = moveOf(bdata(u.dex).move), phys = mv.cat === 'phys';
     const A = u.stats[phys ? 1 : 3] * (phys && u.pbuff ? u.pbuff : 1), Dv = e.stats[phys ? 2 : 4]; // pbuff: Felsbrecher-Training
-    const stab = species(u.dex).types.includes(mv.type) ? 1.5 : 1, eff = effectiveness(mv.type, species(e.dex).types);
+    const stab = (species(u.dex).types.includes(mv.type) ? 1.5 : 1) * (species(u.dex).rarity === 'legendaer' ? R().legendaryDamageMult || 1 : 1), eff = effectiveness(mv.type, species(e.dex).types); // Legendäre: mehr Schaden
     const base = (Math.floor((2 * u.level) / 5 + 2) * (mv.power || 40) * A / Dv) / 50 + 2;
     const crit = eff > 0 && this.rnd() < itemCritChance(u.item, R().crit.chance);
     return { dmg: eff ? Math.max(1, Math.round(base * stab * eff * mult * itemDamageMult(u.item, mv, eff) * (crit ? R().crit.mult : 1) * (0.9 + this.rnd() * 0.1))) : 0, eff, mv, crit };
