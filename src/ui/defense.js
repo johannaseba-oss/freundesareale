@@ -520,7 +520,8 @@ function draw(dt) {
     // passende Pokémon für eine Weiterentwicklung golden umranden
     x.strokeStyle = '#ffd23f'; x.lineWidth = 3;
     if (U.sel && game.endless && game.wave + 1 >= (D().chaos.hintFromWave ?? 40)) {
-      if (U.hintFor !== U.sel) { U.hintFor = U.sel; U.hint = game.weakerThan(U.sel); if (U.hint.length) message(`Blinkende Pokémon wären mit ${species(U.sel.dex).name} stärker.`); }
+      const hk = U.sel.id + '|' + game.wave + '|' + game.units.length; // neu berechnen bei neuer Karte, Welle oder Aufstellung
+      if (U.hintFor !== hk) { const first = !U.hintFor?.startsWith(U.sel.id + '|'); U.hintFor = hk; U.hint = game.weakerThan(U.sel); if (first) message(U.hint.length ? `Blinkende Pokémon wären als ${species(U.sel.dex).name} stärker (gleiches Level, gegen die aktuellen Gegner).` : `${species(U.sel.dex).name} wäre nicht stärker als deine Pokémon auf dem Feld.`); }
       const on = Math.floor(now / 220) % 2 === 0;
       for (const u of U.hint) if (u.hp > 0) {
         x.strokeStyle = on ? '#ff8a3a' : 'rgba(255,240,150,.9)'; x.lineWidth = 3; x.strokeRect(U.ox + u.col * T + 3, U.oy + u.row * T + 3, T - 6, T - 6);

@@ -870,3 +870,4 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .ds-total { font-size: 13px; margin-left: auto; }
 .ds-total small { color: var(--ink-soft); }
 .ds-lv { font-weight: 500; color: var(--ink-soft); font-size: 11px; }
+.rl-prog { display: block; font-size: 10px; color: var(--ink-soft); }

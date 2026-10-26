@@ -58,6 +58,7 @@ export function migrate(s) {
     if (p.uid == null || seen.has(p.uid)) p.uid = newUid(s, p.caughtAt || Date.now());
     seen.add(p.uid);
   }
+  if (s.route && s.route.unlockedBase == null) s.route.unlockedBase = (s.route.cleared || 0) + 1; // bisher offene Level bleiben offen
   if (s.route?.favs?.length) { for (const p of s.pokemon) if (s.route.favs.includes(p.uid)) p.fav = true; delete s.route.favs; } // Route-Favoriten → allgemein
   for (const p of s.pokemon) {
     p.effects ||= [];

@@ -507,12 +507,13 @@ export function openBag(focus = null, opts = {}) {
       else {
         sel = sel && inv.some(([it]) => it.id === sel) ? sel : inv[0][0].id;
         const it = itemById(sel);
-        const mons = favFirst((opts.uid ? app.state.pokemon.filter((p) => p.uid === opts.uid) : app.state.pokemon.filter((p) => canBattle(p.dex))).sort((a, b) => a.dex - b.dex));
+        const fit = (p) => (it.fx.type && species(p.dex).types.includes(it.fx.type) ? 1 : 0); // Typ-Item: passende Pokémon zuerst
+        const mons = (opts.uid ? app.state.pokemon.filter((p) => p.uid === opts.uid) : app.state.pokemon.filter((p) => canBattle(p.dex))).sort((a, b) => fit(b) - fit(a) || !!b.fav - !!a.fav || a.dex - b.dex);
         parts.push(h('div.rk-tabs.wrap', inv.map(([x, n]) => h('button.btn.small.stone-tab' + (x.id === sel ? '.primary' : ''), { onclick: () => renderItems(x.id) }, h('img.item-ico', { src: itemSprite(x), alt: '' }), `${x.name} ×${n}`))),
           h('p.note', h('b', it.name + ': '), it.desc, ' Gilt für alle deine Pokémon genau dieser Sorte (z. B. alle deine Owei) – nicht für andere desselben Typs und nie für Gegner.'),
           h('div.inv', mons.map((p) => h('div.stone-row',
             h('img', { src: portraitUrl(p.dex), alt: '' }),
-            h('div', h('b', p.fav ? '★ ' : '', pname(p)), h('small', p.held ? `trägt ${itemById(p.held)?.name}` : `Lv ${p.level}`)),
+            h('div', h('b', p.fav ? '★ ' : '', pname(p), it.fx.type && species(p.dex).types.includes(it.fx.type) ? h('span.rk-buff', `passt: ${it.fx.type}`) : null), h('small', p.held ? `trägt ${itemById(p.held)?.name}` : `Lv ${p.level}`)),
             h('button.btn.primary.small', { onclick: () => {
               const r = app.act((s) => giveItem(s, p.uid, sel), true);
               if (r.ok === false) return;

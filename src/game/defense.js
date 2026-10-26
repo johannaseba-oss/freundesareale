@@ -289,6 +289,14 @@ export class Defense {
       this.waves.push({ count: Math.round((E.base + this.wave * E.perWave) * (D().chaos.countMult || 1)), spread: 28, final: false });
       this.rollWaveTheme();
       level = Math.round(E.baseLevel + this.wave * E.levelPerWave);
+      // ab chaos.late.fromWave: mindestens so stark wie die eigenen stärksten Pokémon (die wachsen im Lauf weiter)
+      const LT = D().chaos.late, w1 = this.wave + 1;
+      if (LT && w1 >= LT.fromWave) {
+        const lv = this.units.filter((u) => u.hp > 0 && ['nahkampf', 'fernkampf'].includes(u.role)).map((u) => u.level).sort((a, b) => b - a).slice(0, LT.top || 6);
+        const avg = lv.length ? lv.reduce((a, b) => a + b, 0) / lv.length : 0;
+        level = Math.max(level, Math.round(avg * (LT.matchLevel || 1) + (w1 - LT.fromWave) * (LT.levelPerWave || 0)));
+        this.lateHp = 1 + (w1 - LT.fromWave) * (LT.hpPerWave || 0);
+      }
       this.chaosLevel = level;
       p = Math.min(1, this.wave / 10);
     } else {
@@ -368,7 +376,7 @@ export class Defense {
   spawn(q) {
     const st = calcStats(q.dex, q.level, rollIvs('g' + this.nextId, [0, 31]), [0, 0, 0, 0, 0, 0]);
     const v = D().enemy.speedVariation || [1, 1];
-    const e = { id: this.nextId++, dex: q.dex, x: q.col + 0.5, y: -0.4, col: q.col, stats: st, level: q.level, maxHp: st[0] * D().enemy.hpMult, cd: 0, slowUntil: 0, pace: v[0] + this.rnd() * (v[1] - v[0]) };
+    const e = { id: this.nextId++, dex: q.dex, x: q.col + 0.5, y: -0.4, col: q.col, stats: st, level: q.level, maxHp: st[0] * D().enemy.hpMult * (this.endless ? this.lateHp || 1 : 1), cd: 0, slowUntil: 0, pace: v[0] + this.rnd() * (v[1] - v[0]) };
     if (q.fast) { e.pace *= D().chaos.fast.pace; e.fast = true; }
     if (q.boss) { // sehr stark: viel mehr KP, bessere Verteidigung, etwas langsamer
       const Bo = D().chaos.boss;
@@ -416,10 +424,22 @@ export class Defense {
     return (A * (mv.power || 40) * stab * leg * area * (D().roles[role].damageMult || 1)) / (D().roles[role].cooldown * tempoOf(dex));
   }
   // eigene Pokémon auf dem Feld, die diese Karte übertreffen würde (für den Hinweis ab chaos.hintFromWave)
+  // Typvorteil der Attacke gegen die Gegner-Typen der aktuellen Welle (Durchschnitt)
+  typeEdge(dex) {
+    const th = this.theme?.length ? this.theme : null, mv = moveOf(bdata(dex).move);
+    if (!th) return 1;
+    return th.reduce((a, t) => a + Math.max(0.25, effectiveness(mv.type, [t])), 0) / th.length;
+  }
+  // Pokémon auf dem Feld, die die Karte übertreffen würde: Vergleich auf GLEICHEM Level (das Level des Feld-Pokémon),
+  // mit Werten, Attacke, Tempo, Rolle, Fähigkeit und Typvorteil gegen die aktuellen Gegner – nur Angreifer
   weakerThan(card) {
-    const role = this.chaos ? chaosRole(card.dex) : card.role, mine = this.strength(card.dex, this.placeLevel(card), card.src.ivs, card.src.evs, role);
-    if (!mine) return [];
-    return this.units.filter((u) => { if (u.hp <= 0) return false; const st = this.strength(u.dex, u.level, u.ivs, u.evs, u.role); return st > 0 && st < mine * (D().chaos.hintMargin ?? 0.9); }); // nur Angreifer
+    const role = this.chaos ? chaosRole(card.dex) : card.role, m = D().chaos.hintMargin ?? 0.9;
+    return this.units.filter((u) => {
+      if (u.hp <= 0) return false;
+      const st = this.strength(u.dex, u.level, u.ivs, u.evs, u.role) * this.typeEdge(u.dex);
+      const cardSt = this.strength(card.dex, u.level, card.src.ivs, card.src.evs, role) * this.typeEdge(card.dex);
+      return st > 0 && cardSt > 0 && st < cardSt * m;
+    });
   }
   hurtEnemy(e, dmg, eff, from, mv, crit = false) {
     if (e.hp <= 0) return;

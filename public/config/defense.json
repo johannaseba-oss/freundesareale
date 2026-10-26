@@ -1409,7 +1409,15 @@
       712,
       714
     ],
-    "_basicDex": "Grund- und Baby-Pokémon (aus PokeAPI: is_baby bzw. ohne Vorstufe/nur Baby-Vorstufe und mit Entwicklung) – fallen ab noBasicFromWave nicht mehr aus den Bällen"
+    "_basicDex": "Grund- und Baby-Pokémon (aus PokeAPI: is_baby bzw. ohne Vorstufe/nur Baby-Vorstufe und mit Entwicklung) – fallen ab noBasicFromWave nicht mehr aus den Bällen",
+    "late": {
+      "_hinweis": "Ab fromWave passen sich die Gegner an: Level mindestens Durchschnitt deiner top stärksten Pokémon auf dem Feld × matchLevel + levelPerWave je Welle über fromWave; zusätzlich KP × (1 + hpPerWave je Welle über fromWave).",
+      "fromWave": 50,
+      "top": 6,
+      "matchLevel": 1,
+      "levelPerWave": 1,
+      "hpPerWave": 0.03
+    }
   },
   "levelGap": 5,
   "_levelGap": "Eigene Pokémon starten höchstens levelGap Level unter den Gegnern der ersten Welle (sonst level)",

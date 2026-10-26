@@ -113,6 +113,19 @@ export function feedAllInventory(s, t) {
 
 // ---- Route: EP-Konto und dauerhaftes Training ----
 export function addRouteEp(s, n) { s.route ||= { ep: 0, cleared: 0 }; s.route.ep += Math.max(0, Math.round(n)); return { ok: true }; }
+// Route: geschaffte Wellen je Level zählen (für die Freischaltung des nächsten Levels)
+export function routeWaves(s, n, waves) {
+  s.route ||= { ep: 0, cleared: 0 }; s.route.waves ||= {};
+  s.route.waves[n] = (s.route.waves[n] || 0) + Math.max(0, waves);
+  return { ok: true, total: s.route.waves[n] };
+}
+// höchstes freigeschaltetes Level: Level 1, alle bisher schon offenen (unlockedBase), sonst erst nach unlockWaves Wellen im Level davor
+export function routeUnlocked(s) {
+  const R = CFG.route, W = s.route?.waves || {};
+  let top = Math.max(1, s.route?.unlockedBase || 0);
+  while (W[top] >= (R.unlockWaves || 0) && top < CFG.routeLevels.levels.length) top++;
+  return top;
+}
 export function routeCleared(s, n) { s.route ||= { ep: 0, cleared: 0 }; const first = n > (s.route.cleared || 0); s.route.cleared = Math.max(s.route.cleared || 0, n); return { ok: true, first }; }
 // Favorit (p.fav): steht in allen Auswahllisten und Minispielen oben
 export function toggleFav(s, uid) {
