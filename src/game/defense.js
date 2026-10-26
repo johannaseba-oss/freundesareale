@@ -394,6 +394,29 @@ export class Defense {
     if (!from?.dex || from.col == null || !(dmg > 0)) return;
     from.dmg = (from.dmg || 0) + dmg; from.dmgSince ??= this.t;
     const k = from.col + ',' + from.row; (this.cellDmg ||= {})[k] = (this.cellDmg[k] || 0) + dmg;
+    const R = (this.recentDmg ||= []); R.push([this.t, from.id, k, dmg]); // für „letzte 10 s“
+    while (R.length && R[0][0] < this.t - 10) R.shift();
+  }
+  // Level, mit dem eine Karte jetzt aufs Feld käme (wie in place)
+  placeLevel(card) {
+    const L = this.chaos
+      ? Math.max(D().level, (this.chaosLevel ?? (this.endless ? D().chaos.endless.baseLevel : this.level.enemyLevel)) - (D().chaos.cards?.levelGap ?? 2))
+      : Math.max(D().level, (this.level?.enemyLevel || 0) - (D().levelGap ?? 99));
+    return card.keep && card.keep.level > L ? card.keep.level : L;
+  }
+  // grobe Kampfstärke (Schaden pro Sekunde, ohne Gegner): Angriffswert × Attackenstärke × gleicher Typ × Tempo × Rolle
+  strength(dex, level, ivs, evs, role, ab = abilityOf(dex)) {
+    if (!['nahkampf', 'fernkampf'].includes(role)) return 0;
+    const mv = moveOf(bdata(dex).move), st = calcStats(dex, level, ivs, evs), A = st[mv.cat === 'phys' ? 1 : 3];
+    const stab = species(dex).types.includes(mv.type) ? 1.5 : 1, leg = species(dex).rarity === 'legendaer' ? D().legendaryDamageMult || 1 : 1;
+    const area = ab?.type === 'cone' || ab?.type === 'beam' ? 1.6 : ab?.type === 'aura' ? 1.8 : 1;
+    return (A * (mv.power || 40) * stab * leg * area * (D().roles[role].damageMult || 1)) / (D().roles[role].cooldown * tempoOf(dex));
+  }
+  // eigene Pokémon auf dem Feld, die diese Karte übertreffen würde (für den Hinweis ab chaos.hintFromWave)
+  weakerThan(card) {
+    const role = this.chaos ? chaosRole(card.dex) : card.role, mine = this.strength(card.dex, this.placeLevel(card), card.src.ivs, card.src.evs, role);
+    if (!mine) return [];
+    return this.units.filter((u) => { if (u.hp <= 0) return false; const st = this.strength(u.dex, u.level, u.ivs, u.evs, u.role); return st > 0 && st < mine * (D().chaos.hintMargin ?? 0.9); }); // nur Angreifer
   }
   hurtEnemy(e, dmg, eff, from, mv, crit = false) {
     if (e.hp <= 0) return;

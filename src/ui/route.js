@@ -542,7 +542,7 @@ function pauseMenu() {
 function routeStats() {
   const S = game.level.slots, cs = S.map((s) => s[0]), rs = S.map((s) => s[1]);
   const at = new Map(S.map(([c, r], i) => [c + ',' + r, i]));
-  return damageStats({ units: game.units, cells: game.slotDmg, grid: { c0: Math.min(...cs), c1: Math.max(...cs), r0: Math.min(...rs), r1: Math.max(...rs) }, t: game.t, cellOf: (c, r) => at.get(c + ',' + r) ?? null });
+  return damageStats({ units: game.units, cells: game.slotDmg, grid: { c0: Math.min(...cs), c1: Math.max(...cs), r0: Math.min(...rs), r1: Math.max(...rs) }, t: game.t, recent: game.recentDmg, cellOf: (c, r) => at.get(c + ',' + r) ?? null });
 }
 async function giveUp() {
   if (!game || game.over) return;

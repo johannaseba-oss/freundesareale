@@ -181,7 +181,7 @@ function pauseMenu() {
   modal((m, close) => {
     const resume = () => { close(); if (ui) ui.paused = false; };
     const G = D().grid, side = G.side ? 1 : 0;
-    const stats = () => damageStats({ units: game.units, cells: game.cellDmg, grid: { c0: -side, c1: G.cols - 1 + side, r0: 0, r1: G.rows - 1 }, t: game.t });
+    const stats = () => damageStats({ units: game.units, cells: game.cellDmg, grid: { c0: -side, c1: G.cols - 1 + side, r0: 0, r1: G.rows - 1 }, t: game.t, recent: game.recentDmg });
     if (game.chaos) m.append(h('h3', '⏸ Pause'),
       h('p.note', 'Die Runde ist angehalten. Beim Verlassen wird sie gespeichert – im Chaos-Menü kannst du sie später genau hier fortsetzen.'),
       h('div.row', h('button.btn', { onclick: () => { close(); saveSuspended(); leaveSuspended(); } }, 'Speichern & verlassen'),
@@ -519,6 +519,14 @@ function draw(dt) {
     for (let r = 0; r < G.rows; r++) for (let c = -1; c <= G.cols; c++) if (game.canPlace(c, r)) x.fillRect(U.ox + c * T + 2, U.oy + r * T + 2, T - 4, T - 4);
     // passende Pokémon für eine Weiterentwicklung golden umranden
     x.strokeStyle = '#ffd23f'; x.lineWidth = 3;
+    if (U.sel && game.endless && game.wave + 1 >= (D().chaos.hintFromWave ?? 40)) {
+      if (U.hintFor !== U.sel) { U.hintFor = U.sel; U.hint = game.weakerThan(U.sel); if (U.hint.length) message(`Blinkende Pokémon wären mit ${species(U.sel.dex).name} stärker.`); }
+      const on = Math.floor(now / 220) % 2 === 0;
+      for (const u of U.hint) if (u.hp > 0) {
+        x.strokeStyle = on ? '#ff8a3a' : 'rgba(255,240,150,.9)'; x.lineWidth = 3; x.strokeRect(U.ox + u.col * T + 3, U.oy + u.row * T + 3, T - 6, T - 6);
+        if (on) { x.fillStyle = 'rgba(255,138,58,.25)'; x.fillRect(U.ox + u.col * T + 3, U.oy + u.row * T + 3, T - 6, T - 6); }
+      }
+    } else U.hintFor = null;
     for (const u of game.units) if (U.sel && game.canUpgrade(U.sel, u)) { const p = 1 + Math.sin(now / 150) * 2; x.strokeRect(U.ox + u.col * T + 2 - p, U.oy + u.row * T + 2 - p, T - 4 + p * 2, T - 4 + p * 2); }
     if (U.hover) {
       // Reichweiten-Vorschau: wohin das Pokémon von hier aus angreift (rot) bzw. wohin seine Effekte reichen (blau)
@@ -937,7 +945,6 @@ function handleEvents() {
       if (game.endless && ev.wave > 0 && ev.wave % D().chaos.stageEvery === 0) nextStage();
       banner(ev.final ? 'LETZTE WELLE!' : `WELLE ${ev.wave + 1}`, ev.final); sfx.wave(ev.final);
       if (ev.types?.length) message(`Jetzt kommen: ${ev.types.join(' & ')}`);
-      if (ev.wave > 0 && ev.minRow >= D().grid.placeRows[0]) message('Eine weitere Reihe ist frei!');
       shake(T() * (ev.final ? 0.12 : 0.05)); haptic(ev.final ? 'strong' : 'medium');
     } else if (ev.type === 'weather') { renderWeatherChip(); message('Wetter: ' + weatherText(game.weather)); }
     else if (ev.type === 'lost') { burst(ev.u, 'Normal', 14, 1.2); say(ev.u, 'K.O.', '#ffb0b0', 0.34); shake(T() * 0.06); buzz('medium'); }

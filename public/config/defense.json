@@ -1133,7 +1133,10 @@
       "enemyChance": 0.02
     },
     "stageEvery": 10,
-    "_stageEvery": "Alle stageEvery Wellen wechseln Hintergrund und Musik"
+    "_stageEvery": "Alle stageEvery Wellen wechseln Hintergrund und Musik",
+    "hintFromWave": 40,
+    "hintMargin": 0.9,
+    "_hint": "Ab Welle hintFromWave blinken beim Antippen einer Handkarte die Pokémon auf dem Feld, die diese Karte übertreffen würde (ihre Kampfstärke < Kartenstärke × hintMargin)."
   },
   "levelGap": 5,
   "_levelGap": "Eigene Pokémon starten höchstens levelGap Level unter den Gegnern der ersten Welle (sonst level)",

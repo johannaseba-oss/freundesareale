@@ -200,6 +200,8 @@ export class Route {
     if (!u?.dex || u.slot == null || !(dmg > 0)) return;
     u.dmg = (u.dmg || 0) + dmg; u.dmgSince ??= this.t;
     (this.slotDmg ||= {})[u.slot] = (this.slotDmg[u.slot] || 0) + dmg;
+    const R = (this.recentDmg ||= []); R.push([this.t, u.id, u.slot, dmg]); // für „letzte 10 s“
+    while (R.length && R[0][0] < this.t - 10) R.shift();
   }
   hit(u, e, mult) {
     if (e.hp <= 0) return;

@@ -866,3 +866,7 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .cb.ingame { position: absolute; left: 6px; top: 6px; z-index: 3; max-width: 60%; pointer-events: none; opacity: .92; }
 .cb-menu { display: grid; gap: 4px; margin: 4px 0 8px; }
 .cb-menu > small { color: var(--ink-soft); }
+.ds-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0; }
+.ds-total { font-size: 13px; margin-left: auto; }
+.ds-total small { color: var(--ink-soft); }
+.ds-lv { font-weight: 500; color: var(--ink-soft); font-size: 11px; }
