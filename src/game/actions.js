@@ -120,11 +120,33 @@ export function routeWaves(s, n, waves) {
   return { ok: true, total: s.route.waves[n] };
 }
 // höchstes freigeschaltetes Level: Level 1, alle bisher schon offenen (unlockedBase), sonst erst nach unlockWaves Wellen im Level davor
+export const routeNeed = (n) => (CFG.route.unlockWaves || 0) + (n - 1) * (CFG.route.unlockWavesPerLevel || 0); // Wellen in Level n für Level n+1
 export function routeUnlocked(s) {
-  const R = CFG.route, W = s.route?.waves || {};
+  const W = s.route?.waves || {};
   let top = Math.max(1, s.route?.unlockedBase || 0);
-  while (W[top] >= (R.unlockWaves || 0) && top < CFG.routeLevels.levels.length) top++;
+  while (W[top] >= routeNeed(top) && top < CFG.routeLevels.levels.length) top++;
   return top;
+}
+// PokeDefense: gleiche Regel (s.defense.waves, s.defense.unlockedBase)
+export const defenseNeed = (n) => (CFG.defense.unlockWaves || 0) + (n - 1) * (CFG.defense.unlockWavesPerLevel || 0);
+export function defenseWaves(s, n, waves) {
+  s.defense ||= {}; s.defense.waves ||= {};
+  s.defense.waves[n] = (s.defense.waves[n] || 0) + Math.max(0, waves);
+  return { ok: true };
+}
+export function defenseUnlocked(s) {
+  const W = s.defense?.waves || {}, total = (CFG.defenseLevels?.levels || CFG.defenseLevels || []).length || 50;
+  let top = Math.max(1, s.defense?.unlockedBase || 0);
+  while (W[top] >= defenseNeed(top) && top < total) top++;
+  return top;
+}
+// Route: zusätzlichen Platz für ein Level kaufen
+export function buyRouteSlot(s, n) {
+  const X = CFG.route.extraSlot; s.route ||= { ep: 0, cleared: 0 }; s.route.extra ||= {};
+  if ((s.route.extra[n] || 0) >= X.max) return fail(`Höchstens ${X.max} zusätzliche Plätze pro Level.`);
+  if (s.coins < X.price) return fail(`Ein zusätzlicher Platz kostet ${X.price.toLocaleString('de-DE')} Münzen.`);
+  s.coins -= X.price; s.route.extra[n] = (s.route.extra[n] || 0) + 1;
+  return { ok: true, extra: s.route.extra[n] };
 }
 export function routeCleared(s, n) { s.route ||= { ep: 0, cleared: 0 }; const first = n > (s.route.cleared || 0); s.route.cleared = Math.max(s.route.cleared || 0, n); return { ok: true, first }; }
 // Favorit (p.fav): steht in allen Auswahllisten und Minispielen oben

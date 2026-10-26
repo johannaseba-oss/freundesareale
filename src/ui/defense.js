@@ -2,6 +2,7 @@
 // dann das vertikale Spielfeld: Sterne einsammeln, Karten antippen und Pokémon auf das untere Feld setzen.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
+import * as A from '../game/actions.js';
 import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam, abilityOf, tempoLabel, recommendTeam } from '../game/defense.js';
 import { ballCanvas, ballSprite } from '../gfx/balls.js';
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
@@ -64,7 +65,7 @@ export function renderDefenseSetup(el, back) {
 
 // Roadmap: alle Level als Weg; geschaffte golden, das nächste leuchtet, spätere gesperrt
 // Level-Weg (PokeDefense-Roadmap): geschaffte golden, das nächste leuchtet, spätere gesperrt
-function roadMap(L, done, onPick) {
+function roadMap(L, done, onPick, open = done + 1, prog = null) {
   const PER = 4, W = 340, RH = 74;
   const pos = (i) => { const row = Math.floor(i / PER), k = i % PER, col = row % 2 ? PER - 1 - k : k; return { x: 45 + col * ((W - 90) / (PER - 1)), y: 40 + row * RH }; };
   const H = 40 + Math.ceil(L.length / PER) * RH;
@@ -73,25 +74,27 @@ function roadMap(L, done, onPick) {
   const map = h('div.road', { style: { width: W + 'px', height: H + 'px' } });
   map.innerHTML = svg;
   L.forEach((lv, i) => {
-    const st = lv.n <= done ? 'done' : lv.n === done + 1 ? 'next' : 'locked';
+    const st = lv.n > open ? 'locked' : lv.n <= done ? 'done' : 'next';
     const p = pos(i);
     map.append(h('button.road-node.' + st + (lv.legendary ? '.legend' : ''), { style: { left: p.x + 'px', top: p.y + 'px' }, onclick: () => {
-      if (st === 'locked') { toast(`Schaffe zuerst Level ${done + 1}.`); return; }
+      if (st === 'locked') { toast(prog ? prog(lv.n) : `Schaffe zuerst Level ${done + 1}.`); return; }
       haptic('tick'); onPick(lv);
     } }, h('b', st === 'done' ? '✓' : String(lv.n)),
-    h('span.road-types', lv.types.map((t) => h('i', { style: { background: typeColor(t) }, title: t })))));
+    h('span.road-types', lv.types.map((t) => h('i', { style: { background: typeColor(t) }, title: t }))),
+    lv.n === open + 1 && prog ? h('small.road-prog', prog(lv.n, true)) : null));
   });
   // zum nächsten Level scrollen
   setTimeout(() => { const n = map.querySelector('.road-node.next'); if (n) n.scrollIntoView({ block: 'center' }); }, 50);
   return h('div.road-wrap', map);
 }
 function renderRoadmap(el, back) {
-  const L = levelsList(), done = cleared();
+  const L = levelsList(), done = cleared(), open = A.defenseUnlocked(app.state), W = app.state.defense?.waves || {};
+  const prog = (n, short) => short ? `${Math.min(W[n - 1] || 0, A.defenseNeed(n - 1))}/${A.defenseNeed(n - 1)} Wellen` : `Schaffe zuerst ${A.defenseNeed(n - 1)} Wellen in Level ${n - 1} (bisher ${W[n - 1] || 0}).`;
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
     h('p.note', 'Tippe auf das leuchtende Level. Die Punkte zeigen die Typen der Gegner.'),
-    roadMap(L, done, (lv) => { chosen = lv; renderDefenseSetup(el, back); el.scrollTop = 0; })));
+    roadMap(L, done, (lv) => { chosen = lv; renderDefenseSetup(el, back); el.scrollTop = 0; }, open, prog)));
 }
 // Bestätigung mit Rollen, Kosten und Fähigkeit – dann geht es aufs Feld
 function confirmTeam(uids) {
@@ -1001,15 +1004,23 @@ function end() {
   haptic(won ? 'medium' : 'strong');
   if (won) sfx.win(); else sfx.lose();
   const lv = chosen, infinity = game.endless;
-  const next = game.chaos ? null : levelsList().find((x) => x.n === lv.n + 1);
+  const next = game.chaos ? null : levelsList().find((x) => x.n === lv.n + 1 && x.n <= A.defenseUnlocked(app.state));
   const reached = game.wave + 1, best = chaosBestBefore;
   if (game.chaos) clearSuspended();
   if (infinity) saveChaosBest(reached);
   if (won && !game.chaos) app.act((s) => { s.defense ||= {}; s.defense.cleared = Math.max(s.defense.cleared || 0, lv.n); s.stats.defenseCleared = s.defense.cleared; return { ok: true }; }, true);
+  let unlockNote = '';
+  if (!game.chaos) { // geschaffte Wellen zählen – das nächste Level öffnet sich nach genug Wellen
+    const before = A.defenseUnlocked(app.state);
+    app.act((s) => A.defenseWaves(s, lv.n, won ? game.waves.length : Math.max(0, game.wave)), true);
+    const after = A.defenseUnlocked(app.state), have = app.state.defense.waves[lv.n] || 0, need = A.defenseNeed(lv.n);
+    unlockNote = after > before ? `🔓 Level ${lv.n + 1} ist jetzt freigeschaltet!` : lv.n + 1 > after && levelsList().some((x) => x.n === lv.n + 1) ? `Wellen in diesem Level: ${Math.min(have, need)}/${need} – dann öffnet sich Level ${lv.n + 1}.` : '';
+  }
   const leave = (to) => { closeField(); game = null; pick = []; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
   const lostText = game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`;
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
     h('h2', infinity ? `Welle ${reached}` : won ? `Level ${lv.n} geschafft!` : 'Niederlage'),
+    unlockNote ? h('p.note', unlockNote) : null,
     h('p', infinity ? `Du hast bis Welle ${reached} durchgehalten${reached > best ? ' – neuer Rekord!' : ` (Rekord: Welle ${best})`}.` : won ? `Du hast alle ${game.waves.length} Wellen abgewehrt.` : lostText),
     h('div.row', h('button.btn', { onclick: () => leave(null) }, 'Roadmap'),
       infinity ? h('button.btn.primary.big', { onclick: () => { leave(null); startInfinity(); } }, '🎲 Neue Chaos-Runde')

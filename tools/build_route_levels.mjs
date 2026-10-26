@@ -1,5 +1,5 @@
 // Erzeugt public/config/route_levels.json: Level für den Modus „Route“ (Tower Defense mit fester Strecke).
-// Jedes Level: Route als Eckpunkte im 9×13-Raster (Gegner kommen oben herein und laufen unten hinaus),
+// Jedes Level: eigene Route als Eckpunkte im 9×13-Raster (Ein- und Ausgang am Rand, auch seitlich),
 // feste Bauplätze neben der Route, Gegner-Typen, Wellen und Stärke. Danach frei von Hand anpassbar.
 // Aufruf: node tools/build_route_levels.mjs
 import fs from 'fs';
@@ -8,14 +8,61 @@ import path from 'path';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const COLS = 9, ROWS = 13;
 const TYPES = ['Normal', 'Käfer', 'Pflanze', 'Wasser', 'Feuer', 'Elektro', 'Flug', 'Gift', 'Boden', 'Gestein', 'Eis', 'Kampf', 'Psycho', 'Geist', 'Fee', 'Stahl', 'Unlicht', 'Drache'];
-// Routen-Vorlagen (Eckpunkte [Spalte, Zeile]); Zeile -1 = Eingang oben, Zeile 13 = Ausgang unten
-const PATHS = [
-  { name: 'Schlangenpfad', pts: [[4, -1], [4, 2], [1, 2], [1, 6], [7, 6], [7, 10], [4, 10], [4, 13]] },
-  { name: 'Zickzack', pts: [[1, -1], [1, 3], [7, 3], [7, 6], [1, 6], [1, 9], [7, 9], [7, 13]] },
-  { name: 'Haarnadel', pts: [[1, -1], [1, 10], [4, 10], [4, 2], [7, 2], [7, 13]] },
-  { name: 'Treppe', pts: [[4, -1], [4, 3], [7, 3], [7, 7], [2, 7], [2, 10], [5, 10], [5, 13]] },
-  { name: 'Serpentine', pts: [[0, -1], [0, 1], [8, 1], [8, 4], [0, 4], [0, 7], [8, 7], [8, 10], [4, 10], [4, 13]] },
-];
+// Jedes Level bekommt eine eigene, zufällig erzeugte Strecke (fester Startwert je Level): Eingang oben, links oder rechts,
+// Ausgang unten, links oder rechts; unterschiedlich viele Kurven und Längen. Wegstücke berühren sich nie seitlich
+// (mindestens ein Feld Abstand), damit dazwischen Bauplätze passen.
+const NAMES = ['Wiesenweg', 'Hakenpfad', 'Zickzack', 'Bachlauf', 'Spirale', 'Doppelkehre', 'Schlaufe', 'Bergpfad', 'Treppe', 'Uferweg',
+  'Irrweg', 'Hufeisen', 'Sturzbach', 'Windung', 'Kreuzweg', 'Schlangenlinie', 'Labyrinth', 'Hohlweg', 'Kehrtwende', 'Lichtung',
+  'Klippenpfad', 'Mäander', 'Steinpfad', 'Haarnadel', 'Wirbel', 'Grat', 'Schleichweg', 'Talweg', 'Gipfelpfad', 'Drachenpfad'];
+function genPath(rnd, n) {
+  const minLen = 26 + Math.min(16, n), maxLen = 46 + Math.min(14, n);
+  for (let attempt = 0; attempt < 4000; attempt++) {
+    // Eingang: oben (meist) oder seitlich in der oberen Hälfte
+    const side = rnd() < 0.6 ? 'top' : rnd() < 0.5 ? 'left' : 'right';
+    let x, y, dx, dy;
+    if (side === 'top') { x = 1 + Math.floor(rnd() * (COLS - 2)); y = 0; dx = 0; dy = 1; }
+    else { y = 1 + Math.floor(rnd() * 4); x = side === 'left' ? 0 : COLS - 1; dx = side === 'left' ? 1 : -1; dy = 0; }
+    const pts = [[x - dx, y - dy], [x, y]], cells = [[x, y]], used = new Set([x + ',' + y]);
+    const free = (cx, cy, px, py) => {
+      if (cx < 0 || cy < 0 || cx >= COLS || cy >= ROWS || used.has(cx + ',' + cy)) return false;
+      for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const k = (cx + ax) + ',' + (cy + ay); if (used.has(k) && !(cx + ax === px && cy + ay === py)) return false; }
+      return true;
+    };
+    let ok = false;
+    for (let seg = 0; seg < 30 && cells.length < maxLen; seg++) {
+      // Richtung: abbiegen (links/rechts), selten geradeaus weiter
+      const turns = dx ? [[0, 1], [0, -1]] : [[1, 0], [-1, 0]];
+      const opts = rnd() < 0.15 ? [[dx, dy], ...turns] : [...turns.sort(() => rnd() - 0.5), [dx, dy]];
+      let moved = false;
+      for (const [ndx, ndy] of opts) {
+        const want = 2 + Math.floor(rnd() * 5);
+        let k = 0, cx = x, cy = y;
+        const add = [];
+        while (k < want) { const nx = cx + ndx, ny = cy + ndy; const prev = add.length ? add[add.length - 1] : [x, y]; if (!free(nx, ny, prev[0], prev[1])) break; add.push([nx, ny]); cx = nx; cy = ny; k++; }
+        if (k < 2) continue;
+        for (const c of add) { cells.push(c); used.add(c[0] + ',' + c[1]); }
+        x = cx; y = cy; dx = ndx; dy = ndy; pts.push([x, y]); moved = true; break;
+      }
+      if (!moved) break;
+      // Ausgang: geradeaus bis zum Rand (unten oder seitlich in der unteren Hälfte), wenn lang genug
+      if (cells.length >= minLen) {
+        for (const [ex, ey] of [[0, 1], [1, 0], [-1, 0]]) {
+          if (ey === 0 && y < ROWS / 2) continue;
+          let cx = x, cy = y, path = [], good = true;
+          while (true) { const nx = cx + ex, ny = cy + ey; if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) break; const prev = path.length ? path[path.length - 1] : [x, y]; if (!free(nx, ny, prev[0], prev[1])) { good = false; break; } path.push([nx, ny]); cx = nx; cy = ny; }
+          if (!good || cells.length + path.length > maxLen + 6) continue;
+          if (path.length) pts.push([cx, cy]);
+          pts.push([cx + ex, cy + ey]);
+          for (const c of path) cells.push(c);
+          ok = true; break;
+        }
+        if (ok) break;
+      }
+    }
+    if (ok && pts.length >= 6) return pts;
+  }
+  throw new Error('keine Strecke für Level ' + n);
+}
 let seed = 20261024;
 const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
 
@@ -80,7 +127,7 @@ function slots(pts, n) {
 
 const levels = [];
 for (let n = 1; n <= 30; n++) {
-  const P = PATHS[(n - 1) % PATHS.length];
+  const P = { name: NAMES[(n - 1) % NAMES.length], pts: genPath(rnd, n) };
   const mixed = n % 5 === 0;
   const types = n <= 3 ? [['Normal'], ['Käfer'], ['Pflanze']][n - 1] : mixed ? [TYPES[(n * 7) % TYPES.length], TYPES[(n * 11 + 3) % TYPES.length]] : [TYPES[(n * 5) % TYPES.length]];
   levels.push({
@@ -96,7 +143,7 @@ for (let n = 1; n <= 30; n++) {
   });
 }
 fs.writeFileSync(path.join(ROOT, 'public/config/route_levels.json'), JSON.stringify({
-  _hinweis: 'Route-Level. path = Eckpunkte der Route [Spalte, Zeile] im 9×13-Raster (Zeile -1 = Eingang oben, 13 = Ausgang unten), slots = Bauplätze ([Spalte, Zeile] bzw. [Spalte, Zeile, "w"] = Seerose im Teich, nur für Wasser-Pokémon), water = Teich-Felder, types = Gegner-Typen, waves = Wellen, enemyLevel = Gegnerlevel in Welle 1 (+enemy.levelPerWave je Welle), countMult = Gegneranzahl-Faktor, finalStage = höchste Entwicklungsstufe. Neu erzeugen: node tools/build_route_levels.mjs',
+  _hinweis: 'Route-Level. path = Eckpunkte der Route [Spalte, Zeile] im 9×13-Raster (Eck- und Endpunkte außerhalb des Rasters = Ein-/Ausgang), slots = Bauplätze ([Spalte, Zeile] bzw. [Spalte, Zeile, "w"] = Seerose im Teich, nur für Wasser-Pokémon), water = Teich-Felder, types = Gegner-Typen, waves = Wellen, enemyLevel = Gegnerlevel in Welle 1 (+enemy.levelPerWave je Welle), countMult = Gegneranzahl-Faktor, finalStage = höchste Entwicklungsstufe. Neu erzeugen: node tools/build_route_levels.mjs',
   levels,
 }, null, 1));
 console.log('Level:', levels.length, 'Bauplätze:', levels.map((l) => l.slots.length).join(','), 'Seerosen:', levels.map((l) => l.slots.filter((x) => x[2] === 'w').length).join(','));

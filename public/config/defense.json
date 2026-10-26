@@ -1484,5 +1484,8 @@
     "mult": 1
   },
   "legendaryDamageMult": 1.25,
-  "_legendaryDamageMult": "Eigene legendäre Pokémon machen so viel mehr Schaden (1.25 = +25 %)"
+  "_legendaryDamageMult": "Eigene legendäre Pokémon machen so viel mehr Schaden (1.25 = +25 %)",
+  "unlockWaves": 50,
+  "unlockWavesPerLevel": 2,
+  "_unlockWaves": "Ein PokeDefense-Level wird erst freigeschaltet, wenn im Level davor insgesamt unlockWaves + (Level−1) × unlockWavesPerLevel Wellen geschafft wurden (über alle Versuche)."
 }

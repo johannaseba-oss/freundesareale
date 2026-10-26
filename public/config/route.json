@@ -195,5 +195,11 @@
   "legendaryDamageMult": 1.25,
   "_legendaryDamageMult": "Legendäre Pokémon machen so viel mehr Schaden (1.25 = +25 %)",
   "unlockWaves": 50,
-  "_unlockWaves": "Ein Level wird erst freigeschaltet, wenn im Level davor insgesamt so viele Wellen geschafft wurden (über alle Versuche zusammen)."
+  "_unlockWaves": "Ein Level wird erst freigeschaltet, wenn im Level davor insgesamt unlockWaves + (Level−1) × unlockWavesPerLevel Wellen geschafft wurden (über alle Versuche zusammen).",
+  "unlockWavesPerLevel": 2,
+  "extraSlot": {
+    "_hinweis": "Zusätzlicher Platz für ein weiteres Pokémon, je Level kaufbar: price Münzen, höchstens max zusätzliche Plätze pro Level.",
+    "price": 10000,
+    "max": 3
+  }
 }

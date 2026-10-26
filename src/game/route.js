@@ -53,11 +53,11 @@ export function pathCells(pts) {
 
 export class Route {
   // level: Eintrag aus route_levels.json; team: [{uid, dex, ivs, evs, level, nick, gender}]
-  constructor({ level, team, cleared = 0, seed = Date.now() }) {
+  constructor({ level, team, cleared = 0, extra = 0, seed = Date.now() }) {
     this.rnd = mulberry32(seed >>> 0);
     this.level = level;
     this.team = team;
-    this.max = maxUnits(cleared);
+    this.max = maxUnits(cleared) + extra; // + gekaufte Plätze für dieses Level
     this.t = 0;
     this.started = false;
     this.lives = R().lives;

@@ -33,7 +33,8 @@ export function renderRouteSetup(el, back) {
   const SH = ['adjacent', 'line', 'circle', 'cross'];
   const mons = app.state.pokemon.filter((p) => canBattle(p.dex)).sort((a, b) => (!!b.fav - !!a.fav)
     || (sortBy === 'shape' ? SH.indexOf(shapeOf(a.dex)) - SH.indexOf(shapeOf(b.dex)) : 0) || b.level - a.level || a.dex - b.dex);
-  const N = Math.min(maxUnits(st().cleared || 0), mons.length);
+  const extra = st().extra?.[chosen.n] || 0, X = R().extraSlot;
+  const N = Math.min(maxUnits(st().cleared || 0) + extra, mons.length);
   if (!N) { toast('Du brauchst Pokémon – zieh welche am Automaten!'); chosen = null; renderLevels(el, back); return; }
   const rec = recommendRouteTeam(mons, chosen.types, N);
   if (!pickSel) pickSel = [...new Set([...mons.filter((p) => p.fav).map((p) => p.uid), ...rec])].slice(0, N); // Favoriten zuerst
@@ -50,19 +51,24 @@ export function renderRouteSetup(el, back) {
     h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t))), h('small', ` · ${chosen.waves} Wellen`)),
     h('p.note', `✦ = empfohlen (verschiedene Angriffsformen, stark gegen diese Gegner). Antippen zum Tauschen, ☆ markiert Favoriten. Bis zu ${N} Pokémon kommen aufs Feld.`),
     h('div.r-sort', h('small', 'Sortieren:'), sortBtn('level', 'Level'), sortBtn('shape', 'Angriffsform')),
+    X && extra < X.max ? h('button.btn.small.gold.r-buy', { onclick: async () => {
+      if (!(await confirmDialog(`Für ${X.price.toLocaleString('de-DE')} Münzen einen zusätzlichen Platz in Level ${chosen.n} kaufen? Dann kannst du hier dauerhaft ein Pokémon mehr aufstellen.`, 'Kaufen'))) return;
+      const r = app.act((s) => A.buyRouteSlot(s, chosen.n), true); if (r.ok === false) return;
+      sfx.coin(); haptic('medium'); toast(`Level ${chosen.n}: jetzt ${maxUnits(st().cleared || 0) + r.extra} Plätze.`); pickSel = null; renderRouteSetup(el, back);
+    } }, `➕ Platz kaufen (${X.price.toLocaleString('de-DE')} 🪙)${extra ? ` · schon ${extra}` : ''}`) : null,
     picker.tools, picker.grid));
 }
 function renderLevels(el, back) {
-  const L = routeLevels(), done = st().cleared || 0, open = A.routeUnlocked(app.state), need = R().unlockWaves || 0, W = st().waves || {};
+  const L = routeLevels(), done = st().cleared || 0, open = A.routeUnlocked(app.state), W = st().waves || {};
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '🛤 Route'), h('span.bs-count', `${done}/${L.length} geschafft`)),
     h('p.note', `Wilde Pokémon laufen eine feste Route entlang. Setz deine Pokémon auf die Bauplätze daneben. Besiegte Gegner bringen EP – damit trainierst du deine Pokémon dauerhaft (auch in den Arealen). EP: ${st().ep || 0}`),
     h('div.route-levels', L.map((lv) => {
       const state = lv.n > open ? 'locked' : lv.n <= done ? 'done' : 'next';
-      const prog = lv.n === open + 1 ? h('small.rl-prog', `${Math.min(need, W[open] || 0)}/${need} Wellen in Lv ${open}`) : null;
+      const prog = lv.n === open + 1 ? h('small.rl-prog', `${Math.min(A.routeNeed(open), W[open] || 0)}/${A.routeNeed(open)} Wellen in Lv ${open}`) : null;
       return h('button.route-lv.' + state, { onclick: () => {
-        if (state === 'locked') { toast(`Schaffe zuerst ${need} Wellen in Level ${lv.n - 1} (bisher ${W[lv.n - 1] || 0}).`); return; }
+        if (state === 'locked') { toast(`Schaffe zuerst ${A.routeNeed(lv.n - 1)} Wellen in Level ${lv.n - 1} (bisher ${W[lv.n - 1] || 0}).`); return; }
         chosen = lv; pickSel = null; haptic('tick'); renderRouteSetup(el, back); el.scrollTop = 0;
       } }, h('b', state === 'done' ? '✓ ' + lv.n : String(lv.n)), h('small', lv.name), h('span.road-types', lv.types.map((t) => h('i', { style: { background: typeColor(t) } }))), prog);
     }))));
@@ -82,7 +88,7 @@ function confirmTeam(uids) {
 function start() {
   const members = team.map((u) => app.state.pokemon.find((p) => p.uid === u)).filter(Boolean)
     .map((p) => ({ uid: p.uid, dex: p.dex, ivs: p.ivs, evs: p.evs, level: p.level, nick: p.nick, gender: p.gender }));
-  game = new Route({ level: chosen, team: members, cleared: st().cleared || 0 });
+  game = new Route({ level: chosen, team: members, cleared: st().cleared || 0, extra: st().extra?.[chosen.n] || 0 });
   game.buffOf = (m) => physBuff(app.state, { uid: m.uid, dex: m.dex }, now()); // Felsbrecher-Buff
   game.itemOf = (m) => fxOf(app.state, { uid: m.uid, dex: m.dex }); // getragenes Item
   openField();
@@ -344,7 +350,10 @@ function buildBackground() {
   // Bauplätze bekommen eine kleine Lichtung, damit der Wald sie nicht verdeckt
   for (const [x, y, w] of game.level.slots) if (w !== 'w') for (const [dx, dy] of [[0, -1], [-1, 0], [1, 0]]) if (!cells.has(k(x + dx, y + dy))) cells.set(k(x + dx, y + dy), 'F');
   const first = game.level.path[0], last = game.level.path[game.level.path.length - 1];
-  const cellAt = (x, y) => cells.get(k(x, y)) || ((x === first[0] && y < 0) || (x === last[0] && y >= G.rows) || (y === first[1] && x < 0 && first[0] <= 0) || (y === last[1] && x >= G.cols && last[0] >= G.cols - 1) ? 'P' : 'W');
+  // Ein- und Ausgang: der Weg läuft vom Endpunkt außerhalb des Rasters geradeaus weiter aus dem Bild
+  const RP = game.level.path, ray = (e, nb) => { const dx = Math.sign(e[0] - nb[0]), dy = Math.sign(e[1] - nb[1]); return (x, y) => (dx ? y === e[1] && (x - e[0]) * dx >= 0 : x === e[0] && (y - e[1]) * dy >= 0); };
+  const inR = ray(RP[0], RP[1]), outR = ray(RP[RP.length - 1], RP[RP.length - 2]), outside = (x, y) => x < 0 || y < 0 || x >= G.cols || y >= G.rows;
+  const cellAt = (x, y) => cells.get(k(x, y)) || (outside(x, y) && (inR(x, y) || outR(x, y)) ? 'P' : 'W');
   const lo = renderTerrain({ c0, r0, c1, r1, cellAt, theme: U.themeId, seed: game.level.n * 31 + 7 });
   const x = lo.getContext('2d'); x.imageSmoothingEnabled = false;
   const X = (col) => (col - c0) * S, Y = (r) => (r - r0) * S;
@@ -565,7 +574,7 @@ function end() {
   commitEp();
   if (won) sfx.win(); else sfx.lose();
   const next = routeLevels().find((x) => x.n === lv.n + 1 && x.n <= A.routeUnlocked(app.state));
-  const wDone = st().waves?.[lv.n] || 0, need = R().unlockWaves || 0;
+  const wDone = st().waves?.[lv.n] || 0, need = A.routeNeed(lv.n);
   const leave = (to) => { closeField(); game = null; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
     h('h2', won ? `Level ${lv.n} geschafft!` : 'Niederlage'),

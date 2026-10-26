@@ -871,3 +871,5 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .ds-total small { color: var(--ink-soft); }
 .ds-lv { font-weight: 500; color: var(--ink-soft); font-size: 11px; }
 .rl-prog { display: block; font-size: 10px; color: var(--ink-soft); }
+.road-prog { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10px; color: var(--ink-soft); }
+.r-buy { margin: 4px 0; }
