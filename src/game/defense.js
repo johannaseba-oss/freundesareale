@@ -286,7 +286,9 @@ export class Defense {
     let level, p;
     if (this.endless) { // Chaos: nächste Welle erzeugen – jede große Welle mit neuen Gegner-Typen
       const E = D().chaos.endless;
-      this.waves.push({ count: Math.round((E.base + this.wave * E.perWave) * (D().chaos.countMult || 1)), spread: 28, final: false });
+      const LTc = D().chaos.late, isLate = LTc && this.wave + 1 >= LTc.fromWave;
+      const cnt = Math.min(D().chaos.maxCount || Infinity, (E.base + this.wave * E.perWave) * (D().chaos.countMult || 1)) * (isLate ? LTc.countMult || 1 : 1);
+      this.waves.push({ count: Math.max(3, Math.round(cnt)), spread: 28, final: false });
       this.rollWaveTheme();
       level = Math.round(E.baseLevel + this.wave * E.levelPerWave);
       // ab chaos.late.fromWave: mindestens so stark wie die eigenen stärksten Pokémon (die wachsen im Lauf weiter)
@@ -306,6 +308,22 @@ export class Defense {
     }
     this.waveLevel = level; this.waveP = p;
     const W = this.waves[this.wave], spread = this.chaos ? D().chaos.flow.bigSpread : W.spread;
+    const PT = this.endless ? D().chaos.patterns : null;
+    let pattern = 'normal';
+    if (PT && this.wave + 1 >= (PT.fromWave || 0) && this.lastPattern === 'normal') {
+      const opts = ['normal', 'giant', 'trio'].filter((k) => PT[k]);
+      let r = this.rnd() * opts.reduce((a, k) => a + PT[k].weight, 0);
+      pattern = opts.find((k) => (r -= PT[k].weight) < 0) || 'normal';
+    }
+    this.lastPattern = pattern;
+    if (pattern !== 'normal') {
+      const strong = this.families.map((fm) => fm[fm.length - 1]), dex = strong[Math.floor(this.rnd() * strong.length)], P = PT[pattern];
+      if (pattern === 'giant') this.queue.push({ at: this.t + 2, dex, level: level + P.level, col: Math.floor(this.rnd() * D().grid.cols), boss: true, giant: P.hpMult });
+      else { const cols = [...Array(D().grid.cols).keys()].sort(() => this.rnd() - 0.5).slice(0, 3); cols.forEach((col, i) => this.queue.push({ at: this.t + 2 + i * 1.2, dex, level: level + P.level, col, trio: P.hpMult })); }
+      this.queue.sort((a, b) => a.at - b.at);
+      this.events.push({ type: 'wave', wave: this.wave, final: false, minRow: this.minRow(), types: this.theme, pattern, dex });
+      return;
+    }
     for (let i = 0; i < W.count; i++) {
       const fast = this.endless && this.rnd() < D().chaos.fast.chance;
       this.queue.push({ at: this.t + (W.final && i < 3 ? 0 : (i / W.count) * spread + this.rnd() * 3), dex: this.rollEnemy(), level, col: Math.floor(this.rnd() * D().grid.cols), fast });
@@ -384,6 +402,8 @@ export class Defense {
       e.stats = e.stats.map((v, i) => (i === 2 || i === 4 ? Math.round(v * Bo.defMult) : v));
       this.events.push({ type: 'boss', e });
     }
+    if (q.giant) { e.giant = true; e.maxHp *= q.giant; }
+    if (q.trio) { e.trio = true; e.maxHp *= q.trio; }
     if (q.guard) e.guard = true;
     e.hp = e.maxHp;
     this.enemies.push(e);
@@ -546,7 +566,7 @@ export class Defense {
     if (this.chaos) { // Chaos: alle bigEvery s eine große Welle, dazwischen kleine Gruppen
       const F = D().chaos.flow;
       if (moreWaves && this.t >= this.nextWaveAt) { this.startWave(); this.nextWaveAt = this.t + F.bigEvery; this.nextTrickle = this.t + F.bigSpread + (F.calm ? this.between(F.calm) : 0); } // danach eine ruhige Phase
-      else if (moreWaves && this.wave >= 0 && this.t >= this.nextTrickle) { this.trickle(); this.nextTrickle = this.t + this.between(F.trickleEvery) * (1 - (1 - (F.trickleLate ?? 1)) * (this.waveP ?? 0)); }
+      else if (moreWaves && this.wave >= 0 && this.t >= this.nextTrickle) { const LTt = D().chaos.late, lateT = LTt && this.wave + 1 >= LTt.fromWave ? LTt.trickleMult || 1 : 1; this.trickle(); this.nextTrickle = this.t + this.between(F.trickleEvery) * (1 - (1 - (F.trickleLate ?? 1)) * (this.waveP ?? 0)) * lateT; }
     } else if (moreWaves && this.t >= this.nextWaveAt && !this.queue.length) {
       this.startWave();
       const W = this.waves[this.wave];

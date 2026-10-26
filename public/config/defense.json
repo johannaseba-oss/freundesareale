@@ -1416,8 +1416,32 @@
       "top": 6,
       "matchLevel": 1,
       "levelPerWave": 1,
-      "hpPerWave": 0.03
-    }
+      "hpPerWave": 0.03,
+      "countMult": 0.5,
+      "_countMult": "ab late.fromWave: Anzahl der Gegner je Welle × countMult (dafür sind sie stärker)",
+      "trickleMult": 1.6,
+      "_trickleMult": "ab late.fromWave: Abstände der kleinen Gruppen × trickleMult (seltener)"
+    },
+    "patterns": {
+      "_hinweis": "Abwechslung bei den großen Chaos-Wellen (ab fromWave): normal = gewohnte Welle; giant = nur EIN riesiger, enorm starker Gegner (KP × hpMult, +level); trio = drei gleiche starke Gegner (KP × hpMult, +level). weight = Häufigkeit. Nach einer besonderen Welle kommt immer erst wieder eine normale.",
+      "fromWave": 8,
+      "normal": {
+        "weight": 55
+      },
+      "giant": {
+        "weight": 22,
+        "hpMult": 5,
+        "level": 6,
+        "scale": 1.9
+      },
+      "trio": {
+        "weight": 23,
+        "hpMult": 2.2,
+        "level": 3
+      }
+    },
+    "maxCount": 26,
+    "_maxCount": "Höchstzahl Gegner einer normalen großen Welle"
   },
   "levelGap": 5,
   "_levelGap": "Eigene Pokémon starten höchstens levelGap Level unter den Gegnern der ersten Welle (sonst level)",

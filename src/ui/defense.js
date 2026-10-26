@@ -666,7 +666,7 @@ function drawMon(x, o, mine, [X, Y], T, now) {
   let s = T / 28;
   if (e.anims.Idle.fh * s > T * 1.6) s = (T * 1.6) / e.anims.Idle.fh;
   if (o.boss) { // goldene, pulsierende Aura unter dem Boss
-    s *= CFG.defense.chaos.boss.scale;
+    s *= o.giant ? CFG.defense.chaos.patterns?.giant?.scale || 1.9 : CFG.defense.chaos.boss.scale;
     const pr = T * (0.55 + Math.sin(now / 160) * 0.05);
     const gr = x.createRadialGradient(X, Y, 0, X, Y, pr); gr.addColorStop(0, 'rgba(255,200,60,.45)'); gr.addColorStop(1, 'rgba(255,200,60,0)');
     x.fillStyle = gr; x.beginPath(); x.arc(X, Y, pr, 0, 7); x.fill();
@@ -944,7 +944,8 @@ function handleEvents() {
       if (game.endless) saveChaosBest(ev.wave + 1);
       if (game.endless && ev.wave > 0) waveCoins(ev.wave);
       if (game.endless && ev.wave > 0 && ev.wave % D().chaos.stageEvery === 0) nextStage();
-      banner(ev.final ? 'LETZTE WELLE!' : `WELLE ${ev.wave + 1}`, ev.final); sfx.wave(ev.final);
+      banner(ev.final ? 'LETZTE WELLE!' : ev.pattern === 'giant' ? `WELLE ${ev.wave + 1} · RIESE!` : ev.pattern === 'trio' ? `WELLE ${ev.wave + 1} · DREI!` : `WELLE ${ev.wave + 1}`, ev.final || !!ev.pattern); sfx.wave(ev.final || !!ev.pattern);
+      if (ev.pattern) message(ev.pattern === 'giant' ? `Ein riesiges ${species(ev.dex).name} kommt – enorm stark!` : `Drei ${species(ev.dex).name} auf einmal!`);
       if (ev.types?.length) message(`Jetzt kommen: ${ev.types.join(' & ')}`);
       shake(T() * (ev.final ? 0.12 : 0.05)); haptic(ev.final ? 'strong' : 'medium');
     } else if (ev.type === 'weather') { renderWeatherChip(); message('Wetter: ' + weatherText(game.weather)); }
