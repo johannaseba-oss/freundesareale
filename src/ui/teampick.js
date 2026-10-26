@@ -13,7 +13,7 @@ import { toggleFav, favFirst } from '../game/actions.js';
 // initial: vorausgewählte uids (Empfehlung) – dann gibt es die Leiste mit „Empfehlung“, „Leeren“ und „Weiter“
 // recommend: empfohlene uids (Knopf „Empfehlung“, kleines ✦ auf der Karte) – ohne Angabe = initial
 // selectedFirst: Ausgewählte stehen immer oben (in Auswahl-Reihenfolge), Abgewählte rutschen an ihren Platz in der Sortierung zurück
-export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = null, selectedFirst = false }) {
+export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = null, selectedFirst = true }) {
   mons = favFirst(mons); // Favoriten immer oben
   const rec = recommend || initial;
   const sel = initial ? [...initial] : [];

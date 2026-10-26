@@ -873,3 +873,15 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .rl-prog { display: block; font-size: 10px; color: var(--ink-soft); }
 .road-prog { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 10px; color: var(--ink-soft); }
 .r-buy { margin: 4px 0; }
+
+/* Sammlung: Wegschicken */
+.rel-chip { background: #fff1d6; }
+.rel-head b { color: #c0582a; }
+.card.rel-off { opacity: .85; }
+.card.rel-on { outline: 3px solid #e8453c; outline-offset: -3px; background: #ffe6e1; }
+.card.rel-locked { opacity: .4; }
+.rel-mark { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 13px; background: rgba(255,255,255,.85); border: 2px solid var(--line); color: #e8453c; }
+.card.rel-locked .rel-mark { color: #b9ad97; }
+.rel-bar { position: sticky; bottom: calc(64px + var(--safe-b)); display: flex; gap: 6px; padding: 8px 10px; margin: 8px; background: var(--paper); border: 2px solid var(--line); border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.18); z-index: 5; }
+.rel-go { flex: 1; }
+.rel-ball { position: fixed; left: 0; top: 0; width: 40px; height: 40px; z-index: 40; pointer-events: none; image-rendering: pixelated; }

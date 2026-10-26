@@ -261,5 +261,9 @@
       32
     ],
     "_ev": "Mit evChance startet das Junge in einem zufälligen Wert mit evAmount EVs."
+  },
+  "release": {
+    "_hinweis": "Pokémon aus dem Beutel (ohne Areal) wegschicken: coins Münzen je Pokémon. Favoriten und Pokémon mit Spitznamen können nicht weggeschickt werden.",
+    "coins": 50
   }
 }

@@ -149,6 +149,21 @@ export function buyRouteSlot(s, n) {
   return { ok: true, extra: s.route.extra[n] };
 }
 export function routeCleared(s, n) { s.route ||= { ep: 0, cleared: 0 }; const first = n > (s.route.cleared || 0); s.route.cleared = Math.max(s.route.cleared || 0, n); return { ok: true, first }; }
+// Pokémon aus dem Beutel wegschicken: je balance.release.coins Münzen; Favoriten, Spitznamen und Areal-Bewohner sind ausgenommen
+export const canRelease = (p) => !p.area && !p.fav && !p.nick;
+export function releasePokemon(s, uids) {
+  const set = new Set(uids), gone = s.pokemon.filter((p) => set.has(p.uid) && canRelease(p));
+  if (!gone.length) return fail('Keine Pokémon zum Wegschicken ausgewählt.');
+  const ids = new Set(gone.map((p) => p.uid));
+  for (const p of gone) if (p.held) { s.items ||= {}; s.items.held ||= {}; s.items.held[p.held] = (s.items.held[p.held] || 0) + 1; } // getragene Items zurück in den Beutel
+  s.pokemon = s.pokemon.filter((p) => !ids.has(p.uid));
+  // gespeicherte Teams bereinigen
+  if (s.battle) { s.battle.team = (s.battle.team || []).filter((u) => !ids.has(u)); s.battle.towers = (s.battle.towers || []).filter((u) => !ids.has(u)); }
+  if (s.defense?.team) s.defense.team = s.defense.team.filter((u) => !ids.has(u));
+  const coins = gone.length * (CFG.balance.release?.coins || 0);
+  s.coins += coins; s.stats.released = (s.stats.released || 0) + gone.length;
+  return { ok: true, count: gone.length, coins, gone: gone.map((p) => ({ uid: p.uid, dex: p.dex, ball: p.ball })) };
+}
 // Favorit (p.fav): steht in allen Auswahllisten und Minispielen oben
 export function toggleFav(s, uid) {
   const p = s.pokemon.find((x) => x.uid === uid);

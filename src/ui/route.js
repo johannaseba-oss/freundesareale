@@ -55,7 +55,7 @@ export function renderRouteSetup(el, back) {
       if (!(await confirmDialog(`Für ${X.price.toLocaleString('de-DE')} Münzen einen zusätzlichen Platz in Level ${chosen.n} kaufen? Dann kannst du hier dauerhaft ein Pokémon mehr aufstellen.`, 'Kaufen'))) return;
       const r = app.act((s) => A.buyRouteSlot(s, chosen.n), true); if (r.ok === false) return;
       sfx.coin(); haptic('medium'); toast(`Level ${chosen.n}: jetzt ${maxUnits(st().cleared || 0) + r.extra} Plätze.`); pickSel = null; renderRouteSetup(el, back);
-    } }, `➕ Platz kaufen (${X.price.toLocaleString('de-DE')} 🪙)${extra ? ` · schon ${extra}` : ''}`) : null,
+    } }, `➕ Platz kaufen (${X.price.toLocaleString('de-DE')} Münzen)${extra ? ` · schon ${extra}` : ''}`) : null,
     picker.tools, picker.grid));
 }
 function renderLevels(el, back) {
