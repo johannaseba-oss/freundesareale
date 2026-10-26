@@ -381,8 +381,8 @@ export class Defense {
     return fam[Math.min(stage, fam.length) - 1];
   }
   // Chaos: kleine Gruppe (1–3 Gegner) auf einer Spalte zwischen den großen Wellen
-  trickle() {
-    const F = D().chaos.flow, n = F.group[0] + Math.floor(this.rnd() * (F.group[1] - F.group[0] + 1));
+  trickle(count = null) {
+    const F = D().chaos.flow, n = count ?? F.group[0] + Math.floor(this.rnd() * (F.group[1] - F.group[0] + 1));
     const col = Math.floor(this.rnd() * D().grid.cols);
     let at = this.t;
     for (let i = 0; i < n; i++) {
@@ -565,8 +565,20 @@ export class Defense {
     const moreWaves = this.endless || this.wave < this.waves.length - 1;
     if (this.chaos) { // Chaos: alle bigEvery s eine große Welle, dazwischen kleine Gruppen
       const F = D().chaos.flow;
-      if (moreWaves && this.t >= this.nextWaveAt) { this.startWave(); this.nextWaveAt = this.t + F.bigEvery; this.nextTrickle = this.t + F.bigSpread + (F.calm ? this.between(F.calm) : 0); } // danach eine ruhige Phase
-      else if (moreWaves && this.wave >= 0 && this.t >= this.nextTrickle) { const LTt = D().chaos.late, lateT = LTt && this.wave + 1 >= LTt.fromWave ? LTt.trickleMult || 1 : 1; this.trickle(); this.nextTrickle = this.t + this.between(F.trickleEvery) * (1 - (1 - (F.trickleLate ?? 1)) * (this.waveP ?? 0)) * lateT; }
+      if (moreWaves && this.t >= this.nextWaveAt) {
+        this.startWave(); this.nextWaveAt = this.t + F.bigEvery; this.nextTrickle = this.t + F.bigSpread;
+        // nach einer normalen großen Welle eine ruhige Phase (nur einzelne Gegner); nach Riese/Drei nicht
+        this.calmUntil = this.lastPattern === 'normal' && F.calm ? this.t + F.bigSpread + this.between(F.calm) : 0;
+      } else if (moreWaves && this.wave >= 0 && this.t >= this.nextTrickle) {
+        const calm = this.t < (this.calmUntil || 0), LTt = D().chaos.late, lateT = LTt && this.wave + 1 >= LTt.fromWave ? LTt.trickleMult || 1 : 1;
+        this.trickle(calm ? 1 : null);
+        this.nextTrickle = this.t + (calm ? this.between(F.calmGap || [4, 6]) : this.between(F.trickleEvery) * (1 - (1 - (F.trickleLate ?? 1)) * (this.waveP ?? 0)) * lateT);
+      }
+      // nie lange Leerlauf: Feld komplett leer und nichts unterwegs → gleich eine kleine Gruppe
+      if (moreWaves && this.wave >= 0 && !this.queue.length && !this.enemies.some((e) => e.hp > 0)) {
+        this.emptySince ??= this.t;
+        if (this.t - this.emptySince >= (F.emptyMax ?? 3)) { this.trickle(); this.emptySince = null; this.nextTrickle = Math.max(this.nextTrickle, this.t + 3); }
+      } else this.emptySince = null;
     } else if (moreWaves && this.t >= this.nextWaveAt && !this.queue.length) {
       this.startWave();
       const W = this.waves[this.wave];

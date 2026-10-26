@@ -1058,7 +1058,7 @@
     "prepSeconds": 10,
     "_prepSeconds": "Countdown vor dem ersten Angriff (Sekunden), währenddessen in Ruhe aufstellen",
     "flow": {
-      "_hinweis": "Gegnerfluss: alle bigEvery s eine große Welle (über bigSpread s verteilt), dazwischen alle trickleEvery s kleine Gruppen von group Gegnern auf einer Spalte, im Abstand groupGap s; trickleLate = Faktor für die Abstände der kleinen Gruppen am Ende eines Levels (kürzer = dichter); calm = ruhige Pause [min, max] s nach jeder großen Welle (ohne kleine Gruppen)",
+      "_hinweis": "Gegnerfluss: alle bigEvery s eine große Welle (über bigSpread s verteilt), dazwischen alle trickleEvery s kleine Gruppen von group Gegnern auf einer Spalte, im Abstand groupGap s; trickleLate = Faktor für die Abstände der kleinen Gruppen am Ende eines Levels; calm = ruhige Phase [min, max] s nach jeder normalen großen Welle – dann nur einzelne Gegner alle calmGap s; emptyMax = ist das Feld so viele Sekunden komplett leer, kommt sofort eine kleine Gruppe (nie lange Leerlauf)",
       "bigEvery": 30,
       "bigSpread": 12,
       "trickleEvery": [
@@ -1077,7 +1077,12 @@
       "calm": [
         10,
         15
-      ]
+      ],
+      "calmGap": [
+        4,
+        6
+      ],
+      "emptyMax": 3
     },
     "lives": {
       "_hinweis": "Leben: start = so oft darf zu Beginn ein Gegner über die Linie, ohne dass der Run endet (angezeigt als ♥). Weitere kauft man im Lauf mit Münzen: prices der Reihe nach, danach jeweils × growth. Erreicht ein Gegner den Trainer ohne verbleibendes Leben, ist der Run verloren.",
