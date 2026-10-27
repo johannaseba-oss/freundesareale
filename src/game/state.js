@@ -60,6 +60,11 @@ export function migrate(s) {
   }
   if (s.route && s.route.unlockedBase == null) s.route.unlockedBase = (s.route.cleared || 0) + 1; // bisher offene Level bleiben offen
   if (s.defense && s.defense.unlockedBase == null) s.defense.unlockedBase = (s.defense.cleared || 0) + 1;
+  if (s.defense && !s.defense.best) { // Umstellung auf „ein Level in einem Durchgang schaffen“: schon offene Level bleiben offen
+    const W = s.defense.waves || {}, old = (n) => 50 + (n - 1) * 2;
+    let top = Math.max(1, s.defense.unlockedBase || 0); while (W[top] >= old(top) && top < 50) top++;
+    s.defense.unlockedBase = top; s.defense.best = {};
+  }
   if (s.route?.favs?.length) { for (const p of s.pokemon) if (s.route.favs.includes(p.uid)) p.fav = true; delete s.route.favs; } // Route-Favoriten → allgemein
   for (const p of s.pokemon) {
     p.effects ||= [];

@@ -88,8 +88,8 @@ function roadMap(L, done, onPick, open = done + 1, prog = null) {
   return h('div.road-wrap', map);
 }
 function renderRoadmap(el, back) {
-  const L = levelsList(), done = cleared(), open = A.defenseUnlocked(app.state), W = app.state.defense?.waves || {};
-  const prog = (n, short) => short ? `${Math.min(W[n - 1] || 0, A.defenseNeed(n - 1))}/${A.defenseNeed(n - 1)} Wellen` : `Schaffe zuerst ${A.defenseNeed(n - 1)} Wellen in Level ${n - 1} (bisher ${W[n - 1] || 0}).`;
+  const L = levelsList(), done = cleared(), open = A.defenseUnlocked(app.state), W = app.state.defense?.best || {};
+  const prog = (n, short) => short ? `${Math.min(W[n - 1] || 0, A.defenseNeed(n - 1))}/${A.defenseNeed(n - 1)} Wellen` : `Schaffe zuerst alle ${A.defenseNeed(n - 1)} Wellen von Level ${n - 1} in einem Durchgang (bisher bestenfalls ${W[n - 1] || 0}).`;
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
@@ -1013,8 +1013,8 @@ function end() {
   if (!game.chaos) { // geschaffte Wellen zählen – das nächste Level öffnet sich nach genug Wellen
     const before = A.defenseUnlocked(app.state);
     app.act((s) => A.defenseWaves(s, lv.n, won ? game.waves.length : Math.max(0, game.wave)), true);
-    const after = A.defenseUnlocked(app.state), have = app.state.defense.waves[lv.n] || 0, need = A.defenseNeed(lv.n);
-    unlockNote = after > before ? `🔓 Level ${lv.n + 1} ist jetzt freigeschaltet!` : lv.n + 1 > after && levelsList().some((x) => x.n === lv.n + 1) ? `Wellen in diesem Level: ${Math.min(have, need)}/${need} – dann öffnet sich Level ${lv.n + 1}.` : '';
+    const after = A.defenseUnlocked(app.state), have = app.state.defense.best[lv.n] || 0, need = A.defenseNeed(lv.n);
+    unlockNote = after > before ? `🔓 Level ${lv.n + 1} ist jetzt freigeschaltet!` : lv.n + 1 > after && levelsList().some((x) => x.n === lv.n + 1) ? `Bestes Ergebnis: ${Math.min(have, need)}/${need} Wellen – schaffe alle in einem Durchgang, dann öffnet sich Level ${lv.n + 1}.` : '';
   }
   const leave = (to) => { closeField(); game = null; pick = []; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
   const lostText = game.over.gaveUp ? 'Du hast aufgegeben.' : `Ein Gegner hat deinen Trainer erreicht (Welle ${game.wave + 1}).`;

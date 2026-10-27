@@ -127,15 +127,17 @@ export function routeUnlocked(s) {
   while (W[top] >= routeNeed(top) && top < CFG.routeLevels.levels.length) top++;
   return top;
 }
-// PokeDefense: gleiche Regel (s.defense.waves, s.defense.unlockedBase)
-export const defenseNeed = (n) => (CFG.defense.unlockWaves || 0) + (n - 1) * (CFG.defense.unlockWavesPerLevel || 0);
+// PokeDefense: Level n öffnet sich, wenn Level n−1 in einem Durchgang ganz geschafft wurde (s.defense.best, s.defense.unlockedBase)
+// Wellen, die man in Level n in einem Durchgang schaffen muss (= alle Wellen des Levels)
+export const defenseNeed = (n) => (CFG.defenseLevels?.levels || []).find((l) => l.n === n)?.waves || CFG.defense.unlockWaves || 0;
+// gespeichert wird die beste Wellenzahl eines einzelnen Durchgangs (kein Aufsummieren mehr)
 export function defenseWaves(s, n, waves) {
-  s.defense ||= {}; s.defense.waves ||= {};
-  s.defense.waves[n] = (s.defense.waves[n] || 0) + Math.max(0, waves);
+  s.defense ||= {}; s.defense.best ||= {};
+  s.defense.best[n] = Math.max(s.defense.best[n] || 0, Math.max(0, waves));
   return { ok: true };
 }
 export function defenseUnlocked(s) {
-  const W = s.defense?.waves || {}, total = (CFG.defenseLevels?.levels || CFG.defenseLevels || []).length || 50;
+  const W = s.defense?.best || {}, total = (CFG.defenseLevels?.levels || CFG.defenseLevels || []).length || 50;
   let top = Math.max(1, s.defense?.unlockedBase || 0);
   while (W[top] >= defenseNeed(top) && top < total) top++;
   return top;

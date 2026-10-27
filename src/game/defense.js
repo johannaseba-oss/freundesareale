@@ -94,6 +94,7 @@ export class Defense {
   constructor({ team, level, seed = Date.now(), chaos = false }) {
     this.rnd = mulberry32(seed >>> 0);
     this.chaos = chaos;
+    this.cr = chaos || D().chaosRulesInDefense !== false; // Kampfregeln des Chaos-Modus (Attacken-Reichweiten, Flächen, Explosionen)
     this.t = 0;
     this.level = level;
     this.theme = level.types;
@@ -210,17 +211,17 @@ export class Defense {
   previewCells(dex, role, col, row) {
     const G = D().grid, R = D().roles, ab = abilityOf(dex), mv = moveOf(bdata(dex).move);
     const u = { x: col + 0.5, y: row + 0.5, dir: col < 0 ? 1 : col >= G.cols ? -1 : 0 };
-    const rule = this.chaos ? D().chaos.moves?.[mv.name] : null, attack = [], area = [];
+    const rule = this.cr ? D().chaos.moves?.[mv.name] : null, attack = [], area = [];
     const each = (fn, out, field = true) => { for (let r = 0; r < G.rows; r++) for (let c = field ? 0 : -1; c < (field ? G.cols : G.cols + 1); c++) if (fn({ x: c + 0.5, y: r + 0.5 })) out.push([c, r]); };
     const box = (a) => (e) => Math.abs(e.x - u.x) <= a + 0.5 && Math.abs(e.y - u.y) <= a + 0.5;
-    if (role === 'explosiv') each(this.chaos ? box(D().chaos.explosionArea) : (e) => dist(e, u) <= (ab?.type === 'reactive' ? ab.radius : evolved(dex) ? R.explosiv.radiusBig : R.explosiv.radiusSmall) + 0.3, area);
+    if (role === 'explosiv') each(this.cr ? box(D().chaos.explosionArea) : (e) => dist(e, u) <= (ab?.type === 'reactive' ? ab.radius : evolved(dex) ? R.explosiv.radiusBig : R.explosiv.radiusSmall) + 0.3, area);
     else if (role === 'nahkampf' || role === 'fernkampf') {
       let range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : ab?.type === 'cone' ? ab.range + 0.3 : ab?.type === 'switch' ? R.fernkampf.range : rule ? rule.range : R[role].range;
       if (ab?.type === 'backline') range += ab.rangeBonus || 0;
       const lat = rule?.width ? rule.width / 2 : 0.5;
       each((e) => { const a = aim(u, e); return a.lat < (ab?.type === 'cone' ? Math.max(0.5, a.fwd + 0.5) : lat) && a.fwd >= -0.3 && a.fwd <= range && (u.dir || e.y < u.y + 0.3); }, attack);
     }
-    if (this.chaos && (ab?.type === 'sleep' || ab?.type === 'confuse')) each(box(D().chaos.statusArea.area), area);
+    if (this.cr && (ab?.type === 'sleep' || ab?.type === 'confuse')) each(box(D().chaos.statusArea.area), area);
     if (ab?.type === 'heal') each((e) => dist(e, u) <= ab.radius, area, false);
     if (ab?.type === 'aura') each(box(1), area, false);
     const TK = D().telekinesis;
@@ -478,7 +479,7 @@ export class Defense {
     const dot = mv && D().dots?.[mv.type];
     if (dot && from?.dex && e.hp > 0) (e.dots ||= {})[mv.type] = { until: this.t + dot.seconds, dps: e.maxHp * dot.pctPerSecond, from, tick: 0 };
     const ab = from?.dex ? abilityOf(from.dex) : null;
-    if (!this.chaos && e.hp > 0 && this.rnd() < (ab?.chance || 0)) this.applyStatus(e, ab); // Chaos: Status wirkt stattdessen als Fläche
+    if (!this.cr && e.hp > 0 && this.rnd() < (ab?.chance || 0)) this.applyStatus(e, ab); // Chaos: Status wirkt stattdessen als Fläche
     this.events.push({ type: 'hit', target: e, dmg, eff, move: mv, crit, melee: from?.role === 'nahkampf' });
     if (e.hp <= 0) { this.events.push({ type: 'defeat', e }); if (from?.role && from.hp > 0) this.reward(from, e); }
   }
@@ -515,7 +516,7 @@ export class Defense {
   // Gegner im Quadrat aus (2·a+1)² Feldern um das Pokémon (a = 1: 3×3)
   inArea(u, a) { return this.enemies.filter((e) => e.hp > 0 && e.y > -0.2 && Math.abs(e.x - u.x) <= a + 0.5 && Math.abs(e.y - u.y) <= a + 0.5); }
   explode(u, rad, damage) {
-    if (this.chaos) { // Chaos: Explosion trifft alles im 3×3-Bereich, in alle Richtungen
+    if (this.cr) { // Chaos-Regeln: Explosion trifft alles im 3×3-Bereich, in alle Richtungen
       const a = D().chaos.explosionArea;
       for (const e of this.inArea(u, a)) {
         const eff = effectiveness(moveOf(bdata(u.dex).move).type, species(e.dex).types) || 1;
@@ -613,7 +614,7 @@ export class Defense {
         }
       }
       // Chaos: Schlafpuder & Co. wirken auf alle Gegner im 3×3-Bereich um das Pokémon
-      if (this.chaos && (ab?.type === 'sleep' || ab?.type === 'confuse') && this.t >= (u.nextStatus || 0)) {
+      if (this.cr && (ab?.type === 'sleep' || ab?.type === 'confuse') && this.t >= (u.nextStatus || 0)) {
         const SA = D().chaos.statusArea, near = this.inArea(u, SA.area);
         if (near.length) {
           u.nextStatus = this.t + SA.every;
@@ -627,14 +628,14 @@ export class Defense {
         if (this.t < u.armAt) continue;
         const big = evolved(u.dex);
         // Chaos: zündet auch, wenn ein Gegner neben ihm vorbeiläuft (Seitenfelder)
-        const trigger = big || this.enemies.some((e) => e.hp > 0 && Math.abs(e.y - u.y) < 0.6 && (this.chaos || u.dir ? Math.abs(e.x - u.x) < 1.5 : e.col === u.col));
+        const trigger = big || this.enemies.some((e) => e.hp > 0 && Math.abs(e.y - u.y) < 0.6 && (this.cr || u.dir ? Math.abs(e.x - u.x) < 1.5 : e.col === u.col));
         if (!trigger) continue;
         this.explode(u, big ? R.explosiv.radiusBig : R.explosiv.radiusSmall, R.explosiv.damage);
         continue;
       }
       u.cd -= dt;
       if (u.cd > 0) continue;
-      const mv = moveOf(bdata(u.dex).move), rule = this.chaos ? D().chaos.moves?.[mv.name] : null; // Chaos: durchdringende Attacken
+      const mv = moveOf(bdata(u.dex).move), rule = this.cr ? D().chaos.moves?.[mv.name] : null; // Chaos-Regeln: durchdringende Attacken
       let melee = u.role === 'nahkampf', range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : ab?.type === 'cone' ? ab.range + 0.3 : rule ? rule.range : R[u.role].range;
       if (ab?.type === 'switch') { melee = false; range = R.fernkampf.range; }
       if (ab?.type === 'backline') range += ab.rangeBonus || 0;
@@ -804,7 +805,7 @@ export function buildWaves(level) {
   const S = D().waveShape;
   return Array.from({ length: level.waves }, (_, i) => {
     const final = i === level.waves - 1;
-    return { count: Math.round((S.base + i * S.perWave) * level.countMult * (final ? S.finalMult : 1)), spread: S.spread + i, final };
+    return { count: Math.min(S.maxCount || Infinity, Math.round((S.base + i * S.perWave) * level.countMult * (final ? S.finalMult : 1))), spread: Math.min(S.spreadMax || Infinity, S.spread + i * (S.spreadPerWave ?? 1)), final };
   });
 }
 // Gegner-Familien eines Levels: Entwicklungsreihen (Grundform, Zweit-, Endentwicklung), deren Arten zu den Level-Typen passen

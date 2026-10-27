@@ -22,7 +22,8 @@ for (let n = 1; n <= 50; n++) {
     do types = pick(TYPES, size); while (types.some((t) => lastTypes.includes(t)) && rnd() < 0.7);
   }
   lastTypes = types;
-  const waves = Math.max(10, Math.min(15, 6 + Math.floor(n / 5) + (n % 10 === 0 ? 1 : 0))); // mindestens 10 Wellen
+  const DC = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/config/defense.json'), 'utf8'));
+  const waves = Math.round(DC.unlockWaves + ((DC.unlockWavesTo ?? DC.unlockWaves) - DC.unlockWaves) * (n - 1) / 49); // 50 Wellen in Level 1 bis 80 im letzten
   levels.push({
     n,
     types,

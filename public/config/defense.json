@@ -190,7 +190,7 @@
     "tilesPerSecond": 0.2,
     "speedExp": 0.9,
     "biteCooldown": 1.6,
-    "levelPerWave": 2,
+    "levelPerWave": 1.2,
     "speedVariation": [
       0.75,
       1.35
@@ -204,7 +204,7 @@
     "_hinweis": "Eis-Attacken verlangsamen Gegner"
   },
   "firstWaveDelay": 15,
-  "waveGap": 8,
+  "waveGap": 5,
   "themes": {
     "_hinweis": "Pro Runde werden so viele Gegner-Typen angekündigt; Wellen bestehen überwiegend (share) aus diesen Typen.",
     "count": 2,
@@ -991,11 +991,14 @@
     "_hinweis": "So viele Entwicklungsfamilien (passend zu den Level-Typen) bilden die Gegner einer Runde – frühe Wellen Grundformen, später deren Entwicklungen"
   },
   "waveShape": {
-    "base": 5,
-    "perWave": 1.1,
+    "base": 4,
+    "perWave": 0.4,
     "finalMult": 1.35,
-    "spread": 28,
-    "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels; letzte Welle × finalMult"
+    "spread": 12,
+    "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels (höchstens maxCount); letzte Welle × finalMult. Dauer einer Welle = spread + Welle × spreadPerWave Sekunden (höchstens spreadMax), danach waveGap Pause.",
+    "maxCount": 30,
+    "spreadPerWave": 0.1,
+    "spreadMax": 20
   },
   "_waves": "Wellen und Gegner-Typen kommen aus public/config/defense_levels.json",
   "loaner": {
@@ -1499,6 +1502,8 @@
   "legendaryDamageMult": 1.25,
   "_legendaryDamageMult": "Eigene legendäre Pokémon machen so viel mehr Schaden (1.25 = +25 %)",
   "unlockWaves": 50,
-  "unlockWavesPerLevel": 2,
-  "_unlockWaves": "Ein PokeDefense-Level wird erst freigeschaltet, wenn im Level davor insgesamt unlockWaves + (Level−1) × unlockWavesPerLevel Wellen geschafft wurden (über alle Versuche)."
+  "_unlockWaves": "Wellen je Level: Level 1 hat unlockWaves Wellen, das letzte Level unlockWavesTo (dazwischen gleichmäßig steigend). Das nächste Level öffnet sich erst, wenn ein Level in EINEM Durchgang komplett geschafft wurde (alle Wellen). Neu erzeugen: node tools/build_defense_levels.mjs",
+  "chaosRulesInDefense": true,
+  "_chaosRulesInDefense": "true = PokeDefense nutzt dieselben Kampfregeln wie der Chaos-Modus (Attacken-Reichweiten aus chaos.moves, Schlaf/Verwirrung als 3×3-Fläche, Explosionen im 3×3-Bereich, Minen zünden auch seitlich).",
+  "unlockWavesTo": 80
 }
