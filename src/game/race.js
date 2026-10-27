@@ -29,10 +29,30 @@ export function raceClock(ms) {
 }
 
 // ---------- Stall ----------
-function initProfile(p) {
-  if (p.race) return;
-  const [a, b] = R().stats.start;
-  p.race = { ...Object.fromEntries(STATS.map((k) => [k, Math.round(a + Math.random() * (b - a))])), races: 0, wins: 0, places: [0, 0, 0, 0, 0], hist: [], care: {}, train: {} };
+// Grundwerte + Potenzial: für jedes Exemplar anders (fest aus uid/Fangzeit), oft einseitig verteilt
+export const starStep = () => R().stats.max / R().stats.stars;
+export function rollProfile(p) {
+  const G = R().stats, rnd = mulberry32(hashString(`rennwerte|${p.uid}|${p.dex}|${p.caughtAt || 0}`)), step = starStep();
+  const fav = rnd() < G.favChance ? STATS[Math.floor(rnd() * STATS.length)] : null, pot = {}, val = {};
+  for (const k of STATS) {
+    pot[k] = Math.min(G.stars, 1 + Math.floor(Math.pow(rnd(), G.potSkew) * G.stars) + (k === fav ? G.favPot : 0));
+    val[k] = Math.min(pot[k] * step, Math.round(Math.pow(rnd(), G.baseSkew) * pot[k] * step * G.baseShare * (k === fav ? G.favMult : 1)));
+  }
+  return { ...val, pot };
+}
+// Profil zum Anzeigen (auch für Pokémon, die noch nicht im Stall sind)
+export const profileOf = (p) => p.race?.pot ? p.race : { ...rollProfile(p), races: 0, wins: 0 };
+export function ensureProfile(p) {
+  if (p.race?.pot) return;
+  const r = rollProfile(p);
+  if (!p.race) p.race = { ...r, races: 0, wins: 0, places: [0, 0, 0, 0, 0], hist: [], care: {}, train: {} };
+  else { p.race.pot = r.pot; for (const k of STATS) p.race[k] = Math.min(r.pot[k] * starStep(), Math.max(p.race[k] || 0, r[k])); } // ältere Profile: Potenzial nachtragen
+}
+const initProfile = ensureProfile;
+// Sterne eines Werts: on = gefüllt, open = noch erreichbar, black = über dem Potenzial
+export function starsOf(r, k) {
+  const n = R().stats.stars, on = Math.min(n, Math.floor((r[k] || 0) / starStep() + 1e-6)), pot = r.pot?.[k] ?? n;
+  return { on, open: Math.max(0, pot - on), black: n - Math.max(pot, on) };
 }
 export function toStall(s, p) {
   if (!canRace(p.dex)) return fail('Dieses Pokémon kann keine Rennen laufen.');
@@ -49,7 +69,27 @@ export function fromStall(s, p) {
 }
 
 // ---------- Pflege (Platzhalter-Aktionen aus race.json) ----------
-const raise = (p, gains, k = 1) => { for (const [st, g] of Object.entries(gains || {})) p.race[st] = Math.min(R().stats.max, Math.round(((p.race[st] || 0) + g * k) * 10) / 10); };
+// Zuwachs: begrenzt durch das Potenzial und stats.dailyMax pro Wert und Tag; liefert den tatsächlichen Zuwachs
+function raise(p, gains, k = 1, t = Date.now()) {
+  ensureProfile(p);
+  const day = raceClock(t).today, out = {};
+  if (p.race.gain?.day !== day) p.race.gain = { day, g: {} };
+  for (const [st, g] of Object.entries(gains || {})) {
+    const cap = p.race.pot[st] * starStep(), room = R().stats.dailyMax - (p.race.gain.g[st] || 0);
+    const add = Math.max(0, Math.min(g * k, room, cap - (p.race[st] || 0)));
+    if (add <= 0) continue;
+    p.race[st] = Math.round(((p.race[st] || 0) + add) * 10) / 10;
+    p.race.gain.g[st] = Math.round(((p.race.gain.g[st] || 0) + add) * 10) / 10;
+    out[st] = Math.round(add * 10) / 10;
+  }
+  return out;
+}
+// was heute noch geht: 'max' = Potenzial ausgeschöpft, 'day' = Tageslimit erreicht
+export function growthState(p, k, t) {
+  const r = p.race; if (!r?.pot) return 'ok';
+  if ((r[k] || 0) >= r.pot[k] * starStep() - 1e-6) return 'max';
+  return r.gain?.day === raceClock(t).today && (r.gain.g[k] || 0) >= R().stats.dailyMax ? 'day' : 'ok';
+}
 export function careLeft(p, a, t) { const c = p.race?.care || {}; return c.day === raceClock(t).today ? a.perDay - (c.n?.[a.id] || 0) : a.perDay; }
 export function careAction(s, p, id, t) {
   const a = R().care.actions.find((x) => x.id === id);
@@ -60,8 +100,7 @@ export function careAction(s, p, id, t) {
   const day = raceClock(t).today;
   if (p.race.care.day !== day) p.race.care = { day, n: {} };
   p.race.care.n[a.id] = (p.race.care.n[a.id] || 0) + 1;
-  raise(p, a.gains);
-  return { ok: true, gains: a.gains };
+  return { ok: true, gains: raise(p, a.gains, 1, t) };
 }
 
 // ---------- Sprungtraining ----------
@@ -77,9 +116,7 @@ export function finishTraining(s, p, ratio, t) {
   const day = raceClock(t).today;
   if (p.race.train.day !== day) p.race.train = { day, n: 0 };
   p.race.train.n++;
-  const before = { ...p.race };
-  raise(p, R().training.gains, Math.max(0, Math.min(1, ratio)));
-  return { ok: true, gains: Object.fromEntries(STATS.map((k) => [k, Math.round((p.race[k] - before[k]) * 10) / 10]).filter(([, v]) => v > 0)) };
+  return { ok: true, gains: raise(p, R().training.gains, Math.max(0, Math.min(1, ratio)), t) };
 }
 
 // ---------- Anmeldung ----------

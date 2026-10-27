@@ -12,6 +12,8 @@ import { renderRouteSetup } from './route.js';
 import { renderRocksSetup, openItemShop } from './rocks.js';
 import { renderWalkSetup } from './walk.js';
 import { renderRaceSetup } from './race.js';
+import { raceClock, myEntry, pendingRaces } from '../game/race.js';
+import { fmtDuration } from '../time.js';
 import { physBuff } from '../game/rocks.js';
 import { fxOf } from '../game/items.js';
 import { now } from '../time.js';
@@ -38,6 +40,20 @@ function pickName() {
   return list[Math.floor(Math.random() * list.length)] || B().names[0];
 }
 
+// Hinweis auf der Rennen-Karte: angemeldet oder nicht, Countdown bis zum nächsten Rennen (aktualisiert sich selbst)
+function raceNote() {
+  const el = h('div.race-note');
+  const upd = () => {
+    if (!app.state) return;
+    const t = now(), c = raceClock(t), e = myEntry(app.state, t), p = e && app.state.pokemon.find((x) => x.uid === e.uid), pend = pendingRaces(app.state, t).length;
+    el.className = 'race-note ' + (pend ? 'watch' : e ? 'ok' : 'todo');
+    el.replaceChildren(h('span.dot', pend ? '!' : e ? '✓' : '!'), h('span', pend ? 'Rennergebnis wartet – jetzt ansehen!' : e ? `${p ? p.nick || species(p.dex).name : e.name} ist angemeldet` : 'Noch kein Pokémon angemeldet'), h('b', `⏱ ${fmtDuration(c.msToStart)}`));
+  };
+  upd();
+  const iv = setInterval(() => (el.isConnected ? upd() : clearInterval(iv)), 30000);
+  return el;
+}
+
 // ================= Vorbereitung =================
 export function initBattle() {
   document.addEventListener('defense-closed', () => renderBattleSetup());
@@ -56,13 +72,13 @@ export function renderBattleSetup() {
   // Modus-Auswahl: PokeDefense oder Arena
   if (mode === 'menu') {
     el.replaceChildren(h('div.bs', h('div.bs-head', h('h2', 'Kampf'), h('button.btn.small.gold', { onclick: () => openItemShop() }, '🛒 Item-Shop')),
-      h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
       h('button.mode-card.chaos-card', { onclick: () => openChaos() }, h('b', '🎲 Chaos-Modus'), h('small', 'Endlose Wellen, Pokébälle statt Sterne – jede große Welle andere Gegner. Wie weit kommst du?'), app.state.defense?.chaosBest ? h('small.chaos-best', `Dein Rekord: Welle ${app.state.defense.chaosBest}`) : null),
       h('button.mode-card', { onclick: () => { mode = 'route'; renderBattleSetup(); } }, h('b', '🛤 Route'), h('small', 'Tower Defense mit fester Strecke: Pokémon auf Bauplätze setzen, EP verdienen und dauerhaft trainieren.')),
+      h('button.mode-card.race-card', { onclick: () => { mode = 'race'; renderBattleSetup(); } }, h('b', '🏇 Rennen'), h('small', `Pferde-Pokémon im Stall pflegen und trainieren – jeden Tag um ${CFG.race.race.hour} Uhr ein Hürdenrennen auf 5 Bahnen.`), raceNote()),
+      h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
       h('button.mode-card', { onclick: () => { mode = 'arena'; step = 'opponent'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.')),
       h('button.mode-card', { onclick: () => { mode = 'rocks'; renderBattleSetup(); } }, h('b', '⛏ Felsbrecher'), h('small', 'Wettbewerb wie Piano Tiles: Felsen zertrümmern, bevor sie unten ankommen. Kraft und Tempo deines Pokémon entscheiden.')),
-      h('button.mode-card', { onclick: () => { mode = 'walk'; renderBattleSetup(); } }, h('b', '🐾 Spaziergang'), h('small', 'Route auf der Karte einzeichnen, wilden Pokémon ausweichen oder sie klassisch bekämpfen – Attacken kosten Münzen.')),
-      h('button.mode-card.race-card', { onclick: () => { mode = 'race'; renderBattleSetup(); } }, h('b', '🏇 Rennen'), h('small', `Pferde-Pokémon im Stall pflegen und trainieren – jeden Tag um ${CFG.race.race.hour} Uhr ein Hürdenrennen auf 5 Bahnen.`))));
+      h('button.mode-card', { onclick: () => { mode = 'walk'; renderBattleSetup(); } }, h('b', '🐾 Spaziergang'), h('small', 'Route auf der Karte einzeichnen, wilden Pokémon ausweichen oder sie klassisch bekämpfen – Attacken kosten Münzen.'))));
     return;
   }
   if (mode === 'defense') { renderDefenseSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }

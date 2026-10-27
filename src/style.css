@@ -926,3 +926,34 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .rc-res-row img { width: 32px; height: 32px; image-rendering: pixelated; }
 .rc-bets-res { color: #fff; font-size: 13px; text-align: center; }
 .rc-new-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+/* Rennen v2: Sterne, schlanke Stall-Ansicht, Hinweis im Kampf-Menü */
+.rc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.rc-top > b { font-size: 18px; }
+.rc-chip { margin-left: auto; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; border: 2px solid var(--line); background: var(--paper); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+.rc-chip.ok { background: #e3f6dc; border-color: #7bc96f; }
+.rc-chip.todo { background: #ffe9e1; border-color: #e8853c; }
+.rc-badges { justify-content: center; }
+.rc-stars { display: grid; gap: 4px; margin: 8px 0; }
+.rc-stars.small { gap: 0; margin: 2px 0 0; grid-template-columns: 1fr 1fr; column-gap: 8px; }
+.rc-star-row { display: flex; align-items: center; gap: 6px; }
+.rc-star-row .k { width: 8.5em; font-size: 13px; font-weight: 700; }
+.rc-stars.small .rc-star-row .k { width: auto; font-size: 11px; }
+.rc-st { display: inline-flex; gap: 1px; line-height: 1; }
+.rc-st i { font-style: normal; font-size: 30px; text-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.rc-stars.small .rc-st i { font-size: 13px; text-shadow: none; }
+.rc-st i.on { color: #ffc61a; -webkit-text-stroke: 1px #b07a00; }
+.rc-st i.open { color: #f3ecdc; -webkit-text-stroke: 1px #b9ad97; }
+.rc-st i.black { color: #2b2620; -webkit-text-stroke: 1px #000; }
+.rc-cap { font-size: 11px; color: #9a8a70; }
+.b-result .rc-stars { background: rgba(255,255,255,.92); border-radius: 12px; padding: 6px 10px; color: #333; }
+.race-note { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 10px; }
+.race-note b { margin-left: auto; white-space: nowrap; }
+.race-note .dot { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; color: #fff; font-size: 12px; }
+.race-note.todo { background: #ffe9e1; color: #a2401c; } .race-note.todo .dot { background: #e8533c; }
+.race-note.ok { background: #e3f6dc; color: #2f6b28; } .race-note.ok .dot { background: #5bb04f; }
+.race-note.watch { background: #fff3cf; color: #7a5500; } .race-note.watch .dot { background: #e0a000; animation: shinyPulse .8s ease-in-out infinite alternate; }
+.rc-top > b { white-space: nowrap; }
+.rc-chip { flex: 1; min-width: 0; max-width: none; text-align: center; }
+.rc-star-row .k { flex: 1; width: auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-stars.small .rc-star-row .k { flex: none; }

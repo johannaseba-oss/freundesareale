@@ -1,42 +1,169 @@
 {
   "_hinweis": "Rennmodus: tägliches Rennen für pferdeartige Pokémon. Alle Werte frei anpassbar.",
-  "species": [77, 78, 522, 523, 647, 749, 750, 896, 897, 128, 234, 899, 585, 586, 672, 673, 831, 832],
+  "species": [
+    77,
+    78,
+    522,
+    523,
+    647,
+    749,
+    750,
+    896,
+    897,
+    128,
+    234,
+    899,
+    585,
+    586,
+    672,
+    673,
+    831,
+    832
+  ],
   "_species": "Pokédex-Nummern der Pokémon, die in den Stall dürfen und Rennen laufen (Arten ohne Sprites werden übersprungen).",
   "stall": {
     "_hinweis": "Stall: Hintergrundbild (Pixel-Maße imageW × imageH) mit Boxen. boxes = Strohfläche jeder Box in Bildpixeln [x1, y1, x2, y2]; jedes Pokémon bleibt in seiner Box (Wände = Grenze). Anzahl Boxen = Plätze im Stall.",
     "image": "art/race/stall.png",
     "imageW": 891,
     "imageH": 1765,
-    "boxes": [[122, 625, 295, 790], [360, 625, 533, 790], [600, 625, 770, 790], [122, 975, 295, 1140], [360, 975, 533, 1140], [600, 975, 770, 1140]],
+    "boxes": [
+      [
+        122,
+        625,
+        295,
+        790
+      ],
+      [
+        360,
+        625,
+        533,
+        790
+      ],
+      [
+        600,
+        625,
+        770,
+        790
+      ],
+      [
+        122,
+        975,
+        295,
+        1140
+      ],
+      [
+        360,
+        975,
+        533,
+        1140
+      ],
+      [
+        600,
+        975,
+        770,
+        1140
+      ]
+    ],
     "spriteScale": 4
   },
   "stats": {
-    "_hinweis": "Werte 0 bis max. start = Startwerte [min, max] beim Einzug in den Stall. Namen sind die Anzeigenamen.",
+    "_hinweis": "Werte 0 bis max, angezeigt als stars Sterne (je max/stars Punkte ein Stern). Jedes Pokémon hat eigene Zufallswerte (fest je Exemplar): potential = höchstens erreichbare Sterne je Wert (Zufall, potSkew > 1 = öfter wenig Potenzial; schwarze Sterne = nicht erreichbar), base = Startwert als Anteil des Potenzials (baseShare × Zufall^baseSkew → oft einseitig verteilt), favChance = Chance auf einen Lieblingswert (+favPot Sterne Potenzial, Startwert × favMult). dailyMax = so viele Punkte kann jeder Wert pro Tag höchstens steigen.",
     "max": 100,
-    "start": [8, 22],
-    "names": { "schoenheit": "Schönheit", "sprung": "Sprungkraft", "tempo": "Geschwindigkeit", "wendig": "Wendigkeit" },
-    "icons": { "schoenheit": "🌸", "sprung": "⤴", "tempo": "💨", "wendig": "🌀" }
+    "stars": 5,
+    "potSkew": 1.15,
+    "baseShare": 0.75,
+    "baseSkew": 1.8,
+    "favChance": 0.6,
+    "favPot": 2,
+    "favMult": 1.8,
+    "dailyMax": 6,
+    "names": {
+      "schoenheit": "Schönheit",
+      "sprung": "Sprungkraft",
+      "tempo": "Geschwindigkeit",
+      "wendig": "Wendigkeit"
+    },
+    "icons": {
+      "schoenheit": "🌸",
+      "sprung": "⤴",
+      "tempo": "💨",
+      "wendig": "🌀"
+    }
   },
   "care": {
     "_hinweis": "Pflege-Aktionen (PLATZHALTER – die echten Pflege-Aktionen werden später festgelegt). gains = Wertzuwachs, perDay = wie oft pro Tag und Pokémon, cost = Münzen.",
     "actions": [
-      { "id": "striegeln", "name": "Striegeln", "icon": "🪮", "gains": { "schoenheit": 2 }, "perDay": 1, "cost": 0 },
-      { "id": "hafer", "name": "Hafer füttern", "icon": "🌾", "gains": { "tempo": 1, "sprung": 1 }, "perDay": 1, "cost": 30 },
-      { "id": "auslauf", "name": "Auslauf", "icon": "🌿", "gains": { "wendig": 1, "tempo": 1 }, "perDay": 1, "cost": 0 }
+      {
+        "id": "striegeln",
+        "name": "Striegeln",
+        "icon": "✨",
+        "gains": {
+          "schoenheit": 4
+        },
+        "perDay": 1,
+        "cost": 0
+      },
+      {
+        "id": "hafer",
+        "name": "Hafer füttern",
+        "icon": "🌾",
+        "gains": {
+          "tempo": 2,
+          "sprung": 2
+        },
+        "perDay": 1,
+        "cost": 30
+      },
+      {
+        "id": "auslauf",
+        "name": "Auslauf",
+        "icon": "🌿",
+        "gains": {
+          "wendig": 2,
+          "tempo": 2
+        },
+        "perDay": 1,
+        "cost": 0
+      }
     ]
   },
   "training": {
-    "_hinweis": "Sprungtraining (Jump & Run): obstacles = Anzahl Hindernisse [min, max]; speed = Lauftempo [Anfang, Ende] in Feldern/s; gap = Abstand zwischen Hindernissen [min, max] Felder; height = Hindernishöhe [min, max] Felder. Wendigkeit = Reaktionszeit bis zum Absprung (delayMs bei Wert 0 → bei max), Sprungkraft = Sprunghöhe (jump in Feldern), Geschwindigkeit = Wiederbeschleunigung nach einem Zusammenstoß (recover = Tempo-Anteil pro Sekunde), slow = Tempo nach Zusammenstoß. gains = Zuwachs bei 100 % übersprungenen Hindernissen (anteilig). perDay = Trainings pro Tag und Pokémon.",
-    "obstacles": [30, 40],
-    "speed": [4, 8.5],
-    "gap": [3.2, 6],
-    "height": [0.5, 1.1],
-    "delayMs": [260, 30],
-    "jump": [1.4, 2.3],
+    "_hinweis": "Sprungtraining (Jump & Run): obstacles = Anzahl Hindernisse [min, max]; speed = Lauftempo [Anfang, Ende] in Feldern/s; gap = Abstand zwischen Hindernissen [min, max] Felder; height = Hindernishöhe [min, max] Felder. Wendigkeit = Reaktionszeit bis zum Absprung (delayMs bei Wert 0 → bei max), Sprungkraft = Sprunghöhe (jump in Feldern), Geschwindigkeit = Wiederbeschleunigung nach einem Zusammenstoß (recover = Tempo-Anteil pro Sekunde), slow = Tempo nach Zusammenstoß. gains = Zuwachs (begrenzt durch stats.dailyMax und das Potenzial) bei 100 % übersprungenen Hindernissen (anteilig). perDay = Trainings pro Tag und Pokémon.",
+    "obstacles": [
+      30,
+      40
+    ],
+    "speed": [
+      4,
+      8.5
+    ],
+    "gap": [
+      3.2,
+      6
+    ],
+    "height": [
+      0.5,
+      1.1
+    ],
+    "delayMs": [
+      260,
+      30
+    ],
+    "jump": [
+      1.4,
+      2.3
+    ],
     "gravity": 22,
-    "recover": [0.25, 1.1],
+    "recover": [
+      0.25,
+      1.1
+    ],
     "slow": 0.35,
-    "gains": { "sprung": 3, "wendig": 3, "tempo": 2 },
+    "gains": {
+      "sprung": 6,
+      "wendig": 6,
+      "tempo": 4
+    },
     "perDay": 2
   },
   "race": {
@@ -46,7 +173,10 @@
     "lanes": 5,
     "length": 120,
     "hurdles": 8,
-    "speed": [3.2, 4.6],
+    "speed": [
+      3.2,
+      4.6
+    ],
     "form": 0.06,
     "noise": 0.08,
     "jumpBase": 0.45,
@@ -54,34 +184,102 @@
     "jumpWendig": 0.2,
     "jumpMax": 0.95,
     "slow": 0.45,
-    "recover": [0.35, 1.0],
+    "recover": [
+      0.35,
+      1
+    ],
     "beautyEffect": 0,
-    "cpuStats": [10, 45],
+    "cpuStats": [
+      10,
+      45
+    ],
     "keepDays": 10
   },
   "bets": {
     "_hinweis": "Wetten: count zufällige Trainer setzen auf ein Pokémon (Wahl gewichtet nach Gesamtwert und Schönheit × beautyWeight). Einsatz: coins [min, max] Münzen oder (itemChance) ein Item aus items.",
     "count": 3,
     "beautyWeight": 0.6,
-    "coins": [50, 800],
+    "coins": [
+      50,
+      800
+    ],
     "itemChance": 0.4,
-    "items": ["Sonderbonbon", "Goldnugget", "Sinelbeere", "Hafersack", "Glücksei", "Sternenstaub", "Riesennugget", "Top-Genesung"]
+    "items": [
+      "Sonderbonbon",
+      "Goldnugget",
+      "Sinelbeere",
+      "Hafersack",
+      "Glücksei",
+      "Sternenstaub",
+      "Riesennugget",
+      "Top-Genesung"
+    ]
   },
   "rewards": {
     "_hinweis": "Belohnungen sind Abzeichen (keine Münzen): places = Abzeichen für Platz 1–3; milestones = Abzeichen für Anzahl Rennen/Siege (über alle Pokémon). coins = Münzen je Platz (Standard 0).",
     "places": [
-      { "id": "gold", "name": "Goldhufeisen", "icon": "🥇" },
-      { "id": "silber", "name": "Silberhufeisen", "icon": "🥈" },
-      { "id": "bronze", "name": "Bronzehufeisen", "icon": "🥉" }
+      {
+        "id": "gold",
+        "name": "Goldhufeisen",
+        "icon": "🥇"
+      },
+      {
+        "id": "silber",
+        "name": "Silberhufeisen",
+        "icon": "🥈"
+      },
+      {
+        "id": "bronze",
+        "name": "Bronzehufeisen",
+        "icon": "🥉"
+      }
     ],
     "milestones": [
-      { "id": "start1", "name": "Erstes Rennen", "icon": "🎽", "races": 1 },
-      { "id": "start10", "name": "Rennveteran", "icon": "🏇", "races": 10 },
-      { "id": "sieg1", "name": "Erster Sieg", "icon": "🏆", "wins": 1 },
-      { "id": "sieg5", "name": "Champion", "icon": "👑", "wins": 5 },
-      { "id": "sieg25", "name": "Legende der Bahn", "icon": "🌟", "wins": 25 }
+      {
+        "id": "start1",
+        "name": "Erstes Rennen",
+        "icon": "🎽",
+        "races": 1
+      },
+      {
+        "id": "start10",
+        "name": "Rennveteran",
+        "icon": "🏇",
+        "races": 10
+      },
+      {
+        "id": "sieg1",
+        "name": "Erster Sieg",
+        "icon": "🏆",
+        "wins": 1
+      },
+      {
+        "id": "sieg5",
+        "name": "Champion",
+        "icon": "👑",
+        "wins": 5
+      },
+      {
+        "id": "sieg25",
+        "name": "Legende der Bahn",
+        "icon": "🌟",
+        "wins": 25
+      }
     ],
-    "coins": [0, 0, 0, 0, 0]
+    "coins": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
   },
-  "track": { "_hinweis": "Rennbahn-Kachel (wird nebeneinander wiederholt): Bahn i (0 = oben) liegt zwischen laneTop + i × laneH und laneTop + (i+1) × laneH Bildpixeln.", "image": "art/race/track_tile.png", "tileW": 160, "tileH": 712, "laneTop": 240, "laneH": 80 }
+  "track": {
+    "_hinweis": "Rennbahn-Kachel (wird nebeneinander wiederholt): Bahn i (0 = oben) liegt zwischen laneTop + i × laneH und laneTop + (i+1) × laneH Bildpixeln.",
+    "image": "art/race/track_tile.png",
+    "tileW": 160,
+    "tileH": 712,
+    "laneTop": 240,
+    "laneH": 80
+  }
 }
