@@ -53,5 +53,7 @@ export function createSupabaseBackend(url, anonKey) {
     async restoreBackup(id) { return unwrap(await sb.rpc('restore_backup', { p_backup_id: id })); },
     // Chaos-Rangliste (supabase/chaos_board.sql); fehlt die Funktion, gibt es keine Anzeige
     async chaosBoard() { const { data, error } = await sb.rpc('chaos_board'); return error ? null : data; },
+    // Rennen: Anmeldungen aller für einen Tag (supabase/race_entries.sql); fehlt die Funktion, läuft man nur gegen den Computer
+    async raceEntries(day) { const { data, error } = await sb.rpc('race_entries', { p_day: day }); return error ? null : data; },
   };
 }

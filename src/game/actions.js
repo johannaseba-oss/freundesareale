@@ -155,7 +155,7 @@ export function buyRouteSlot(s, n) {
 }
 export function routeCleared(s, n) { s.route ||= { ep: 0, cleared: 0 }; const first = n > (s.route.cleared || 0); s.route.cleared = Math.max(s.route.cleared || 0, n); return { ok: true, first }; }
 // Pokémon aus dem Beutel wegschicken: je balance.release.coins Münzen; Favoriten, Spitznamen und Areal-Bewohner sind ausgenommen
-export const canRelease = (p) => !p.area && !p.fav && !p.nick;
+export const canRelease = (p) => !p.area && !p.fav && !p.nick && !p.stall;
 export function releasePokemon(s, uids) {
   const set = new Set(uids), gone = s.pokemon.filter((p) => set.has(p.uid) && canRelease(p));
   if (!gone.length) return fail('Keine Pokémon zum Wegschicken ausgewählt.');
@@ -201,6 +201,7 @@ export function assign(s, p, areaId) {
     if (p.area !== areaId && residents(s, areaId).length >= capacityOf(s, areaId)) return fail('Das Areal ist voll. Vergrößere es oder wähle ein anderes.');
   }
   p.area = areaId || null;
+  if (areaId && p.stall) { p.stall = undefined; p.box = undefined; } // zieht aus dem Stall aus
   return { ok: true };
 }
 

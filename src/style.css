@@ -890,3 +890,39 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .shiny-mark { margin: 0 2px; font-size: .9em; }
 .shiny-banner { margin-top: 6px; font-weight: 800; color: #d08a00; text-shadow: 0 0 6px #fff3b0; animation: shinyPulse 1.2s ease-in-out infinite alternate; }
 @keyframes shinyPulse { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+/* Rennen */
+.race-card { background: linear-gradient(135deg, #fff6e0, #ffe2c4); }
+.rc-next { background: var(--paper); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; margin: 6px 0; }
+.rc-stall-wrap { border-radius: 14px; overflow: hidden; border: 2px solid var(--line); margin: 6px 0; line-height: 0; }
+.rc-stall { width: 100%; display: block; image-rendering: pixelated; cursor: pointer; }
+.rc-actions { margin: 6px 0; }
+.rc-watch { width: 100%; margin: 6px 0; }
+.rc-stats { display: grid; gap: 3px; margin: 6px 0; }
+.rc-stats.small { gap: 1px; margin: 2px 0 0; }
+.rc-stat { display: grid; grid-template-columns: 7.5em 1fr 2.2em; align-items: center; gap: 6px; font-size: 13px; }
+.rc-stats.small .rc-stat { grid-template-columns: 1.4em 1fr 2em; font-size: 11px; }
+.rc-stat .v { text-align: right; font-weight: 700; }
+.bar.rc { height: 8px; }
+.rc-stats.small .bar.rc { height: 5px; }
+.rc-in { margin-left: 6px; font-size: 11px; color: #c0582a; }
+.rc-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.rc-badge { color: #5a3a00; display: inline-flex; align-items: center; gap: 4px; background: #fff3cf; border: 2px solid #e0b84a; border-radius: 999px; padding: 2px 8px; font-size: 14px; }
+.rc-badge small { font-size: 11px; }
+.rc-prof-head { gap: 10px; align-items: center; }
+.rc-prof-head h3 { margin: 0; }
+.rc-record { margin: 4px 0 8px; font-size: 13px; }
+.rc-hist summary { cursor: pointer; font-weight: 700; margin: 4px 0; }
+.rc-hist-row { display: flex; gap: 10px; font-size: 13px; padding: 2px 0; border-bottom: 1px dashed var(--line); }
+.rc-care { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.rc-train .b-field, .rc-race .b-field { position: relative; }
+.rc-tap { position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; color: rgba(0,0,0,.45); font-weight: 700; pointer-events: none; }
+.rc-bets { position: absolute; left: 10px; right: 10px; bottom: 12px; background: rgba(255,255,255,.92); border: 2px solid var(--line); border-radius: 12px; padding: 8px 10px; font-size: 13px; transition: opacity .8s; }
+.rc-bets.fade { opacity: 0; pointer-events: none; }
+.rc-result { overflow-y: auto; justify-content: flex-start; padding-top: 40px; }
+.rc-res-list { width: min(420px, 100%); display: grid; gap: 4px; }
+.rc-res-row { display: grid; grid-template-columns: 2em 34px 1fr auto; align-items: center; gap: 8px; background: rgba(255,255,255,.9); color: #333; border-radius: 10px; padding: 3px 8px; }
+.rc-res-row.me { outline: 3px solid #ffe066; }
+.rc-res-row img { width: 32px; height: 32px; image-rendering: pixelated; }
+.rc-bets-res { color: #fff; font-size: 13px; text-align: center; }
+.rc-new-badges { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }

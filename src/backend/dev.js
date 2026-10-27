@@ -48,6 +48,10 @@ export function createDevBackend() {
       return Object.entries(d.saves).map(([id, s]) => ({ me: id === me, name: s.data?.profile?.name || 'Trainer', sprite: s.data?.profile?.sprite || 1, best: s.data?.defense?.chaosBest || 0 }))
         .filter((r) => r.best > 0 || r.me).sort((a, b) => b.best - a.best).slice(0, 30);
     },
+    async raceEntries(day) {
+      const d = db(), me = uid();
+      return Object.entries(d.saves).filter(([, s]) => s.data?.race?.entries?.[day]).map(([id, s]) => ({ key: id, me: id === me, trainer: s.data?.profile?.name || 'Trainer', sprite: s.data?.profile?.sprite || 1, entry: s.data.race.entries[day] }));
+    },
     async restoreBackup(bid) {
       const d = db(), id = uid(), b = d.backups.find((x) => x.id === bid && x.user === id), cur = d.saves[id];
       d.backups.push({ id: d.seq++, user: id, data: cur.data, version: cur.version, reason: 'vor_wiederherstellung', created_at: new Date().toISOString() });

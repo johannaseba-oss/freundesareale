@@ -39,11 +39,11 @@ export function render(force = false) {
       const locked = release && !A.canRelease(p), on = release?.has(p.uid);
       return h('div.card.r-' + sp.rarity + (release ? (locked ? '.rel-locked' : on ? '.rel-on' : '.rel-off') : ''), { 'data-uid': p.uid, onclick: () => {
         if (!release) return openSheet(p);
-        if (locked) return toast(p.fav ? 'Favoriten kannst du nicht wegschicken.' : 'Pokémon mit Spitznamen kannst du nicht wegschicken.');
+        if (locked) return toast(p.fav ? 'Favoriten kannst du nicht wegschicken.' : p.stall ? 'Pokémon im Stall kannst du nicht wegschicken.' : 'Pokémon mit Spitznamen kannst du nicht wegschicken.');
         if (on) release.delete(p.uid); else release.add(p.uid); haptic('tick'); render(true);
-      } }, release ? h('span.rel-mark', locked ? (p.fav ? '★' : '✎') : on ? '✓' : '') : null,
+      } }, release ? h('span.rel-mark', locked ? (p.fav ? '★' : p.stall ? '🏇' : '✎') : on ? '✓' : '') : null,
         mark, h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p), p.shiny), alt: '', loading: 'lazy' }),
-        h('div.nm', p.shiny ? h('span.shiny-mark', { title: 'Schillernd' }, '✨') : null, h('span.n', nameOf(p)), h('span.gender.' + p.gender, genderSymbol(p))), h('div.sub', `Lv. ${p.level} · ${p.area ? areaById(p.area).name : 'Sammlung'}`));
+        h('div.nm', p.shiny ? h('span.shiny-mark', { title: 'Schillernd' }, '✨') : null, h('span.n', nameOf(p)), h('span.gender.' + p.gender, genderSymbol(p))), h('div.sub', `Lv. ${p.level} · ${p.area ? areaById(p.area).name : p.stall ? 'Stall' : 'Sammlung'}`));
     })) : h('p.effects', { style: { padding: '0 12px' } }, s.pokemon.length ? 'Keine Pokémon in diesem Filter.' : 'Noch keine Pokémon. Besuche den Automaten!'),
     ...(release ? [releaseBar(list)] : []));
 }

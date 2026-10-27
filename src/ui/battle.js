@@ -11,6 +11,7 @@ import { renderDefenseSetup, openChaos } from './defense.js';
 import { renderRouteSetup } from './route.js';
 import { renderRocksSetup, openItemShop } from './rocks.js';
 import { renderWalkSetup } from './walk.js';
+import { renderRaceSetup } from './race.js';
 import { physBuff } from '../game/rocks.js';
 import { fxOf } from '../game/items.js';
 import { now } from '../time.js';
@@ -60,13 +61,15 @@ export function renderBattleSetup() {
       h('button.mode-card', { onclick: () => { mode = 'route'; renderBattleSetup(); } }, h('b', '🛤 Route'), h('small', 'Tower Defense mit fester Strecke: Pokémon auf Bauplätze setzen, EP verdienen und dauerhaft trainieren.')),
       h('button.mode-card', { onclick: () => { mode = 'arena'; step = 'opponent'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.')),
       h('button.mode-card', { onclick: () => { mode = 'rocks'; renderBattleSetup(); } }, h('b', '⛏ Felsbrecher'), h('small', 'Wettbewerb wie Piano Tiles: Felsen zertrümmern, bevor sie unten ankommen. Kraft und Tempo deines Pokémon entscheiden.')),
-      h('button.mode-card', { onclick: () => { mode = 'walk'; renderBattleSetup(); } }, h('b', '🐾 Spaziergang'), h('small', 'Route auf der Karte einzeichnen, wilden Pokémon ausweichen oder sie klassisch bekämpfen – Attacken kosten Münzen.'))));
+      h('button.mode-card', { onclick: () => { mode = 'walk'; renderBattleSetup(); } }, h('b', '🐾 Spaziergang'), h('small', 'Route auf der Karte einzeichnen, wilden Pokémon ausweichen oder sie klassisch bekämpfen – Attacken kosten Münzen.')),
+      h('button.mode-card.race-card', { onclick: () => { mode = 'race'; renderBattleSetup(); } }, h('b', '🏇 Rennen'), h('small', `Pferde-Pokémon im Stall pflegen und trainieren – jeden Tag um ${CFG.race.race.hour} Uhr ein Hürdenrennen auf 5 Bahnen.`))));
     return;
   }
   if (mode === 'defense') { renderDefenseSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'walk') { renderWalkSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'rocks') { renderRocksSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'route') { renderRouteSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
+  if (mode === 'race') { renderRaceSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   const mons = owned();
   const N = B().teamSize;
   const back = (fn) => h('button.btn.small.mode-back', { onclick: fn }, '‹ Zurück');
