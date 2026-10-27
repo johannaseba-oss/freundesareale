@@ -1428,7 +1428,7 @@
       "_trickleMult": "ab late.fromWave: Abstände der kleinen Gruppen × trickleMult (seltener)"
     },
     "patterns": {
-      "_hinweis": "Abwechslung bei den großen Chaos-Wellen (ab fromWave): normal = gewohnte Welle; giant = nur EIN riesiger, enorm starker Gegner (KP × hpMult, +level); trio = drei gleiche starke Gegner (KP × hpMult, +level). weight = Häufigkeit. Nach einer besonderen Welle kommt immer erst wieder eine normale.",
+      "_hinweis": "Abwechslung bei den großen Chaos-Wellen (ab fromWave): normal = gewohnte Welle; giant = nur EIN riesiger, enorm starker Gegner (KP × hpMult, +level); trio = drei gleiche starke Gegner (KP × hpMult, +level). weight = Häufigkeit. Nach einer besonderen Welle kommt immer erst wieder eine normale. trio.boss = die drei sind Bosse (KP × boss.hpMult × hpMult, mehr Verteidigung, groß gezeichnet mit scale).",
       "fromWave": 8,
       "normal": {
         "weight": 55
@@ -1441,12 +1441,20 @@
       },
       "trio": {
         "weight": 23,
-        "hpMult": 2.2,
-        "level": 3
+        "hpMult": 1.5,
+        "level": 4,
+        "scale": 1.6,
+        "boss": true
       }
     },
     "maxCount": 26,
-    "_maxCount": "Höchstzahl Gegner einer normalen großen Welle"
+    "_maxCount": "Höchstzahl Gegner einer normalen großen Welle",
+    "bigFrom": {
+      "_hinweis": "Ab fromWave mehr große Gegner: Riese/Drei kommen specialMult-mal so oft, und jede normale Welle bringt extraBosses zusätzliche Bosse.",
+      "fromWave": 80,
+      "specialMult": 2,
+      "extraBosses": 1
+    }
   },
   "levelGap": 5,
   "_levelGap": "Eigene Pokémon starten höchstens levelGap Level unter den Gegnern der ersten Welle (sonst level)",

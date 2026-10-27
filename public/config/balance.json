@@ -133,7 +133,7 @@
   ],
   "gacha": {
     "_hinweis": "Wochen-Pool: jeden Montag wird festgelegt, welches Pokémon in welchem Ball steckt. Im Automaten liegen immer machineCapacity Bälle; nach jeder Ziehung fällt sofort ein neuer von oben nach (erst aus dem Wochen-Pool, danach neu erzeugt – der Automat wird nie leer). psychic = Psycho-Blick sehr glücklicher Psycho-Pokémon.",
-    "drawCost": 50,
+    "drawCost": 200,
     "freeDrawEveryHours": 2,
     "ballsPerWeek": 120,
     "machineCapacity": 50,

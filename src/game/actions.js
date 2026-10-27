@@ -140,12 +140,15 @@ export function defenseUnlocked(s) {
   while (W[top] >= defenseNeed(top) && top < total) top++;
   return top;
 }
+// Preis des nächsten Platzes: verdoppelt sich mit jedem gekauften
+export const routeSlotPrice = (s, n) => CFG.route.extraSlot.price * Math.pow(2, s.route?.extra?.[n] || 0);
 // Route: zusätzlichen Platz für ein Level kaufen
 export function buyRouteSlot(s, n) {
   const X = CFG.route.extraSlot; s.route ||= { ep: 0, cleared: 0 }; s.route.extra ||= {};
   if ((s.route.extra[n] || 0) >= X.max) return fail(`Höchstens ${X.max} zusätzliche Plätze pro Level.`);
-  if (s.coins < X.price) return fail(`Ein zusätzlicher Platz kostet ${X.price.toLocaleString('de-DE')} Münzen.`);
-  s.coins -= X.price; s.route.extra[n] = (s.route.extra[n] || 0) + 1;
+  const price = routeSlotPrice(s, n);
+  if (s.coins < price) return fail(`Dieser Platz kostet ${price.toLocaleString('de-DE')} Münzen.`);
+  s.coins -= price; s.route.extra[n] = (s.route.extra[n] || 0) + 1;
   return { ok: true, extra: s.route.extra[n] };
 }
 export function routeCleared(s, n) { s.route ||= { ep: 0, cleared: 0 }; const first = n > (s.route.cleared || 0); s.route.cleared = Math.max(s.route.cleared || 0, n); return { ok: true, first }; }

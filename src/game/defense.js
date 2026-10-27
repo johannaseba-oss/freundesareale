@@ -197,7 +197,7 @@ export class Defense {
     // dir: 0 = greift die eigene Spalte hinauf an, ±1 = Seitenfeld, greift quer über das Feld an
     const dir = col < 0 ? 1 : col >= D().grid.cols ? -1 : 0;
     const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: keep ? keep.level : L, exp: keep ? keep.exp : expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t, pbuff: this.buffOf?.(src) || 1, item: this.itemOf?.(src) || null };
-    u.hp = u.maxHp;
+    u.hp = u.maxHp * Math.min(1, Math.max(0.01, card.keep?.hpPct ?? 1)); // zurückgenommene Pokémon werden nicht geheilt
     if (card.role === 'produzent') u.nextStar = this.t + this.between(R.produzent.every) * 0.5;
     if (card.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
     if (ab?.type === 'heal') u.nextHeal = this.t + ab.every * 0.5;
@@ -253,7 +253,7 @@ export class Defense {
     const i = this.units.indexOf(u);
     if (i < 0 || u.hp <= 0 || !this.canTakeBack()) return false;
     this.units.splice(i, 1);
-    if (this.chaos) this.cards.push({ src: { dex: u.dex, gender: u.gender, nick: u.nick, ivs: u.ivs, evs: u.evs }, dex: u.dex, role: chaosRole(u.dex), cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++, keep: { level: u.level, exp: u.exp } });
+    if (this.chaos) this.cards.push({ src: { dex: u.dex, gender: u.gender, nick: u.nick, ivs: u.ivs, evs: u.evs }, dex: u.dex, role: chaosRole(u.dex), cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++, keep: { level: u.level, exp: u.exp, hpPct: u.hp / u.maxHp } }); // KP-Anteil bleibt erhalten
     this.events.push({ type: 'remove', u });
     return true;
   }
@@ -311,15 +311,16 @@ export class Defense {
     const PT = this.endless ? D().chaos.patterns : null;
     let pattern = 'normal';
     if (PT && this.wave + 1 >= (PT.fromWave || 0) && this.lastPattern === 'normal') {
-      const opts = ['normal', 'giant', 'trio'].filter((k) => PT[k]);
-      let r = this.rnd() * opts.reduce((a, k) => a + PT[k].weight, 0);
-      pattern = opts.find((k) => (r -= PT[k].weight) < 0) || 'normal';
+      const opts = ['normal', 'giant', 'trio'].filter((k) => PT[k]), BF = D().chaos.bigFrom;
+      const wOf = (k) => PT[k].weight * (k !== 'normal' && BF && this.wave + 1 >= BF.fromWave ? BF.specialMult || 1 : 1); // ab Welle 80 öfter groß
+      let r = this.rnd() * opts.reduce((a, k) => a + wOf(k), 0);
+      pattern = opts.find((k) => (r -= wOf(k)) < 0) || 'normal';
     }
     this.lastPattern = pattern;
     if (pattern !== 'normal') {
       const strong = this.families.map((fm) => fm[fm.length - 1]), dex = strong[Math.floor(this.rnd() * strong.length)], P = PT[pattern];
       if (pattern === 'giant') this.queue.push({ at: this.t + 2, dex, level: level + P.level, col: Math.floor(this.rnd() * D().grid.cols), boss: true, giant: P.hpMult });
-      else { const cols = [...Array(D().grid.cols).keys()].sort(() => this.rnd() - 0.5).slice(0, 3); cols.forEach((col, i) => this.queue.push({ at: this.t + 2 + i * 1.2, dex, level: level + P.level, col, trio: P.hpMult })); }
+      else { const cols = [...Array(D().grid.cols).keys()].sort(() => this.rnd() - 0.5).slice(0, 3); cols.forEach((col, i) => this.queue.push({ at: this.t + 2 + i * 1.2, dex, level: level + P.level, col, trio: P.hpMult, boss: !!P.boss, quiet: i > 0 })); }
       this.queue.sort((a, b) => a.at - b.at);
       this.events.push({ type: 'wave', wave: this.wave, final: false, minRow: this.minRow(), types: this.theme, pattern, dex });
       return;
@@ -339,6 +340,8 @@ export class Defense {
         const strong = this.families.map((fm) => fm[fm.length - 1]), L = D().chaos.legendary;
         const dex = this.wave + 1 > L.fromWave && this.rnd() < L.bossChance ? this.rollLegendary() : strong[Math.floor(this.rnd() * strong.length)];
         this.queue.push({ at, dex, level: level + 3, col, boss: true });
+        const BF = D().chaos.bigFrom; // ab Welle 80: weitere Bosse
+        if (BF && this.wave + 1 >= BF.fromWave) for (let k = 0; k < (BF.extraBosses || 0); k++) this.queue.push({ at: at + 2 + k * 1.5, dex: strong[Math.floor(this.rnd() * strong.length)], level: level + 3, col: (col + 2 + k) % D().grid.cols, boss: true, quiet: true });
         const n = solo ? 0 : Bo.guards[0] + Math.floor(this.rnd() * (Bo.guards[1] - Bo.guards[0] + 1));
         for (let g = 0; g < n; g++) {
           const gc = Math.max(0, Math.min(D().grid.cols - 1, col + (g % 2 ? 1 : -1) * Math.ceil((g + 1) / 2)));
@@ -400,7 +403,7 @@ export class Defense {
       const Bo = D().chaos.boss;
       e.boss = true; e.maxHp *= Bo.hpMult; e.pace *= Bo.pace;
       e.stats = e.stats.map((v, i) => (i === 2 || i === 4 ? Math.round(v * Bo.defMult) : v));
-      this.events.push({ type: 'boss', e });
+      if (!q.quiet) this.events.push({ type: 'boss', e });
     }
     if (q.giant) { e.giant = true; e.maxHp *= q.giant; }
     if (q.trio) { e.trio = true; e.maxHp *= q.trio; }

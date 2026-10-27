@@ -52,10 +52,10 @@ export function renderRouteSetup(el, back) {
     h('p.note', `✦ = empfohlen (verschiedene Angriffsformen, stark gegen diese Gegner). Antippen zum Tauschen, ☆ markiert Favoriten. Bis zu ${N} Pokémon kommen aufs Feld.`),
     h('div.r-sort', h('small', 'Sortieren:'), sortBtn('level', 'Level'), sortBtn('shape', 'Angriffsform')),
     X && extra < X.max ? h('button.btn.small.gold.r-buy', { onclick: async () => {
-      if (!(await confirmDialog(`Für ${X.price.toLocaleString('de-DE')} Münzen einen zusätzlichen Platz in Level ${chosen.n} kaufen? Dann kannst du hier dauerhaft ein Pokémon mehr aufstellen.`, 'Kaufen'))) return;
+      if (!(await confirmDialog(`Für ${A.routeSlotPrice(app.state, chosen.n).toLocaleString('de-DE')} Münzen einen zusätzlichen Platz in Level ${chosen.n} kaufen? Dann kannst du hier dauerhaft ein Pokémon mehr aufstellen.`, 'Kaufen'))) return;
       const r = app.act((s) => A.buyRouteSlot(s, chosen.n), true); if (r.ok === false) return;
       sfx.coin(); haptic('medium'); toast(`Level ${chosen.n}: jetzt ${maxUnits(st().cleared || 0) + r.extra} Plätze.`); pickSel = null; renderRouteSetup(el, back);
-    } }, `➕ Platz kaufen (${X.price.toLocaleString('de-DE')} Münzen)${extra ? ` · schon ${extra}` : ''}`) : null,
+    } }, `➕ Platz kaufen (${A.routeSlotPrice(app.state, chosen.n).toLocaleString('de-DE')} Münzen)${extra ? ` · schon ${extra}` : ''}`) : null,
     picker.tools, picker.grid));
 }
 function renderLevels(el, back) {
