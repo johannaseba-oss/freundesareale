@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
+const RC = JSON.parse(fs.readFileSync(path.join(ROOT, 'public/config/route.json'), 'utf8')), COUNT = 30;
 const COLS = 9, ROWS = 13;
 const TYPES = ['Normal', 'Käfer', 'Pflanze', 'Wasser', 'Feuer', 'Elektro', 'Flug', 'Gift', 'Boden', 'Gestein', 'Eis', 'Kampf', 'Psycho', 'Geist', 'Fee', 'Stahl', 'Unlicht', 'Drache'];
 // Jedes Level bekommt eine eigene, zufällig erzeugte Strecke (fester Startwert je Level): Eingang oben, links oder rechts,
@@ -126,7 +127,7 @@ function slots(pts, n) {
 }
 
 const levels = [];
-for (let n = 1; n <= 30; n++) {
+for (let n = 1; n <= COUNT; n++) {
   const P = { name: NAMES[(n - 1) % NAMES.length], pts: genPath(rnd, n) };
   const mixed = n % 5 === 0;
   const types = n <= 3 ? [['Normal'], ['Käfer'], ['Pflanze']][n - 1] : mixed ? [TYPES[(n * 7) % TYPES.length], TYPES[(n * 11 + 3) % TYPES.length]] : [TYPES[(n * 5) % TYPES.length]];
@@ -136,7 +137,7 @@ for (let n = 1; n <= 30; n++) {
     path: P.pts,
     ...slots(P.pts, Math.max(11, 15 - Math.floor(n / 8))),
     types: [...new Set(types)],
-    waves: 6 + Math.floor(n / 4),
+    waves: Math.round(RC.unlockWaves + ((RC.unlockWavesTo ?? RC.unlockWaves) - RC.unlockWaves) * (n - 1) / (COUNT - 1)), // 50 Wellen in Level 1 bis 80 im letzten
     enemyLevel: Math.round(1 + (n - 1) * 1.55), // Level 1 mit frisch gezogenen Pokémon schaffbar
     countMult: +(0.8 + n * 0.03).toFixed(2),
     finalStage: n < 6 ? 2 : 3,

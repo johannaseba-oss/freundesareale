@@ -59,7 +59,7 @@ export function renderRouteSetup(el, back) {
     picker.tools, picker.grid));
 }
 function renderLevels(el, back) {
-  const L = routeLevels(), done = st().cleared || 0, open = A.routeUnlocked(app.state), W = st().waves || {};
+  const L = routeLevels(), done = st().cleared || 0, open = A.routeUnlocked(app.state), W = st().best || {};
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '🛤 Route'), h('span.bs-count', `${done}/${L.length} geschafft`)),
@@ -68,7 +68,7 @@ function renderLevels(el, back) {
       const state = lv.n > open ? 'locked' : lv.n <= done ? 'done' : 'next';
       const prog = lv.n === open + 1 ? h('small.rl-prog', `${Math.min(A.routeNeed(open), W[open] || 0)}/${A.routeNeed(open)} Wellen in Lv ${open}`) : null;
       return h('button.route-lv.' + state, { onclick: () => {
-        if (state === 'locked') { toast(`Schaffe zuerst ${A.routeNeed(lv.n - 1)} Wellen in Level ${lv.n - 1} (bisher ${W[lv.n - 1] || 0}).`); return; }
+        if (state === 'locked') { toast(`Schaffe zuerst alle ${A.routeNeed(lv.n - 1)} Wellen von Level ${lv.n - 1} in einem Durchgang (bisher bestenfalls ${W[lv.n - 1] || 0}).`); return; }
         chosen = lv; pickSel = null; haptic('tick'); renderRouteSetup(el, back); el.scrollTop = 0;
       } }, h('b', state === 'done' ? '✓ ' + lv.n : String(lv.n)), h('small', lv.name), h('span.road-types', lv.types.map((t) => h('i', { style: { background: typeColor(t) } }))), prog);
     }))));
@@ -574,12 +574,12 @@ function end() {
   commitEp();
   if (won) sfx.win(); else sfx.lose();
   const next = routeLevels().find((x) => x.n === lv.n + 1 && x.n <= A.routeUnlocked(app.state));
-  const wDone = st().waves?.[lv.n] || 0, need = A.routeNeed(lv.n);
+  const wDone = st().best?.[lv.n] || 0, need = A.routeNeed(lv.n);
   const leave = (to) => { closeField(); game = null; chosen = to; app.refresh(); document.dispatchEvent(new Event('defense-closed')); };
   ui.root.append(h('div.b-result' + (won ? '.won' : ''),
     h('h2', won ? `Level ${lv.n} geschafft!` : 'Niederlage'),
     h('p', `${won ? `Bonus ${bonus} EP${first ? ' (erster Sieg)' : ''}. ` : game.over.gaveUp ? 'Du hast aufgegeben. ' : 'Zu viele wilde Pokémon sind durchgekommen. '}Verdient: ${earned} EP · Kontostand: ${st().ep} EP`),
-    h('p.note', unlockedNow ? `🔓 Level ${lv.n + 1} ist jetzt freigeschaltet!` : routeLevels().some((x) => x.n === lv.n + 1) && lv.n + 1 > A.routeUnlocked(app.state) ? `Wellen in diesem Level: ${Math.min(wDone, need)}/${need} – dann öffnet sich Level ${lv.n + 1}.` : ''),
+    h('p.note', unlockedNow ? `🔓 Level ${lv.n + 1} ist jetzt freigeschaltet!` : routeLevels().some((x) => x.n === lv.n + 1) && lv.n + 1 > A.routeUnlocked(app.state) ? `Bestes Ergebnis: ${Math.min(wDone, need)}/${need} Wellen – schaffe alle in einem Durchgang, dann öffnet sich Level ${lv.n + 1}.` : ''),
     h('div.row', h('button.btn', { onclick: () => leave(null) }, 'Level'),
       won && next ? h('button.btn.primary.big', { onclick: () => leave(next) }, `Level ${next.n} ›`) : h('button.btn.primary.big', { onclick: () => leave(lv) }, won ? 'Nochmal' : 'Nochmal versuchen'))));
 }

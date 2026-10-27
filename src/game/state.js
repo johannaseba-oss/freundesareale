@@ -61,6 +61,11 @@ export function migrate(s) {
   }
   if (s.route && s.route.unlockedBase == null) s.route.unlockedBase = (s.route.cleared || 0) + 1; // bisher offene Level bleiben offen
   if (s.defense && s.defense.unlockedBase == null) s.defense.unlockedBase = (s.defense.cleared || 0) + 1;
+  if (s.route && !s.route.best) { // Umstellung auf „ein Level in einem Durchgang schaffen“: schon offene Level bleiben offen
+    const W = s.route.waves || {}, old = (n) => 50 + (n - 1) * 2;
+    let top = Math.max(1, s.route.unlockedBase || 0); while (W[top] >= old(top) && top < 30) top++;
+    s.route.unlockedBase = top; s.route.best = {};
+  }
   for (const p of s.pokemon || []) if (p.race && !p.race.pot) ensureProfile(p); // Rennprofile: Potenzial nachtragen
   if (s.defense && !s.defense.best) { // Umstellung auf „ein Level in einem Durchgang schaffen“: schon offene Level bleiben offen
     const W = s.defense.waves || {}, old = (n) => 50 + (n - 1) * 2;

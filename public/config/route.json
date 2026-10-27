@@ -16,7 +16,7 @@
     "hpMult": 3,
     "tilesPerSecond": 1,
     "speedExp": 0.5,
-    "levelPerWave": 1,
+    "levelPerWave": 0.7,
     "speedVariation": [
       0.85,
       1.15
@@ -25,16 +25,17 @@
   },
   "waves": {
     "base": 5,
-    "perWave": 1.6,
-    "spread": 14,
-    "gap": 6,
+    "perWave": 0.45,
+    "spread": 12,
+    "gap": 4,
     "firstDelay": 2,
     "boss": {
       "hpMult": 7,
       "levelPlus": 3,
       "_hinweis": "In der letzten Welle eines Levels kommt ein Boss (Endform einer Gegner-Familie)"
     },
-    "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels, über spread Sekunden verteilt; danach gap Sekunden Pause"
+    "_hinweis": "Gegner je Welle = (base + Welle × perWave) × countMult des Levels (höchstens maxCount), über spread Sekunden verteilt; danach gap Sekunden Pause",
+    "maxCount": 35
   },
   "shapes": {
     "_hinweis": "Angriffsformen: adjacent = nur direkt angrenzende Felder (auch schräg), line = die ganze gerade Strecke in Blickrichtung (durchschlägt), circle = Welle im Radius (trifft alle im Kreis), cross = Kreuz (greift in alle vier Richtungen gleichzeitig an, trifft alle auf den Armen). Körperkontakt-Attacken = adjacent, sonst nach Attacken-Typ (byType), sonst circle. ring = Wasser-Pokémon (Typ Wasser): Welle in einem Ring mit freier Mitte.",
@@ -195,11 +196,11 @@
   "legendaryDamageMult": 1.25,
   "_legendaryDamageMult": "Legendäre Pokémon machen so viel mehr Schaden (1.25 = +25 %)",
   "unlockWaves": 50,
-  "_unlockWaves": "Ein Level wird erst freigeschaltet, wenn im Level davor insgesamt unlockWaves + (Level−1) × unlockWavesPerLevel Wellen geschafft wurden (über alle Versuche zusammen).",
-  "unlockWavesPerLevel": 2,
+  "_unlockWaves": "Wellen je Level: Level 1 hat unlockWaves Wellen, das letzte Level unlockWavesTo (dazwischen gleichmäßig steigend). Das nächste Level öffnet sich erst, wenn ein Level in EINEM Durchgang komplett geschafft wurde. Neu erzeugen: node tools/build_route_levels.mjs",
   "extraSlot": {
     "_hinweis": "Zusätzlicher Platz für ein weiteres Pokémon, je Level kaufbar: der erste kostet price Münzen, jeder weitere doppelt so viel wie der davor; höchstens max zusätzliche Plätze pro Level.",
     "price": 10000,
     "max": 3
-  }
+  },
+  "unlockWavesTo": 80
 }

@@ -131,7 +131,7 @@
    "types": [
     "Normal"
    ],
-   "waves": 6,
+   "waves": 50,
    "enemyLevel": 1,
    "countMult": 0.83,
    "finalStage": 2
@@ -269,7 +269,7 @@
    "types": [
     "Käfer"
    ],
-   "waves": 6,
+   "waves": 51,
    "enemyLevel": 3,
    "countMult": 0.86,
    "finalStage": 2
@@ -408,7 +408,7 @@
    "types": [
     "Pflanze"
    ],
-   "waves": 6,
+   "waves": 52,
    "enemyLevel": 4,
    "countMult": 0.89,
    "finalStage": 2
@@ -558,7 +558,7 @@
    "types": [
     "Pflanze"
    ],
-   "waves": 7,
+   "waves": 53,
    "enemyLevel": 6,
    "countMult": 0.92,
    "finalStage": 2
@@ -706,7 +706,7 @@
     "Drache",
     "Feuer"
    ],
-   "waves": 7,
+   "waves": 54,
    "enemyLevel": 7,
    "countMult": 0.95,
    "finalStage": 2
@@ -852,7 +852,7 @@
    "types": [
     "Psycho"
    ],
-   "waves": 7,
+   "waves": 55,
    "enemyLevel": 9,
    "countMult": 0.98,
    "finalStage": 3
@@ -998,7 +998,7 @@
    "types": [
     "Drache"
    ],
-   "waves": 7,
+   "waves": 56,
    "enemyLevel": 10,
    "countMult": 1.01,
    "finalStage": 3
@@ -1140,7 +1140,7 @@
    "types": [
     "Feuer"
    ],
-   "waves": 8,
+   "waves": 57,
    "enemyLevel": 12,
    "countMult": 1.04,
    "finalStage": 3
@@ -1282,7 +1282,7 @@
    "types": [
     "Gestein"
    ],
-   "waves": 8,
+   "waves": 58,
    "enemyLevel": 13,
    "countMult": 1.07,
    "finalStage": 3
@@ -1425,7 +1425,7 @@
     "Unlicht",
     "Elektro"
    ],
-   "waves": 8,
+   "waves": 59,
    "enemyLevel": 15,
    "countMult": 1.1,
    "finalStage": 3
@@ -1576,7 +1576,7 @@
    "types": [
     "Käfer"
    ],
-   "waves": 8,
+   "waves": 60,
    "enemyLevel": 17,
    "countMult": 1.13,
    "finalStage": 3
@@ -1715,7 +1715,7 @@
    "types": [
     "Flug"
    ],
-   "waves": 9,
+   "waves": 61,
    "enemyLevel": 18,
    "countMult": 1.16,
    "finalStage": 3
@@ -1870,7 +1870,7 @@
    "types": [
     "Kampf"
    ],
-   "waves": 9,
+   "waves": 62,
    "enemyLevel": 20,
    "countMult": 1.19,
    "finalStage": 3
@@ -2025,7 +2025,7 @@
    "types": [
     "Unlicht"
    ],
-   "waves": 9,
+   "waves": 63,
    "enemyLevel": 21,
    "countMult": 1.22,
    "finalStage": 3
@@ -2180,7 +2180,7 @@
     "Stahl",
     "Flug"
    ],
-   "waves": 9,
+   "waves": 64,
    "enemyLevel": 23,
    "countMult": 1.25,
    "finalStage": 3
@@ -2322,7 +2322,7 @@
    "types": [
     "Boden"
    ],
-   "waves": 10,
+   "waves": 66,
    "enemyLevel": 24,
    "countMult": 1.28,
    "finalStage": 3
@@ -2473,7 +2473,7 @@
    "types": [
     "Geist"
    ],
-   "waves": 10,
+   "waves": 67,
    "enemyLevel": 26,
    "countMult": 1.31,
    "finalStage": 3
@@ -2628,7 +2628,7 @@
    "types": [
     "Normal"
    ],
-   "waves": 10,
+   "waves": 68,
    "enemyLevel": 27,
    "countMult": 1.34,
    "finalStage": 3
@@ -2771,7 +2771,7 @@
    "types": [
     "Elektro"
    ],
-   "waves": 10,
+   "waves": 69,
    "enemyLevel": 29,
    "countMult": 1.37,
    "finalStage": 3
@@ -2915,7 +2915,7 @@
     "Fee",
     "Gift"
    ],
-   "waves": 11,
+   "waves": 70,
    "enemyLevel": 30,
    "countMult": 1.4,
    "finalStage": 3
@@ -3061,7 +3061,7 @@
    "types": [
     "Stahl"
    ],
-   "waves": 11,
+   "waves": 71,
    "enemyLevel": 32,
    "countMult": 1.43,
    "finalStage": 3
@@ -3204,7 +3204,7 @@
    "types": [
     "Pflanze"
    ],
-   "waves": 11,
+   "waves": 72,
    "enemyLevel": 34,
    "countMult": 1.46,
    "finalStage": 3
@@ -3342,7 +3342,7 @@
    "types": [
     "Gift"
    ],
-   "waves": 11,
+   "waves": 73,
    "enemyLevel": 35,
    "countMult": 1.49,
    "finalStage": 3
@@ -3492,7 +3492,7 @@
    "types": [
     "Psycho"
    ],
-   "waves": 12,
+   "waves": 74,
    "enemyLevel": 37,
    "countMult": 1.52,
    "finalStage": 3
@@ -3643,7 +3643,7 @@
     "Geist",
     "Boden"
    ],
-   "waves": 12,
+   "waves": 75,
    "enemyLevel": 38,
    "countMult": 1.55,
    "finalStage": 3
@@ -3789,7 +3789,7 @@
    "types": [
     "Feuer"
    ],
-   "waves": 12,
+   "waves": 76,
    "enemyLevel": 40,
    "countMult": 1.58,
    "finalStage": 3
@@ -3927,7 +3927,7 @@
    "types": [
     "Gestein"
    ],
-   "waves": 12,
+   "waves": 77,
    "enemyLevel": 41,
    "countMult": 1.61,
    "finalStage": 3
@@ -4074,7 +4074,7 @@
    "types": [
     "Fee"
    ],
-   "waves": 13,
+   "waves": 78,
    "enemyLevel": 43,
    "countMult": 1.64,
    "finalStage": 3
@@ -4217,7 +4217,7 @@
    "types": [
     "Käfer"
    ],
-   "waves": 13,
+   "waves": 79,
    "enemyLevel": 44,
    "countMult": 1.67,
    "finalStage": 3
@@ -4364,7 +4364,7 @@
     "Psycho",
     "Gestein"
    ],
-   "waves": 13,
+   "waves": 80,
    "enemyLevel": 46,
    "countMult": 1.7,
    "finalStage": 3

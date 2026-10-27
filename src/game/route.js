@@ -160,7 +160,7 @@ export class Route {
     const W = R().waves, last = this.wave === this.level.waves - 1;
     const level = this.level.enemyLevel + this.wave * R().enemy.levelPerWave;
     const p = this.level.waves > 1 ? this.wave / (this.level.waves - 1) : 1;
-    const count = Math.round((W.base + this.wave * W.perWave) * this.level.countMult);
+    const count = Math.min(W.maxCount || Infinity, Math.round((W.base + this.wave * W.perWave) * this.level.countMult));
     for (let i = 0; i < count; i++) this.queue.push({ at: this.t + (i / count) * W.spread + this.rnd() * 1.2, dex: this.rollEnemy(p), level });
     if (last) { // Boss: Endform einer Familie, deutlich stärker
       const strong = this.families.map((f) => f[f.length - 1]);

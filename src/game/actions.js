@@ -114,16 +114,16 @@ export function feedAllInventory(s, t) {
 
 // ---- Route: EP-Konto und dauerhaftes Training ----
 export function addRouteEp(s, n) { s.route ||= { ep: 0, cleared: 0 }; s.route.ep += Math.max(0, Math.round(n)); return { ok: true }; }
-// Route: geschaffte Wellen je Level zählen (für die Freischaltung des nächsten Levels)
+// Route: beste Wellenzahl eines einzelnen Durchgangs je Level (für die Freischaltung des nächsten Levels)
 export function routeWaves(s, n, waves) {
-  s.route ||= { ep: 0, cleared: 0 }; s.route.waves ||= {};
-  s.route.waves[n] = (s.route.waves[n] || 0) + Math.max(0, waves);
-  return { ok: true, total: s.route.waves[n] };
+  s.route ||= { ep: 0, cleared: 0 }; s.route.best ||= {};
+  s.route.best[n] = Math.max(s.route.best[n] || 0, Math.max(0, waves));
+  return { ok: true, total: s.route.best[n] };
 }
 // höchstes freigeschaltetes Level: Level 1, alle bisher schon offenen (unlockedBase), sonst erst nach unlockWaves Wellen im Level davor
-export const routeNeed = (n) => (CFG.route.unlockWaves || 0) + (n - 1) * (CFG.route.unlockWavesPerLevel || 0); // Wellen in Level n für Level n+1
+export const routeNeed = (n) => CFG.routeLevels.levels.find((l) => l.n === n)?.waves || CFG.route.unlockWaves || 0; // alle Wellen von Level n in einem Durchgang
 export function routeUnlocked(s) {
-  const W = s.route?.waves || {};
+  const W = s.route?.best || {};
   let top = Math.max(1, s.route?.unlockedBase || 0);
   while (W[top] >= routeNeed(top) && top < CFG.routeLevels.levels.length) top++;
   return top;
