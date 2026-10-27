@@ -97,7 +97,7 @@ export class Route {
     const m = this.team.find((x) => x.uid === uid);
     if (!m || this.over || !this.slotFree(slot) || !this.slotAllows(slot, m.dex) || this.placed(uid) || this.units.length >= this.max) return false;
     const [c, r] = this.level.slots[slot];
-    const u = { id: this.nextId++, uid, dex: m.dex, gender: m.gender, nick: m.nick, ivs: m.ivs, evs: m.evs, level: m.level, slot, x: c + 0.5, y: r + 0.5, shape: shapeOf(m.dex), cd: 0.6, placedAt: this.t, pbuff: this.buffOf?.(m) || 1, item: this.itemOf?.(m) || null };
+    const u = { id: this.nextId++, uid, dex: m.dex, gender: m.gender, shiny: m.shiny, nick: m.nick, ivs: m.ivs, evs: m.evs, level: m.level, slot, x: c + 0.5, y: r + 0.5, shape: shapeOf(m.dex), cd: 0.6, placedAt: this.t, pbuff: this.buffOf?.(m) || 1, item: this.itemOf?.(m) || null };
     u.face = this.bestFacing(u);
     this.restat(u);
     this.units.push(u);

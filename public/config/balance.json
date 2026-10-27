@@ -265,5 +265,10 @@
   "release": {
     "_hinweis": "Pokémon aus dem Beutel (ohne Areal) wegschicken: coins Münzen je Pokémon. Favoriten und Pokémon mit Spitznamen können nicht weggeschickt werden.",
     "coins": 50
+  },
+  "shiny": {
+    "_hinweis": "Schillernde Pokémon (andere Farben, ✨). chance = Chance je neu gezogenem/gewonnenem Pokémon (Hauptspiele: 1/4096), eggChance = Chance beim Schlüpfen aus einem Ei (Hauptspiele mit Masuda-Methode: 6/4096).",
+    "chance": 0.000244140625,
+    "eggChance": 0.00146484375
   }
 }

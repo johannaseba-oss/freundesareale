@@ -885,3 +885,8 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .rel-bar { position: sticky; bottom: calc(64px + var(--safe-b)); display: flex; gap: 6px; padding: 8px 10px; margin: 8px; background: var(--paper); border: 2px solid var(--line); border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.18); z-index: 5; }
 .rel-go { flex: 1; }
 .rel-ball { position: fixed; left: 0; top: 0; width: 40px; height: 40px; z-index: 40; pointer-events: none; image-rendering: pixelated; }
+
+/* Shiny */
+.shiny-mark { margin: 0 2px; font-size: .9em; }
+.shiny-banner { margin-top: 6px; font-weight: 800; color: #d08a00; text-shadow: 0 0 6px #fff3b0; animation: shinyPulse 1.2s ease-in-out infinite alternate; }
+@keyframes shinyPulse { from { transform: scale(1); } to { transform: scale(1.08); } }

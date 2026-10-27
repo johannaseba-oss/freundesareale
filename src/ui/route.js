@@ -79,7 +79,7 @@ function confirmTeam(uids) {
     m.append(h('h3', `Dein Route-Team · Level ${chosen.n}`),
       h('div.confirm-list', uids.map((u, i) => {
         const p = app.state.pokemon.find((q) => q.uid === u), sh = R().shapes[shapeOf(p.dex)];
-        return h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(p.dex), alt: '' }),
+        return h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
           h('div', h('b', `${p.nick || species(p.dex).name} · Lv ${p.level}`), h('small', `${sh.icon} ${sh.name}: ${SHAPE_TEXT[shapeOf(p.dex)]}`)));
       })),
       h('div.row', h('button.btn', { onclick: close }, 'Anpassen'), h('button.btn.primary.big', { onclick: () => { close(); start(); } }, 'Los!')));
@@ -87,7 +87,7 @@ function confirmTeam(uids) {
 }
 function start() {
   const members = team.map((u) => app.state.pokemon.find((p) => p.uid === u)).filter(Boolean)
-    .map((p) => ({ uid: p.uid, dex: p.dex, ivs: p.ivs, evs: p.evs, level: p.level, nick: p.nick, gender: p.gender }));
+    .map((p) => ({ uid: p.uid, dex: p.dex, ivs: p.ivs, evs: p.evs, level: p.level, nick: p.nick, gender: p.gender, shiny: p.shiny }));
   game = new Route({ level: chosen, team: members, cleared: st().cleared || 0, extra: st().extra?.[chosen.n] || 0 });
   game.buffOf = (m) => physBuff(app.state, { uid: m.uid, dex: m.dex }, now()); // Felsbrecher-Buff
   game.itemOf = (m) => fxOf(app.state, { uid: m.uid, dex: m.dex }); // getragenes Item
@@ -107,7 +107,7 @@ function openField() {
   document.body.classList.add('in-battle');
   setMusic(musicForLevel(game.level.types));
   ui = { root, canvas, ctx: canvas.getContext('2d'), bar, info, msg, livesEl, epEl, waveEl, sel: null, selUnit: null, fx: [], texts: [], beams: [], waves: [], last: performance.now(), raf: 0 };
-  for (const m of game.team) loadSprites(m.dex, m.gender);
+  for (const m of game.team) loadSprites(m.dex, m.gender, m.shiny);
   // Gebiet je Level nach Gegner-Typ (Wald, Kirschblüte, Herbst, Schnee, Strand, Nachtwald – tiles2.json)
   ui.themeId = themeForType(game.level.types[0]);
   const ti = tilesImage(); if (!ti.complete) ti.addEventListener('load', () => { if (ui) ui.bg = null; }, { once: true }); ui.tiles = ti;
@@ -217,7 +217,7 @@ function buildBar() {
       if (performance.now() - (ui.dragEnd || 0) < 300) return;
       if (placed) { unitMenu(game.placed(m.uid)); return; }
       ui.sel = ui.sel === m.uid ? null : m.uid; ui.selUnit = null; haptic('tick'); buildBar(); renderInfo();
-    } }, h('img', { src: portraitUrl(m.dex), alt: '' }), h('span.r-shape', sh.icon), h('small', `Lv ${m.level}`),
+    } }, h('img', { src: portraitUrl(m.dex, 'Normal', m.shiny), alt: '' }), h('span.r-shape', sh.icon), h('small', `Lv ${m.level}`),
     trainState(m).ok ? h('span.r-up', { title: 'Genug EP zum Trainieren' }, '⬆') : null);
     if (!placed) el.addEventListener('pointerdown', (e) => dragFromBar(e, m));
     return el;
@@ -230,7 +230,7 @@ function dragFromBar(e, m) {
   let ghost = null;
   const move = (ev) => {
     if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 12) return;
-    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(m.dex), alt: '' }); document.body.append(ghost); ui.sel = m.uid; ui.selUnit = null; renderInfo(); }
+    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(m.dex, 'Normal', m.shiny), alt: '' }); document.body.append(ghost); ui.sel = m.uid; ui.selUnit = null; renderInfo(); }
     ghost.style.transform = `translate(${ev.clientX - 26}px, ${ev.clientY - 40}px)`;
     const c = cellAt(ev.clientX, ev.clientY), si = c ? slotAt(c) : -1;
     ui.drag = si >= 0 && game.slotFree(si) && game.slotAllows(si, m.dex) ? previewUnit(m, si) : null;
@@ -254,7 +254,7 @@ function dragPlaced(e, u) {
   let ghost = null;
   const move = (ev) => {
     if (!ghost && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 12) return;
-    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(u.dex), alt: '' }); document.body.append(ghost); ui.selUnit = null; ui.moving = u; }
+    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(u.dex, 'Normal', u.shiny), alt: '' }); document.body.append(ghost); ui.selUnit = null; ui.moving = u; }
     ghost.style.transform = `translate(${ev.clientX - 26}px, ${ev.clientY - 40}px)`;
     const c = cellAt(ev.clientX, ev.clientY), si = c ? slotAt(c) : -1;
     const m = { dex: u.dex, level: u.level };
@@ -457,7 +457,7 @@ function draw(dt) {
   });
 }
 function drawMon(x, o, mine, [X, Y], T, now2) {
-  const e = loadSprites(o.dex, o.gender);
+  const e = loadSprites(o.dex, o.gender, o.shiny);
   if (!e.ready) return;
   let name = mine ? 'Idle' : 'Walk', ms = now2, once = false;
   if (o.hurtT != null && game.t - o.hurtT < 0.25 && e.anims.Hurt) { name = 'Hurt'; ms = (game.t - o.hurtT) * 1000; once = true; }

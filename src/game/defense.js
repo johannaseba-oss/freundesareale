@@ -196,7 +196,7 @@ export class Defense {
     const hpMult = this.hpMultOf(src.dex, card.role);
     // dir: 0 = greift die eigene Spalte hinauf an, ±1 = Seitenfeld, greift quer über das Feld an
     const dir = col < 0 ? 1 : col >= D().grid.cols ? -1 : 0;
-    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: keep ? keep.level : L, exp: keep ? keep.exp : expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t, pbuff: this.buffOf?.(src) || 1, item: this.itemOf?.(src) || null };
+    const u = { id: this.nextId++, dex: src.dex, gender: src.gender, shiny: src.shiny, nick: src.nick, ivs: src.ivs, evs: src.evs, hpMult, level: keep ? keep.level : L, exp: keep ? keep.exp : expForLevel(src.dex, L), role: card.role, col, row, x: col + 0.5, y: row + 0.5, dir, stats, maxHp: stats[0] * hpMult, cd: 0.8, placedAt: this.t, pbuff: this.buffOf?.(src) || 1, item: this.itemOf?.(src) || null };
     u.hp = u.maxHp * Math.min(1, Math.max(0.01, card.keep?.hpPct ?? 1)); // zurückgenommene Pokémon werden nicht geheilt
     if (card.role === 'produzent') u.nextStar = this.t + this.between(R.produzent.every) * 0.5;
     if (card.role === 'explosiv') u.armAt = this.t + (ab?.type === 'reactive' ? 0 : evolved(u.dex) ? 0.8 : R.explosiv.armSeconds);
@@ -253,7 +253,7 @@ export class Defense {
     const i = this.units.indexOf(u);
     if (i < 0 || u.hp <= 0 || !this.canTakeBack()) return false;
     this.units.splice(i, 1);
-    if (this.chaos) this.cards.push({ src: { dex: u.dex, gender: u.gender, nick: u.nick, ivs: u.ivs, evs: u.evs }, dex: u.dex, role: chaosRole(u.dex), cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++, keep: { level: u.level, exp: u.exp, hpPct: u.hp / u.maxHp } }); // KP-Anteil bleibt erhalten
+    if (this.chaos) this.cards.push({ src: { dex: u.dex, gender: u.gender, shiny: u.shiny, nick: u.nick, ivs: u.ivs, evs: u.evs }, dex: u.dex, role: chaosRole(u.dex), cost: 0, recharge: 0, readyAt: 0, once: true, id: this.nextId++, keep: { level: u.level, exp: u.exp, hpPct: u.hp / u.maxHp } }); // KP-Anteil bleibt erhalten
     this.events.push({ type: 'remove', u });
     return true;
   }

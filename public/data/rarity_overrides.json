@@ -1,1 +1,16 @@
-{ "_hinweis": "Pokédex-Nummer -> gewoehnlich | selten | sehr_selten | legendaer. Überschreibt die automatische Einstufung (nach Änderung npm run assets:pokedex)." }
+{
+  "984": "sehr_selten",
+  "985": "sehr_selten",
+  "987": "sehr_selten",
+  "988": "sehr_selten",
+  "989": "sehr_selten",
+  "991": "sehr_selten",
+  "992": "sehr_selten",
+  "994": "sehr_selten",
+  "995": "sehr_selten",
+  "1005": "sehr_selten",
+  "1006": "sehr_selten",
+  "1009": "sehr_selten",
+  "1010": "sehr_selten",
+  "_hinweis": "Pokédex-Nummer -> gewoehnlich | selten | sehr_selten | legendaer. Überschreibt die automatische Einstufung (nach Änderung npm run assets:pokedex)."
+}

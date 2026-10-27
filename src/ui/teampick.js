@@ -46,7 +46,7 @@ export function teamPicker({ mons, N, hint, onFull, initial = null, recommend = 
     } },
     h('span.bs-num'),
     h('span.bs-fav' + (p.fav ? '.on' : ''), { title: 'Favorit', onclick: (e) => { e.stopPropagation(); const r = app.act((s) => toggleFav(s, p.uid), true); e.currentTarget.classList.toggle('on', !!r.fav); e.currentTarget.textContent = r.fav ? '★' : '☆'; haptic('tick'); } }, p.fav ? '★' : '☆'),
-    h('img.bs-por', { src: portraitUrl(p.dex), alt: '', loading: 'lazy' }),
+    h('img.bs-por', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '', loading: 'lazy' }),
     h('b', p.nick || species(p.dex).name, recommend?.includes(p.uid) ? h('span.bs-rec', { title: 'Empfohlen' }, ' ✦') : null),
     h('span.type-chips.mini', species(p.dex).types.map((ty) => typeChip(ty))),
     hint(p));

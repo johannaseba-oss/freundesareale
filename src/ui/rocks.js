@@ -36,7 +36,7 @@ export function renderRocksSetup(el, back) {
     mons.length ? h('div.bs-list', mons.map(({ p, pw, sp }) => {
       const done = trainedToday(app.state, p.uid, now()), b = physBuff(app.state, { uid: p.uid, dex: p.dex }, now());
       return h('button.bs-row.rk-row' + (done ? '.done' : ''), { onclick: () => (done ? toast(`${name(p)} hat heute schon trainiert – morgen wieder.`) : startRun(p)) },
-        h('img.rk-por', { src: portraitUrl(p.dex), alt: '' }),
+        h('img.rk-por', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
         h('div.bs-row-text', h('b', p.fav ? '★ ' : '', name(p), b > 1 ? h('span.rk-buff', `💪 +${Math.round((b - 1) * 100)} %`) : null, done ? h('span.rk-done', '✓ heute trainiert') : null), statLine('Kraft', pw), statLine('Tempo', sp)),
         h('span.bs-go', done ? '' : '›'));
     })) : h('p.note.warn', 'Du brauchst Pokémon – zieh welche am Automaten!')));
@@ -57,7 +57,7 @@ export function openItemShop(onClose = null) {
         h('div.inv.rk-shop', mons.map((p) => {
           const r = item.stat === R().power.stat ? powerOf(p) : speedOf(p), room = itemRoom(p, item);
           return h('div.stone-row',
-            h('img', { src: portraitUrl(p.dex), alt: '' }),
+            h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
             h('div.rk-shop-text', h('b', name(p)), statLine(item.stat === R().power.stat ? 'Kraft' : 'Tempo', r), h('small', `EV ${p.evs?.[item.stat] || 0}`)),
             h('button.btn.gold.small', {
               disabled: !room || app.state.coins < item.price,
@@ -83,7 +83,7 @@ function startRun(p) {
   run = new RockRun(p);
   const canvas = h('canvas.arena-canvas');
   const score = h('span.rk-score'), lives = h('span.rk-lives');
-  const top = h('div.b-top', h('img.rk-top-por', { src: portraitUrl(p.dex), alt: '' }),
+  const top = h('div.b-top', h('img.rk-top-por', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
     h('div.b-name', h('b', name(p)), h('small', `Kraft ${run.power} · ${run.taps}× tippen · Tempo ${run.speed}`)),
     score, lives,
     h('button.b-btn', { onclick: pauseMenu, title: 'Pause' }, '⏸'),
@@ -92,7 +92,7 @@ function startRun(p) {
   document.body.append(root);
   document.body.classList.add('in-battle');
   setMusic('arena');
-  ui = { root, canvas, ctx: canvas.getContext('2d'), score, lives, shards: [], dust: [], texts: [], shapes: new Map(), shake: 0, last: performance.now(), raf: 0, atkT: -9, paused: false, wiggle: new Map(), holds: new Map(), grindT: 0, booms: [], spr: loadSprites(p.dex, p.gender) };
+  ui = { root, canvas, ctx: canvas.getContext('2d'), score, lives, shards: [], dust: [], texts: [], shapes: new Map(), shake: 0, last: performance.now(), raf: 0, atkT: -9, paused: false, wiggle: new Map(), holds: new Map(), grindT: 0, booms: [], spr: loadSprites(p.dex, p.gender, p.shiny) };
   ui.ro = new ResizeObserver(layout); ui.ro.observe(canvas.parentElement);
   canvas.addEventListener('pointerdown', onTap);
   const letGo = (e) => { const row = ui?.holds.get(e.pointerId); if (row) { run?.release(row); ui.holds.delete(e.pointerId); } };

@@ -34,7 +34,7 @@ function build({ units, cells, grid, t, cellOf, recent = [] }, rerender) {
   const fighters = list.filter((x) => !helper(x.u)), first = fighters[0], last = fighters.length > 2 ? fighters[fighters.length - 1] : null;
   const rows = list.map((x) => {
     const tag = helper(x.u) ? h('span.ds-tag.help', 'Helfer') : fighters.length > 1 && x === first ? h('span.ds-tag.top', 'stärkstes') : x === last ? h('span.ds-tag.low', 'austauschen?') : null;
-    return h('div.ds-row', h('img', { src: portraitUrl(x.u.dex), alt: '' }),
+    return h('div.ds-row', h('img', { src: portraitUrl(x.u.dex, 'Normal', x.u.shiny), alt: '' }),
       h('div.ds-main', h('b', x.u.nick || species(x.u.dex).name, h('small.ds-lv', ` Lv ${x.u.level}`), tag), h('div.ds-bar', h('i', { style: { width: (x.dmg / max) * 100 + '%' } }))),
       h('div.ds-num', h('b', fmt(x.dmg)), h('small', `${x.dps.toFixed(1)}/s`)));
   });
@@ -50,7 +50,7 @@ function build({ units, cells, grid, t, cellOf, recent = [] }, rerender) {
     const v = C[key] || 0, k = v / cmax;
     const unit = cellOf ? units.find((u) => u.slot === key) : units.find((u) => u.col === c && u.row === r);
     map.append(h('div.ds-cell' + (v ? '' : '.empty'), { style: v ? { background: `hsl(${k * 50}, 85%, ${28 + k * 32}%)` } : {} },
-      unit ? h('img', { src: portraitUrl(unit.dex), alt: '' }) : null, v ? h('span', fmt(v)) : null));
+      unit ? h('img', { src: portraitUrl(unit.dex, 'Normal', unit.shiny), alt: '' }) : null, v ? h('span', fmt(v)) : null));
   }
   return [tabs, h('b.ds-h', 'Schaden je Pokémon'), ...rows, h('b.ds-h', 'Schaden je Feld'), map, h('small.ds-note', 'Gelb = viel Schaden von diesem Feld aus, dunkel = wenig. Ziehe schwache Pokémon auf ein anderes Pokémon, um die Plätze zu tauschen.')];
 }

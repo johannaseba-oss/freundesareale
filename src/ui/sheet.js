@@ -58,11 +58,11 @@ export function openSheet(p) {
   root.classList.remove('hidden');
   root.onclick = (e) => { if (e.target === root) closeSheet(); };
 
-  const portrait = h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p)), alt: '' });
+  const portrait = h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p), p.shiny), alt: '' });
   const sub = h('div.sub');
   // Spitzname: Antippen des Namens (✎) öffnet die Eingabe
   const title = h('h2.nick-title', { onclick: () => editNick(p, () => { title.firstChild.textContent = nameOf(p); species2.textContent = p.nick ? sp.name : ''; }) },
-    nameOf(p), h('span.gender.' + p.gender, genderSymbol(p)), h('span.nick-edit', '✎'));
+    nameOf(p), p.shiny ? h('span.shiny-mark', { title: 'Schillernd' }, '✨') : null, h('span.gender.' + p.gender, genderSymbol(p)), h('span.nick-edit', '✎'));
   const species2 = h('small.nick-species', p.nick ? sp.name : '');
   // Favorit: steht in allen Auswahllisten und Minispielen oben
   const favBtn = h('button.fav-btn' + (p.fav ? '.on' : ''), { title: 'Favorit', onclick: () => { const r = app.act((s) => A.toggleFav(s, p.uid), true); favBtn.classList.toggle('on', !!r.fav); favBtn.textContent = r.fav ? '★' : '☆'; haptic('tick'); } }, p.fav ? '★' : '☆');
@@ -87,7 +87,7 @@ export function openSheet(p) {
   // ---- Bühne zum Streicheln / Füttern ----
   const cv = h('canvas');
   const stage = h('div.pet-stage', cv, h('div.pet-hint', p.area ? 'Zum Streicheln reiben' : 'Schläft im Beutel'));
-  const sprites = loadSprites(p.dex, p.gender);
+  const sprites = loadSprites(p.dex, p.gender, p.shiny);
   const fx = { anim: 'Idle', t: 0, until: 0, hearts: [], bowl: 0 };
   const heart = iconCanvas('heart', 1), bowl = iconCanvas('food', 1);
   let last = performance.now();
@@ -144,7 +144,7 @@ export function openSheet(p) {
       if (pr.contest) gainPop(gainLines(pr.contest), { x: e.clientX, y: e.clientY - 40 });
       fx.hearts.push({ x: x - 10, y: y - 20, life: 1 });
       if (fx.anim !== 'Hop') play('Hop', 700);
-      portrait.src = portraitUrl(p.dex, 'Joyous');
+      portrait.src = portraitUrl(p.dex, 'Joyous', p.shiny);
     }
   });
   const endRub = () => { rub = null; };
@@ -175,7 +175,7 @@ export function openSheet(p) {
   const berryBtns = CFG.balance.berries.map((b) => {
     const btn = h('button.btn.small', { title: b.name + ': ' + b.text, onclick: () => {
       const r = app.act((s2, t) => A.giveBerry(s2, p, b.id, t));
-      if (r.ok) { fx.bowl = performance.now() + 1800; play('Eat', 1800); portrait.src = portraitUrl(p.dex, 'Happy'); toast(`${nameOf(p)} hat eine ${b.name} gegessen.`); }
+      if (r.ok) { fx.bowl = performance.now() + 1800; play('Eat', 1800); portrait.src = portraitUrl(p.dex, 'Happy', p.shiny); toast(`${nameOf(p)} hat eine ${b.name} gegessen.`); }
     } });
     btn.dataset.id = b.id;
     return btn;

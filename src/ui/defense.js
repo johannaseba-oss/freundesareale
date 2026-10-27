@@ -104,7 +104,7 @@ function confirmTeam(uids) {
       h('div.d-theme', h('b', `Level ${chosen.n} · Gegner: `), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t)))),
       h('div.confirm-list', pick.map((u, i) => {
         const p = app.state.pokemon.find((q) => q.uid === u);
-        return h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(p.dex), alt: '' }),
+        return h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
           h('div', h('b', p.nick || species(p.dex).name), h('small', `${D().roles[roleOf(p.dex)].icon} ${abilityText(p.dex)}`)),
           h('span.d-price.inline', String(costOf(p.dex))));
       })),
@@ -124,7 +124,7 @@ function offerLoaner(el, back) {
   let team = loanerTeam(Math.random, chosen.types);
   modal((m, close) => {
     const list = h('div.confirm-list');
-    const render = () => list.replaceChildren(...team.map((src, i) => h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(src.dex), alt: '' }),
+    const render = () => list.replaceChildren(...team.map((src, i) => h('div.confirm-row', h('span.bs-num', String(i + 1)), h('img', { src: portraitUrl(src.dex, 'Normal', src.shiny), alt: '' }),
       h('div', h('b', species(src.dex).name), h('small', `${D().roles[roleOf(src.dex)].icon} ${abilityText(src.dex)}`)), h('span.d-price.inline', String(costOf(src.dex))))));
     render();
     m.append(h('h3', `Leihteam für Level ${chosen.n}`),
@@ -238,7 +238,7 @@ function openField(themeId = null) {
   const levelMusic = game.chaos ? 'chaos' : musicForLevel(game.theme); // je Level ein passendes Stück
   setMusic(levelMusic);
   ui = { root, canvas, ctx: canvas.getContext('2d'), cards, info, starsEl, waveEl, livesEl, countEl: game.chaos ? go : null, msg, sel: null, fx: [], areas: [], texts: [], booms: [], rings: [], slashes: [], beams: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
-  for (const c of game.cards) loadSprites(c.dex, c.src.gender);
+  for (const c of game.cards) loadSprites(c.dex, c.src.gender, c.src.shiny);
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`; ui.trainer = tr;
   // Feld-Thema: passend zu den Gegner-Typen (Chaos: zufällig)
   const TH = CFG.defenseThemes, ids = Object.keys(TH.themes);
@@ -324,7 +324,7 @@ function dragUnit(e, u) {
   let ghost = null;
   const move = (m) => {
     if (!ghost && Math.hypot(m.clientX - sx, m.clientY - sy) < 12) return;
-    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(u.dex), alt: '' }); document.body.append(ghost); ui.moving = u; haptic('tick'); }
+    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(u.dex, 'Normal', u.shiny), alt: '' }); document.body.append(ghost); ui.moving = u; haptic('tick'); }
     ghost.style.transform = `translate(${m.clientX - 26}px, ${m.clientY - 40}px)`;
     ui.hover = cellAt(m.clientX, m.clientY);
   };
@@ -355,7 +355,7 @@ function dragCard(e, c) {
   let ghost = null;
   const move = (m) => {
     if (!ghost && Math.hypot(m.clientX - sx, m.clientY - sy) < 12) return;
-    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(c.dex), alt: '' }); document.body.append(ghost); ui.sel = c; }
+    if (!ghost) { ghost = h('img.d-ghost', { src: portraitUrl(c.dex, 'Normal', c.shiny), alt: '' }); document.body.append(ghost); ui.sel = c; }
     ghost.style.transform = `translate(${m.clientX - 26}px, ${m.clientY - 40}px)`;
     ui.hover = cellAt(m.clientX, m.clientY);
   };
@@ -391,7 +391,7 @@ async function askRemove(u) {
 
 function flyStar(from, d) {
   const to = d?.dex ? ui.cards.getBoundingClientRect() : ui.starsEl.getBoundingClientRect();
-  const el = h('img.flyer', { src: d?.dex ? portraitUrl(d.dex) : starCanvas().toDataURL(), alt: '' });
+  const el = h('img.flyer', { src: d?.dex ? portraitUrl(d.dex, 'Normal', d.shiny) : starCanvas().toDataURL(), alt: '' });
   document.body.append(el);
   el.animate([{ transform: `translate(${from.x - 14}px, ${from.y - 14}px) scale(1.4)` }, { transform: `translate(${to.left}px, ${to.top}px) scale(.8)` }], { duration: 450, easing: 'ease-in' }).onfinish = () => el.remove();
 }
@@ -416,12 +416,12 @@ function buildCards() {
   ui.cardKey = game.cards.map((c) => c.id ?? c.dex).join();
   ui.cards.classList.toggle('chaos', game.chaos);
   ui.cards.replaceChildren(...game.cards.map((c) => {
-    loadSprites(c.dex, c.src.gender);
+    loadSprites(c.dex, c.src.gender, c.src.shiny);
     // Karte: Typen als farbige Leiste mit Namen, Porträt, Fähigkeit/Rolle als Wort, Kosten
     const types = species(c.dex).types, ab = abilityOf(c.dex);
     const el = h('button.d-card.r-' + c.role,
       h('span.d-card-types', types.map((t) => h('i', { style: { background: typeColor(t) } }, t))),
-      h('img', { src: portraitUrl(c.dex), alt: '', draggable: false }),
+      h('img', { src: portraitUrl(c.dex, 'Normal', c.shiny), alt: '', draggable: false }),
       h('span.d-card-ab.r-' + c.role, ab ? ab.name : ROLE_SHORT[c.role]),
       h('span.d-card-cost', c.once ? '1×' : String(c.cost)),
       h('i.d-card-cool'),
@@ -654,7 +654,7 @@ function draw(dt) {
 }
 
 function drawMon(x, o, mine, [X, Y], T, now) {
-  const e = loadSprites(o.dex, o.gender);
+  const e = loadSprites(o.dex, o.gender, o.shiny);
   const dead = o.hp <= 0;
   if (!e.ready) return;
   const asleep = !mine && game.t < (o.sleepUntil || 0);
@@ -962,7 +962,7 @@ const T = () => ui.tile;
 // Entwicklung: Lichtsäule, Funkenregen, Nachricht und Klang
 function evolveFx(ev) {
   const u = ev.u;
-  loadSprites(ev.to, u.gender);
+  loadSprites(ev.to, u.gender, u.shiny);
   ring(u, '#ffffff', 0.1, 1.6, 0.7); ring(u, '#ffe066', 0.3, 1.2, 0.9);
   burst(u, 'Fee', 26, 1.8, 1.2);
   ui.flash = Math.max(ui.flash, 0.18); shake(T() * 0.06);

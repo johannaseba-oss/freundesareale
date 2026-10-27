@@ -488,7 +488,7 @@ export function openBag(focus = null, opts = {}) {
       body.replaceChildren(
         h('div.rk-tabs.wrap', stones.map(([k, n]) => h('button.btn.small.stone-tab' + (k === sel ? '.primary' : ''), { onclick: () => renderStones(k) }, stoneIcon(k, 22), `${stoneName(k)} ×${n}`))),
         targets.length ? h('div.inv', targets.map((p) => h('div.stone-row',
-          h('img', { src: portraitUrl(p.dex), alt: '' }),
+          h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
           h('div', h('b', p.fav ? '★ ' : '', pname(p)), h('small', `Lv ${p.level}`)),
           h('button.btn.primary.small', { onclick: async () => {
             if (!(await confirmDialog(`${pname(p)} mit dem ${stoneName(sel)} dauerhaft entwickeln?`, 'Entwickeln'))) { openBag(sel); return; }
@@ -512,7 +512,7 @@ export function openBag(focus = null, opts = {}) {
         parts.push(h('div.rk-tabs.wrap', inv.map(([x, n]) => h('button.btn.small.stone-tab' + (x.id === sel ? '.primary' : ''), { onclick: () => renderItems(x.id) }, h('img.item-ico', { src: itemSprite(x), alt: '' }), `${x.name} ×${n}`))),
           h('p.note', h('b', it.name + ': '), it.desc, ' Gilt für alle deine Pokémon genau dieser Sorte (z. B. alle deine Owei) – nicht für andere desselben Typs und nie für Gegner.'),
           h('div.inv', mons.map((p) => h('div.stone-row',
-            h('img', { src: portraitUrl(p.dex), alt: '' }),
+            h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
             h('div', h('b', p.fav ? '★ ' : '', pname(p), it.fx.type && species(p.dex).types.includes(it.fx.type) ? h('span.rk-buff', `passt: ${it.fx.type}`) : null), h('small', p.held ? `trägt ${itemById(p.held)?.name}` : `Lv ${p.level}`)),
             h('button.btn.primary.small', { onclick: () => {
               const r = app.act((s) => giveItem(s, p.uid, sel), true);
@@ -521,7 +521,7 @@ export function openBag(focus = null, opts = {}) {
             } }, 'Geben')))));
       }
       if (holders.length) parts.push(h('b.ds-h', 'Getragen'), h('div.inv', holders.map((p) => { const x = itemById(p.held); return h('div.stone-row',
-        h('img', { src: portraitUrl(p.dex), alt: '' }),
+        h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
         h('div', h('b', pname(p)), h('small', h('img.item-ico.small', { src: itemSprite(x), alt: '' }), x.name)),
         h('button.btn.small', { onclick: () => { app.act((s) => takeItem(s, p.uid), true); haptic('tick'); renderItems(sel); } }, 'Abnehmen')); })));
       body.replaceChildren(...parts);

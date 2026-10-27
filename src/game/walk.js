@@ -89,7 +89,7 @@ export function movesAtLevel(dex, level) {
 // Kämpfer für den Rundenkampf (offizielle Werteformel; Statusstufen −6…+6, Zustand, Verwirrung)
 export function makeFighter(src, level) {
   const stats = calcStats(src.dex, level, src.ivs || [15, 15, 15, 15, 15, 15], src.evs || [0, 0, 0, 0, 0, 0]);
-  return { uid: src.uid ?? null, dex: src.dex, gender: src.gender ?? null, nick: src.nick || null, level, stats, hp: stats[0], maxHp: stats[0], moves: movesAtLevel(src.dex, level), pbuff: src.pbuff || 1, item: src.item || null, itemName: src.itemName || null,
+  return { uid: src.uid ?? null, dex: src.dex, gender: src.gender ?? null, shiny: !!src.shiny, nick: src.nick || null, level, stats, hp: stats[0], maxHp: stats[0], moves: movesAtLevel(src.dex, level), pbuff: src.pbuff || 1, item: src.item || null, itemName: src.itemName || null,
     stage: [0, 0, 0, 0, 0, 0, 0, 0, 0], status: null, sleep: 0, confused: 0 };
 }
 

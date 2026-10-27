@@ -32,7 +32,7 @@ export function openGrooming(p, onDone) {
   fur.src = `${BASE}art/fell/${G.furs[furOf(p.dex)]}`;
   const cv = h('canvas.groom-cv');
   const bar = h('i', { style: { width: '0%' } });
-  const portrait = h('img.portrait', { src: portraitUrl(p.dex, 'Worried'), alt: '' });
+  const portrait = h('img.portrait', { src: portraitUrl(p.dex, 'Worried', p.shiny), alt: '' });
   const titleEl = h('b', `${nameOf(p)} putzen`);
   const hint = h('div.groom-hint', 'Zieh die Seife über den Dreck!');
   const soapBtn = h('div.tool', { 'data-tool': 'soap' }, h('img', { src: ART + 'seife.png', alt: 'Seife', draggable: false }));
@@ -183,11 +183,11 @@ export function openGrooming(p, onDone) {
     shine = 0;
     haptic('strong');
     held = null; tool = null;
-    portrait.src = portraitUrl(p.dex, 'Joyous');
+    portrait.src = portraitUrl(p.dex, 'Joyous', p.shiny);
     hint.remove();
     el.querySelector('.tool-tray')?.remove();
     done.classList.remove('hidden');
-    done.replaceChildren(h('img.portrait.big', { src: portraitUrl(p.dex, 'Joyous'), alt: '' }), h('h2', 'Blitzsauber!'), h('p', `${nameOf(p)} fühlt sich pudelwohl.`), h('button.btn.primary', { onclick: () => finish(true) }, 'Fertig'));
+    done.replaceChildren(h('img.portrait.big', { src: portraitUrl(p.dex, 'Joyous', p.shiny), alt: '' }), h('h2', 'Blitzsauber!'), h('p', `${nameOf(p)} fühlt sich pudelwohl.`), h('button.btn.primary', { onclick: () => finish(true) }, 'Fertig'));
   }
 
   function finish(success) {

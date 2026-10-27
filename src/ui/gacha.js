@@ -343,7 +343,7 @@ export function reveal(r) {
   const el = h('div.reveal', h('div', cv, txt));
   document.body.append(el);
   const c = cv.getContext('2d');
-  const sprites = loadSprites(p.dex, p.gender);
+  const sprites = loadSprites(p.dex, p.gender, p.shiny);
   let t0 = performance.now();
   // Antippen, solange der Ball noch wackelt: sofort öffnen
   el.addEventListener('pointerdown', () => { const t = (performance.now() - t0) / 1000; if (t < 2.1) t0 = performance.now() - 2.1 * 1000; });
@@ -402,6 +402,7 @@ export function reveal(r) {
     if (best) sel.value = best.id;
     txt.append(
       h('div', h('span.tag.' + sp.rarity, CFG.balance.rarityNames[sp.rarity]), ' ', ballName(ballSprite(ball.id, r.ball.key, p.dex))),
+      p.shiny ? h('div.shiny-banner', '✨ Ein schillerndes Pokémon! ✨') : null,
       h('h2', `${sp.name}!`, h('span.gender.' + p.gender, genderSymbol(p))),
       h('div.effects', sp.types.join(' / ')),
       free.length ? h('div.row', { style: { justifyContent: 'center', marginTop: '10px' } }, sel) : h('p.effects', 'Alle Areale sind voll – es wartet erst einmal in der Sammlung.'),

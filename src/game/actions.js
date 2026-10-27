@@ -1,6 +1,6 @@
 // Alle Spieleraktionen. Jede Aktion verändert den Spielstand und gibt {ok, msg} zurück.
 // Der Aufrufer (main.js) speichert danach automatisch in der Cloud.
-import { CFG, areaById, berryById, isHairy } from '../config.js';
+import { CFG, areaById, berryById, isHairy, species } from '../config.js';
 import { dayKey } from '../time.js';
 import { capacityOf, residents, rollGender, ensureBattleData, newUid } from './state.js';
 import { modsFor } from './bonuses.js';
@@ -234,9 +234,12 @@ export function draw(s, t, key) {
   const p = addCaught(s, t, ball.dex, ball.ball, { drawKey: ball.key, paid: free ? 0 : cost });
   return { ok: true, pokemon: p, ball, free };
 }
+// Shiny-Wurf (nur wenn es für die Art Shiny-Sprites gibt)
+const rollShiny = (dex, chance) => (species(dex)?.shiny && Math.random() < (chance || 0) ? true : undefined);
 // neues Pokémon in den Beutel (Automat, Spielautomat)
 export function addCaught(s, t, dex, ballId, extra = {}) {
   const p = {
+    shiny: rollShiny(dex, CFG.balance.shiny?.chance),
     uid: newUid(s, t), dex, ball: ballId, ...extra, caughtAt: t, area: null,
     level: 1, xp: 0, fullness: CFG.balance.newPokemon.fullness, satisfaction: CFG.balance.newPokemon.satisfaction, affection: CFG.balance.newPokemon.affection,
     gender: rollGender(dex), cleanliness: isHairy(dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
@@ -260,7 +263,7 @@ export function hatchEgg(s, eggId, t) {
     uid: newUid(s, t), dex: egg.dex, ball: 'pokeball', fromEgg: true, caughtAt: t, area: null,
     level: 1, xp: 0, fullness: N.fullness, satisfaction: N.satisfaction, affection: N.affection,
     gender: rollGender(egg.dex), cleanliness: isHairy(egg.dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
-    ivs, evs,
+    ivs, evs, shiny: rollShiny(egg.dex, CFG.balance.shiny?.eggChance),
   };
   ensureBattleData(p);
   s.pokemon.push(p);

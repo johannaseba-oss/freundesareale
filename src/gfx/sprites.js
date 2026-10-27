@@ -5,25 +5,25 @@ import { species } from '../config.js';
 const cache = new Map();
 const base = import.meta.env.BASE_URL;
 export const pad = (dex) => String(dex).padStart(4, '0');
-export const portraitUrl = (dex, emotion = 'Normal') => {
+export const portraitUrl = (dex, emotion = 'Normal', shiny = false) => {
   const sp = species(dex);
   const e = sp?.portraits.includes(emotion) ? emotion : 'Normal';
-  return `${base}sprites/${pad(dex)}/p_${e}.png`;
+  return `${base}sprites/${pad(dex)}/${shiny && sp?.shiny ? 's/' : ''}p_${e}.png`;
 };
 
 function loadImg(src) {
   return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 }
 
-// gender "w" nutzt die weibliche Sprite-Variante, falls es eine gibt
-export function loadSprites(dex, gender = null) {
+// gender "w" nutzt die weibliche Sprite-Variante, falls es eine gibt; shiny = schillernde Farben (sprites/<dex>/s/)
+export function loadSprites(dex, gender = null, shiny = false) {
   const sp = species(dex);
-  const female = gender === 'w' && sp.femaleAnims;
-  const key = dex + (female ? 'w' : '');
+  const sh = !!(shiny && sp.shiny), female = !sh && gender === 'w' && sp.femaleAnims;
+  const key = dex + (sh ? 's' : female ? 'w' : '');
   if (cache.has(key)) return cache.get(key);
   const entry = { ready: false, anims: {} };
-  entry.promise = Promise.all(Object.entries(female ? sp.femaleAnims : sp.anims).map(async ([name, a]) => {
-    const img = await loadImg(`${base}sprites/${pad(dex)}/${female ? 'w/' : ''}${a.file}`);
+  entry.promise = Promise.all(Object.entries(sh ? sp.shinyAnims || sp.anims : female ? sp.femaleAnims : sp.anims).map(async ([name, a]) => {
+    const img = await loadImg(`${base}sprites/${pad(dex)}/${sh ? 's/' : female ? 'w/' : ''}${a.file}`);
     const total = a.dur.reduce((x, y) => x + y, 0);
     entry.anims[name] = { ...a, img, total };
   })).then(() => { entry.ready = true; return entry; });

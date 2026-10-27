@@ -31,7 +31,7 @@ export function renderWalkSetup(el, back) {
     mons.length ? h('div.bs-list', mons.map((p) => {
       const done = walkedToday(app.state, p.uid, now()), sp = speedOf(p);
       return h('button.bs-row.rk-row' + (done ? '.done' : ''), { onclick: () => (done ? toast(`${name(p)} war heute schon spazieren.`) : startWalk(p)) },
-        h('img.rk-por', { src: portraitUrl(p.dex), alt: '' }),
+        h('img.rk-por', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }),
         h('div.bs-row-text', h('b', p.fav ? '★ ' : '', name(p), h('small.wk-lv', ` Lv ${p.level}`), done ? h('span.rk-done', '✓ heute gelaufen') : null),
           h('div.rk-stat', h('span.k', 'Ausdauer'), h('span.rk-dots', dots(p.stamina || 1)), h('small', `${maxSteps(p)} Schritte`)),
           h('div.rk-stat', h('span.k', 'Tempo'), h('span.rk-dots', dots(sp.level)), h('small', `${walkSpeed(p)} Felder/s`))),
@@ -54,7 +54,7 @@ async function startWalk(p) {
   const go = h('button.pw-btn.go', { onclick: startWalking }, 'LOS');
   const walker = h('div.pw', h('div.pw-body', h('div.pw-rim', lcd), h('div.pw-btns', undo, clear, go)));
   const hint = h('div.wk-hint', 'Zeichne vom Startplatz aus eine Runde und komm wieder zurück.');
-  const chip = h('div.wk-chip', h('img', { src: portraitUrl(p.dex), alt: '' }), h('div', h('b', name(p)), h('small', `Lv ${p.level} · Ausdauer ${p.stamina || 1} · Tempo ${speedOf(p).level}`)));
+  const chip = h('div.wk-chip', h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }), h('div', h('b', name(p)), h('small', `Lv ${p.level} · Ausdauer ${p.stamina || 1} · Tempo ${speedOf(p).level}`)));
   const root = h('div.sl-full.walk2', canvas, hint, chip, h('button.sl-fab.right', { onclick: leave, title: 'Beenden' }, '✕'), walker);
   document.body.append(root);
   document.body.classList.add('in-battle');
@@ -64,7 +64,7 @@ async function startWalk(p) {
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`;
   ui = { p, me, map, rnd, root, canvas, ctx: canvas.getContext('2d'), lcd, go, walker, hint, trainer: tr, phase: 'plan', route: [], drawing: false,
     wild: spawnWild(map, rnd, p.level), t: 0, s: 0, wins: 0, ep: 0, evs: [0, 0, 0, 0, 0, 0], last: performance.now(), raf: 0, max: maxSteps(p), speed: walkSpeed(p), cam: null, bang: [] };
-  loadSprites(p.dex, p.gender); for (const w of ui.wild) loadSprites(w.dex);
+  loadSprites(p.dex, p.gender, p.shiny); for (const w of ui.wild) loadSprites(w.dex);
   const ti = tilesImage(); if (!ti.complete) ti.addEventListener('load', () => { if (ui) ui.bg = null; }, { once: true });
   ui.ro = new ResizeObserver(layout); ui.ro.observe(root);
   canvas.addEventListener('pointerdown', onDown);
@@ -194,8 +194,8 @@ function buildBackground() {
   const M = ui.map;
   return renderTerrain({ c0: -MARGIN, r0: -MARGIN, c1: M.cols - 1 + MARGIN, r1: M.rows - 1 + MARGIN, cellAt: (x, y) => cellOf(M, x, y), theme: M.theme, seed: (M.home[0] * 7 + M.cols) | 0 });
 }
-function drawMon(x, dex, gender, wx, wy, dir, anim, ms, inGrass) {
-  const e = loadSprites(dex, gender);
+function drawMon(x, dex, gender, shiny, wx, wy, dir, anim, ms, inGrass) {
+  const e = loadSprites(dex, gender, shiny);
   if (!e.ready) return;
   const f = frameOf(e, anim, dir, ms);
   let s = TS / 22; if (e.anims.Idle.fh * s > TS * 1.9) s = (TS * 1.9) / e.anims.Idle.fh;
@@ -249,11 +249,11 @@ function draw() {
   list.sort((a, b) => a.y - b.y);
   for (const o of list) {
     if (o.trainer) drawTrainer(x, tp.x, tp.y, U.phase === 'walk' ? tp.dir : 0, walking, t / 1000);
-    else if (o.mon) drawMon(x, U.p.dex, U.p.gender, pp.x, pp.y, U.phase === 'walk' ? pp.dir : 0, walking ? 'Walk' : 'Idle', t, deepGrass(pp.x, pp.y));
+    else if (o.mon) drawMon(x, U.p.dex, U.p.gender, U.p.shiny, pp.x, pp.y, U.phase === 'walk' ? pp.dir : 0, walking ? 'Walk' : 'Idle', t, deepGrass(pp.x, pp.y));
     else {
       const w = o.w, inG = deepGrass(w.x, w.y);
       if (w.ignore > U.t) x.globalAlpha = 0.5;
-      drawMon(x, w.dex, null, w.x, w.y, w.dir, w.k < 1 ? 'Walk' : 'Idle', t, inG);
+      drawMon(x, w.dex, null, false, w.x, w.y, w.dir, w.k < 1 ? 'Walk' : 'Idle', t, inG);
       x.globalAlpha = 1;
       const X = (w.x + 0.5) * TS, Y = (w.y + 0.5) * TS;
       if (w.seen && U.t - w.seen < 1.2 && !U.battle) { const b = Math.min(1, (U.t - w.seen) * 6); x.fillStyle = '#fff'; x.strokeStyle = '#222'; x.lineWidth = 1; x.beginPath(); x.roundRect(X - 4, Y - 24 - b * 3, 8, 10, 2); x.fill(); x.stroke(); x.fillStyle = '#e8453c'; x.fillRect(X - 0.75, Y - 22 - b * 3, 1.5, 4.5); x.fillRect(X - 0.75, Y - 16.5 - b * 3, 1.5, 1.5); }
@@ -358,7 +358,7 @@ function drawScene(B) {
   const plat = (cx, cy, rw) => { x.fillStyle = pal[3]; x.beginPath(); x.ellipse(cx, cy, rw, rw * 0.28, 0, 0, 7); x.fill(); x.fillStyle = pal[4]; x.beginPath(); x.ellipse(cx, cy - 3, rw * 0.9, rw * 0.22, 0, 0, 7); x.fill(); };
   plat(W * 0.72, H * 0.42, W * 0.2); plat(W * 0.28, H * 0.86, W * 0.24);
   const mon = (f, who, cx, cy, dir, size) => {
-    const e = loadSprites(f.dex, f.gender);
+    const e = loadSprites(f.dex, f.gender, f.shiny);
     if (!e.ready) return;
     const at = B.anim[who], hurt = t - B.hurt[who];
     if (f.hp <= 0 && B.shown[who] <= 0 && hurt > 600) return; // besiegt: verschwindet

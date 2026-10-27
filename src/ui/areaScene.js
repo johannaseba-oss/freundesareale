@@ -111,7 +111,7 @@ export class AreaScene {
       const pt = this.randomPoint();
       // zufällige Blickrichtung, manche laufen gleich los – sonst schauen beim Wechseln alle in die Kamera
       const walk = Math.random() < 0.5, tgt = walk ? this.randomPoint() : null;
-      this.actors.set(p.uid, { p, ...pt, sprites: loadSprites(p.dex, p.gender), state: walk ? 'walk' : 'idle', tx: tgt?.x, ty: tgt?.y, dir: Math.floor(Math.random() * 8), t: 0, timer: rand(0.3, 2.5) });
+      this.actors.set(p.uid, { p, ...pt, sprites: loadSprites(p.dex, p.gender, p.shiny), state: walk ? 'walk' : 'idle', tx: tgt?.x, ty: tgt?.y, dir: Math.floor(Math.random() * 8), t: 0, timer: rand(0.3, 2.5) });
     }
   }
 

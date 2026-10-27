@@ -43,7 +43,7 @@ export function initAreas() {
       const r = app.act((s, t) => A.hatchEgg(s, egg.id, t), true);
       if (!r.ok) return;
       haptic('strong');
-      toast(`Ein ${species(r.pokemon.dex).name} ist geschlüpft! Es wartet im Beutel.`);
+      toast(r.pokemon.shiny ? `✨ Ein schillerndes ${species(r.pokemon.dex).name} ist geschlüpft! Es wartet im Beutel.` : `Ein ${species(r.pokemon.dex).name} ist geschlüpft! Es wartet im Beutel.`);
       setTimeout(() => openSheet(r.pokemon), 400);
     },
     onBerry: (g, pos) => {
@@ -178,7 +178,7 @@ function openAreaList() {
       const a = CFG.areas[i], res = residents(s, a.id), am = areaMood(res);
       return h('button.area-pick' + (i === idx ? '.on' : ''), { onclick: () => { close(); if (i !== idx) { idx = i; render(true); haptic('tick'); } } },
         h('div.area-pick-img', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/areale/${a.image})` } },
-          h('div.area-pick-mons', res.slice(0, 6).map((p) => h('img', { src: portraitUrl(p.dex), alt: '' })))),
+          h('div.area-pick-mons', res.slice(0, 6).map((p) => h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' })))),
         h('b', a.name),
         h('small', `${res.length}/${capacityOf(s, a.id)}${am ? ` · ♥ ${Math.round(am.value)} %` : ''}`));
     })),
@@ -266,7 +266,7 @@ function fillMenu(el, close) {
   const list = h('div.residents', res.map((p) => {
     const sp = species(p.dex);
     return h('div.res.frame', { onclick: () => { close(); openSheet(p); } },
-      h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p)), alt: '' }),
+      h('img.portrait', { src: portraitUrl(p.dex, emotionOf(p), p.shiny), alt: '' }),
       h('div.meta',
         h('div.name', h('span', sp.name, h('span.gender.' + p.gender, genderSymbol(p))), h('small', `Lv. ${p.level}`, p.coinsReady ? [' · ', iconImg('coin', 1), p.coinsReady] : '')),
         h('div.bars', bar('hunger', p.fullness), bar('sat', p.satisfaction), bar('aff', p.affection))));
@@ -302,7 +302,7 @@ function pickResident(area) {
       return h('div.card.r-' + sp.rarity, { onclick: () => {
         const r = app.act((s2) => A.assign(s2, p, area.id), true);
         if (r.ok) { close(); toast(`${nameOf(p)} zieht in ${area.name} ein!`); }
-      } }, h('img.portrait', { src: portraitUrl(p.dex), alt: '' }), h('div.nm', h('span.n', nameOf(p)), h('span.gender.' + p.gender, genderSymbol(p))),
+      } }, h('img.portrait', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }), h('div.nm', h('span.n', nameOf(p)), h('span.gender.' + p.gender, genderSymbol(p))),
       h('span.type-chips.mini', sp.types.map((t) => typeChip(t))),
       h('div.sub', p.area ? `aus ${CFG.areas.find((a) => a.id === p.area)?.name}` : `Lv. ${p.level} · Beutel`), fitMark(p.dex, area.id));
     };

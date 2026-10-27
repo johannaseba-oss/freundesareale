@@ -116,7 +116,7 @@ function confirmTeam(uids, reset) {
           if (isT) towers = towers.filter((x) => x !== u); else if (towers.length < T) towers.push(u); else { toast(`Genau ${T} Verteidiger – tippe erst einen anderen ab.`); return; }
           haptic('tick'); render();
         } }, h('span.bs-num', String(i + 1)), isT ? h('span.confirm-shield', B().towerRoles[towerRole(p.dex)].icon) : null,
-        h('img', { src: portraitUrl(p.dex), alt: '' }), h('small', p.nick || species(p.dex).name));
+        h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }), h('small', p.nick || species(p.dex).name));
       }));
       go.disabled = towers.length !== T;
     };
@@ -185,7 +185,7 @@ function openArena(o) {
   document.body.classList.add('in-battle');
   setMusic('arena');
   arena = { root, canvas, ctx: canvas.getContext('2d'), hand, ghost, msg, fx: [], texts: [], flashes: [], sel: null, drag: null, hover: null, cards: null, count, pulses: [], wx: [], wxKind: null, last: performance.now(), raf: 0, opp: o };
-  for (const u of [...battle.units, ...battle.roster('p'), ...battle.roster('c')]) loadSprites(u.dex, u.gender);
+  for (const u of [...battle.units, ...battle.roster('p'), ...battle.roster('c')]) loadSprites(u.dex, u.gender, u.shiny);
   renderWeather();
   message(`Wetter: ${battle.weatherInfo().icon} ${battle.weatherInfo().name}${battle.weatherInfo().types.length ? ' – ' + battle.weatherInfo().types.join(' & ') + ' stärker' : ''}`);
   arena.ro = new ResizeObserver(() => layout());
@@ -425,7 +425,7 @@ function drawUnit(x, u, [X, Y], T, now) {
     for (let k = 0; k < 5; k++) x.fillRect(X - T * 0.35 + k * T * 0.15, Y - T * 0.05 + ((k * 7) % 3) * T * 0.05, T * 0.12, T * 0.1);
     return;
   }
-  const e = loadSprites(u.dex, u.gender);
+  const e = loadSprites(u.dex, u.gender, u.shiny);
   let topY = Infinity;
   if (e.ready) {
     const bt = battle.t;
@@ -503,7 +503,7 @@ function handleEvents() {
       if (u.side === 'p') haptic('tick');
     } else if (ev.type === 'evolve') {
       arena.flashes.push({ u, t: 0 });
-      loadSprites(ev.to, u.gender);
+      loadSprites(ev.to, u.gender, u.shiny);
       burst(u, '#fff6c0', 18, 3, 6);
       message(`${u.side === 'p' ? '' : 'Gegnerisches '}${species(ev.from).name} hat sich zu ${species(ev.to).name} entwickelt!`);
       if (u.side === 'p') haptic('medium');
@@ -520,7 +520,7 @@ function handleEvents() {
       for (let i = 0; i < 4; i++) arena.fx.push({ x: u.x + (Math.random() - 0.5) * 0.5, y: u.y, vx: 0, vy: -1.2, color: '#7dff9a', life: 0.6, size: 5 });
     } else if (ev.type === 'place') {
       for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; arena.fx.push({ x: u.x, y: u.y + 0.2, vx: Math.cos(a) * 1.4, vy: Math.sin(a) * 0.6, color: '#efe3c0', life: 0.35, size: 5 }); }
-      loadSprites(u.dex, u.gender);
+      loadSprites(u.dex, u.gender, u.shiny);
     }
   }
   battle.events.length = 0;
@@ -554,7 +554,7 @@ function renderHand() {
     c.el.style.setProperty('--tc2', typeColor(sp.types[1] || sp.types[0]));
     c.el.replaceChildren(
       h('span.bcard-lv', `Lv ${f.level}`),
-      h('img', { src: portraitUrl(f.dex), alt: '', draggable: false }),
+      h('img', { src: portraitUrl(f.dex, 'Normal', f.shiny), alt: '', draggable: false }),
       h('b', f.nick || sp.name),
       h('small', h('i.tdot', { style: { background: typeColor(mv.type) } }), mv.name, h('span.rng', mv.range === 'nah' ? ' ✊' : ' ➶')),
       ...(st === 'cool' ? [h('span.bcard-cool', `${cool} s`)] : st === 'field' ? [h('span.bcard-cool.on', 'im Kampf')] : []));
@@ -590,7 +590,7 @@ function onCardDown(e, f) {
       if (dy < 0 && Math.abs(dy) > Math.abs(dx)) {
         const why = blockedMsg(f);
         if (why) { toast(why); mode = 'scroll'; return; }
-        mode = 'drag'; A.drag = { f }; A.ghost.src = portraitUrl(f.dex); A.ghost.classList.remove('hidden'); haptic('tick');
+        mode = 'drag'; A.drag = { f }; A.ghost.src = portraitUrl(f.dex, 'Normal', f.shiny); A.ghost.classList.remove('hidden'); haptic('tick');
       } else { mode = 'scroll'; return; }
     }
     if (mode !== 'drag') return;
@@ -645,7 +645,7 @@ function openStoneShop() {
       h('p.note', `Entwickelt ein Pokémon sofort – nur für diesen Kampf. Du hast `, iconImg('coin', 2), ` ${app.state.coins}.`),
       offers.length
         ? h('div.inv', offers.map(({ f, st, to }) => h('div.stone-row',
-          h('img', { src: portraitUrl(f.dex), alt: '' }),
+          h('img', { src: portraitUrl(f.dex, 'Normal', f.shiny), alt: '' }),
           h('div', h('b', `${species(f.dex).name} → ${species(to).name}`), h('small', `${stoneName(st)} · ${where(f)}`)),
           h('button.btn.gold.small', {
             disabled: app.state.coins < price,
@@ -719,7 +719,7 @@ function endBattle() {
   const box = h('div.b-result' + (won ? '.won' : ''),
     h('h2', won ? 'Sieg!' : 'Niederlage'),
     h('p', won ? `Du hast alle Verteidiger von ${oppName(battle.opponent)} besiegt.` : battle.over.gaveUp ? 'Du hast aufgegeben.' : 'Alle deine Verteidiger wurden besiegt.'),
-    best.length ? h('div.b-best', best.map((f) => h('div', h('img', { src: portraitUrl(f.dex), alt: '' }), h('small', `${species(f.dex).name} · Lv ${f.level}`)))) : null,
+    best.length ? h('div.b-best', best.map((f) => h('div', h('img', { src: portraitUrl(f.dex, 'Normal', f.shiny), alt: '' }), h('small', `${species(f.dex).name} · Lv ${f.level}`)))) : null,
     B().stats.evsPersist && gains.length ? h('p.note', `${gains.length} Pokémon haben EVs gesammelt (bleiben erhalten).`) : null,
     h('p.note', 'Level und Entwicklungen aus dem Kampf verfallen jetzt wieder.'),
     h('button.btn.primary.big', { onclick: () => { closeArena(); battle = null; oppNames = {}; step = 'opponent'; sel = []; towers = []; renderBattleSetup(); } }, 'Weiter'));

@@ -47,7 +47,7 @@ let nextId = 1;
 // src: { uid?, dex, gender, ivs, evs, moves }
 export function makeFighter(src, side) {
   const f = {
-    id: nextId++, side, uid: src.uid ?? null, nick: src.nick || null, dex: src.dex, origDex: src.dex, gender: src.gender ?? null,
+    id: nextId++, side, uid: src.uid ?? null, nick: src.nick || null, dex: src.dex, origDex: src.dex, gender: src.gender ?? null, shiny: !!src.shiny,
     ivs: src.ivs, evs: [...src.evs], evGain: [0, 0, 0, 0, 0, 0], extraMoves: src.moves || [],
     level: B().startLevel, tower: !!src.tower, pbuff: src.pbuff || 1, item: src.item || null, state: 'deck', x: 0, y: 0, dir: side === 'p' ? 4 : 0, cd: 0, anim: null, kos: 0,
   };
@@ -472,7 +472,7 @@ function dirTo(dx, dy) {
 }
 
 // Kampfquelle aus einem gespeicherten Pokémon (keine Kopie des Fortschritts im Freundesareal)
-export const fromPokemon = (p) => ({ uid: p.uid, dex: p.dex, gender: p.gender, ivs: p.ivs, evs: p.evs, moves: p.moves, nick: p.nick });
+export const fromPokemon = (p) => ({ uid: p.uid, dex: p.dex, gender: p.gender, shiny: p.shiny, ivs: p.ivs, evs: p.evs, moves: p.moves, nick: p.nick });
 // Kampfquelle für einen Computergegner
 export function fromCpu(dex, o, i) {
   const S = CFG.battle.stats;
