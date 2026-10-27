@@ -1,6 +1,7 @@
 // Alle Spieleraktionen. Jede Aktion verändert den Spielstand und gibt {ok, msg} zurück.
 // Der Aufrufer (main.js) speichert danach automatisch in der Cloud.
 import { CFG, areaById, berryById, isHairy, species } from '../config.js';
+import { allowedIn } from './habitat.js';
 import { dayKey } from '../time.js';
 import { capacityOf, residents, rollGender, ensureBattleData, newUid } from './state.js';
 import { modsFor } from './bonuses.js';
@@ -198,6 +199,7 @@ export function trainLevel(s, p, t, cost, dayKey) {
 export function assign(s, p, areaId) {
   if (areaId) {
     if (!s.areas[areaId]?.unlocked) return fail('Dieses Areal ist noch nicht freigeschaltet.');
+    if (!allowedIn(p.dex, areaId)) return fail(`In ${areaById(areaId).name} dürfen nur ${areaById(areaId).onlyName || 'bestimmte Pokémon'} wohnen.`);
     if (p.area !== areaId && residents(s, areaId).length >= capacityOf(s, areaId)) return fail('Das Areal ist voll. Vergrößere es oder wähle ein anderes.');
   }
   p.area = areaId || null;

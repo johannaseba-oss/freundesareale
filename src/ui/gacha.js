@@ -7,7 +7,7 @@ import { nextWeekStart, revealActive, foreseers } from '../game/gacha.js';
 import { portraitUrl } from '../gfx/sprites.js';
 import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol } from '../game/state.js';
-import { habitatFit } from '../game/habitat.js';
+import { habitatFit, allowedIn } from '../game/habitat.js';
 import { ballCanvas, ballSprite, ballName, BALL_PIXELS } from '../gfx/balls.js';
 import { iconCanvas, iconImg, drawCoin } from '../gfx/icons.js';
 import { loadSprites, frameOf } from '../gfx/sprites.js';
@@ -396,7 +396,7 @@ export function reveal(r) {
   const close = () => { cancelAnimationFrame(raf); el.remove(); anim = null; lastInfo = ''; app.refresh(); };
   let opened = false;
   const showText = () => {
-    const free = CFG.areas.filter((a) => app.state.areas[a.id].unlocked && residents(app.state, a.id).length < capacityOf(app.state, a.id));
+    const free = CFG.areas.filter((a) => app.state.areas[a.id].unlocked && allowedIn(p.dex, a.id) && residents(app.state, a.id).length < capacityOf(app.state, a.id));
     const sel = h('select', free.map((a) => h('option', { value: a.id }, `${a.name} (${residents(app.state, a.id).length}/${capacityOf(app.state, a.id)})${['  ✕ unwohl, keine Münzen', '', '  ♥ passt'][habitatFit(p.dex, a.id).fit + 1]}`)));
     const best = free.find((a) => habitatFit(p.dex, a.id).fit > 0);
     if (best) sel.value = best.id;

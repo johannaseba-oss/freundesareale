@@ -41,4 +41,4 @@ export function allTypesChip() {
   return el;
 }
 // Kärtchen der Wohlfühl-Typen eines Areals
-export const areaTypeChips = (area) => (area.allTypes ? [allTypesChip()] : (area.likes || []).map((t) => typeChip(t)));
+export const areaTypeChips = (area) => (area.only ? [Object.assign(allTypesChip(), { textContent: 'Nur ' + (area.onlyName || 'bestimmte Pokémon') })] : area.allTypes ? [allTypesChip()] : (area.likes || []).map((t) => typeChip(t)));

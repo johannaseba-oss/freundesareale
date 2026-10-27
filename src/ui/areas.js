@@ -6,7 +6,7 @@ import * as A from '../game/actions.js';
 import { capacityOf, residents, genderSymbol, nameOf } from '../game/state.js';
 import { areaBonuses, areaMood } from '../game/bonuses.js';
 import { fmtDuration, now } from '../time.js';
-import { habitatFit } from '../game/habitat.js';
+import { habitatFit, allowedIn } from '../game/habitat.js';
 import { typeColor, typeChip, areaTypeChips } from '../game/types.js';
 import { collectWithFx } from './collect.js';
 import { portraitUrl } from '../gfx/sprites.js';
@@ -276,7 +276,7 @@ function fillMenu(el, close) {
   const { active } = areaBonuses(res);
   el.replaceChildren(...[head,
     h('p.effects', `Stufe ${st.level + 1} · ${res.length}/${cap} Bewohner`),
-    h('p.effects', `Wohl fühlen sich hier: ${(area.likes || []).join(', ') || '–'}. Weniger gern: ${(area.dislikes || []).join(', ') || '–'}.`),
+    h('p.effects', area.only ? `Hier dürfen nur ${area.onlyName || 'bestimmte Pokémon'} wohnen – die fühlen sich hier pudelwohl.` : `Wohl fühlen sich hier: ${(area.likes || []).join(', ') || '–'}. Weniger gern: ${(area.dislikes || []).join(', ') || '–'}.`),
     h('div.row', collect, upgrade),
     active.length ? h('div', h('b', 'Aktive Boni'), h('div.bonus-list', active.map((b) => h('div.bonus' + (b.name.includes('legendär') ? '.legend' : ''), h('b', b.name), b.text)))) : null,
     h('b', 'Bewohner'), list,
@@ -287,14 +287,14 @@ const fitMark = (dex, areaId) => { const f = habitatFit(dex, areaId).fit; return
 
 function pickResident(area) {
   const s = app.state;
-  const free = s.pokemon.filter((p) => !p.area);
-  const others = s.pokemon.filter((p) => p.area && p.area !== area.id);
+  const free = s.pokemon.filter((p) => !p.area && allowedIn(p.dex, area.id));
+  const others = s.pokemon.filter((p) => p.area && p.area !== area.id && allowedIn(p.dex, area.id));
   closeSheet();
   modal((el, close) => {
     menu = null;
     el.append(h('h3', `Wer zieht in ${area.name} ein?`));
     if (!free.length && !others.length) {
-      el.append(h('p', 'Du hast noch keine weiteren Pokémon. Neue Pokémon gibt es am Automaten.'), h('button.btn', { onclick: close }, 'OK'));
+      el.append(h('p', area.only ? `Du hast keine passenden ${area.onlyName || 'Pokémon'}. Neue Pokémon gibt es am Automaten.` : 'Du hast noch keine weiteren Pokémon. Neue Pokémon gibt es am Automaten.'), h('button.btn', { onclick: close }, 'OK'));
       return;
     }
     const card = (p) => {

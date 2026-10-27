@@ -10,7 +10,7 @@ import { capacityOf, residents, genderSymbol, nameOf } from '../game/state.js';
 import { contestStats, contestLevel, gainLines } from '../game/contest.js';
 import { msToNextCoin, msToNextBerry, coinRange } from '../game/sim.js';
 import { modsFor, bonusTraits } from '../game/bonuses.js';
-import { habitatText, habitatFit, suitsArea } from '../game/habitat.js';
+import { habitatText, habitatFit, suitsArea, allowedIn } from '../game/habitat.js';
 import { mood, petBoost, affinity } from '../game/mood.js';
 import { isPsychic, canForesee, revealActive } from '../game/gacha.js';
 import { typeChip } from '../game/types.js';
@@ -243,7 +243,7 @@ export function openSheet(p) {
     if (sel.dataset.key !== selKey) {
       sel.dataset.key = selKey;
       sel.replaceChildren(h('option', { value: '' }, 'Einziehen in …'),
-        ...CFG.areas.filter((a) => st.areas[a.id].unlocked).map((a) => h('option', { value: a.id, disabled: residents(st, a.id).length >= capacityOf(st, a.id) }, `${a.name} (${residents(st, a.id).length}/${capacityOf(st, a.id)})${['  ✕', '', '  ♥'][habitatFit(p.dex, a.id).fit + 1]}`)));
+        ...CFG.areas.filter((a) => st.areas[a.id].unlocked && allowedIn(p.dex, a.id)).map((a) => h('option', { value: a.id, disabled: residents(st, a.id).length >= capacityOf(st, a.id) }, `${a.name} (${residents(st, a.id).length}/${capacityOf(st, a.id)})${['  ✕', '', '  ♥'][habitatFit(p.dex, a.id).fit + 1]}`)));
       moveRow.replaceChildren(...(p.area ? [] : [sel]));
     }
   };
