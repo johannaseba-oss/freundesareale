@@ -59,7 +59,7 @@ function startStall(canvas, mons, entry = null) {
   const actors = mons.map((p) => { const b = S.boxes[p.box ?? 0] || S.boxes[0]; return { p, b, x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2, tx: null, ty: null, wait: Math.random() * 2, dir: 0, t: 0, spr: loadSprites(p.dex, p.gender, p.shiny) }; });
   stallUi = { canvas, raf: 0, last: performance.now() };
   canvas.onclick = (e) => {
-    const r = canvas.getBoundingClientRect(), k = canvas.width / S.imageW / (window.devicePixelRatio || 1);
+    const r = canvas.getBoundingClientRect(), k = r.width / S.imageW;
     const x = (e.clientX - r.left) / k, y = (e.clientY - r.top) / k + top;
     const bi = S.boxes.findIndex((b) => x >= b[0] - 25 && x <= b[2] + 25 && y >= b[1] - 80 && y <= b[3] + 25);
     if (bi < 0) return;
@@ -168,7 +168,7 @@ function startTraining(p) {
     h('button.b-btn', { onclick: () => finish(true), title: 'Aufgeben' }, '🏳'));
   const root = h('div.battle.rc-train', top, h('div.b-field', canvas, h('div.rc-tap', 'Tippen = Springen')));
   document.body.append(root); document.body.classList.add('in-battle'); setMusic('arena');
-  const spr = loadSprites(p.dex, p.gender, p.shiny);
+  const spr = loadSprites(p.dex, p.gender, p.shiny), track = img(R().track.image);
   play = { root };
   const jump = (e) => { e.preventDefault(); if (g.done || g.y > 0.001 || g.pend != null) return; g.pend = g.t + P.delay; }; // Wendigkeit = Reaktionszeit
   canvas.addEventListener('pointerdown', jump);
@@ -195,38 +195,38 @@ function startTraining(p) {
     count.textContent = `${g.cleared}/${n}`;
     if (g.pos >= end) finish(false);
   }
+  // Rennbahn von oben (Kachel aus race.json track), Pokémon läuft auf der mittleren Bahn nach rechts
   function draw() {
     const r = canvas.parentElement.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
     fitCanvas(canvas, r, dpr);
-    const c = canvas.getContext('2d'), W = r.width, H = r.height, u = Math.min(W / 7, H / 6), gy = H * 0.68, px = W * 0.25;
+    const TR = R().track, c = canvas.getContext('2d'), W = r.width, H = r.height;
+    const k = Math.min(H / TR.tileH, 1.6), oy = (H - TR.tileH * k) / 2, lh = TR.laneH * k, lane = Math.floor(R().race.lanes / 2);
+    const ly = oy + (TR.laneTop + (lane + 0.5) * TR.laneH) * k, u = lh * 0.95, px = W * 0.3, cam = g.pos * u - px, tw = TR.tileW * k;
     c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
-    const sky = c.createLinearGradient(0, 0, 0, gy); sky.addColorStop(0, '#9fd8ff'); sky.addColorStop(1, '#e6f6ff'); c.fillStyle = sky; c.fillRect(0, 0, W, gy);
-    // Hügel (Parallax)
-    c.fillStyle = '#a6d98c';
-    for (let i = -1; i < W / 160 + 2; i++) { const hx = i * 160 - ((g.pos * u * 0.3) % 160); c.beginPath(); c.arc(hx, gy, 90, Math.PI, 0); c.fill(); }
-    c.fillStyle = '#7dbf5e'; c.fillRect(0, gy, W, H - gy);
-    c.fillStyle = '#c99a62'; c.fillRect(0, gy, W, u * 0.25);
-    for (let i = 0; i < W / 40 + 2; i++) { c.fillStyle = 'rgba(0,0,0,.07)'; c.fillRect(i * 40 - ((g.pos * u) % 40), gy + u * 0.3, 18, 4); }
-    // Hindernisse (Holzhürden)
+    c.fillStyle = '#3c7a3a'; c.fillRect(0, 0, W, H);
+    if (track.complete && track.naturalWidth) for (let i = Math.floor(cam / tw) - 1; i * tw - cam < W; i++) c.drawImage(track, Math.round(i * tw - cam), Math.round(oy), Math.ceil(tw) + 1, Math.round(TR.tileH * k));
+    // Ziellinie über alle Bahnen
+    const fx = (end - 2) * u - cam;
+    if (fx > -20 && fx < W + 20) for (let y = 0; y < (TR.laneH * R().race.lanes) / 10; y++) for (let xx = 0; xx < 2; xx++) { c.fillStyle = (y + xx) % 2 ? '#fff' : '#222'; c.fillRect(fx + xx * 6 * k, oy + TR.laneTop * k + y * 10 * k, 6 * k, 10 * k); }
+    // Hürden quer über die Bahn: Schatten am Boden, Stange je nach Höhe angehoben; umgestoßene liegen flach
     for (const o of obs) {
-      const ox = px + (o.x - g.pos) * u; if (ox < -u || ox > W + u) continue;
-      const hh = o.hgt * u;
-      c.save(); c.translate(ox, gy);
-      if (o.hit) c.rotate(0.6);
-      c.fillStyle = '#8a5a2b'; c.fillRect(-u * 0.32, -hh, u * 0.08, hh); c.fillRect(u * 0.24, -hh, u * 0.08, hh);
-      c.fillStyle = o.hit ? '#b9a08a' : '#f4f0e6'; c.fillRect(-u * 0.36, -hh, u * 0.72, u * 0.12); c.fillStyle = '#e8453c'; c.fillRect(-u * 0.1, -hh, u * 0.2, u * 0.12);
-      c.restore();
+      const ox = o.x * u - cam; if (ox < -lh || ox > W + lh) continue;
+      const y0 = ly - lh * 0.46, y1 = ly + lh * 0.46, lift = o.hit ? 0 : o.hgt * lh * 0.32;
+      c.fillStyle = 'rgba(0,0,0,.28)'; c.fillRect(ox - 3 * k, y0, 7 * k, y1 - y0);
+      if (o.hit) { c.fillStyle = '#b9a08a'; c.save(); c.translate(ox + lh * 0.25, ly); c.rotate(0.5); c.fillRect(-3 * k, -lh * 0.46, 6 * k, lh * 0.92); c.restore(); continue; }
+      c.fillStyle = '#8a8f98'; c.fillRect(ox - 2 * k, y0 - lift, 4 * k, lift + 3 * k); c.fillRect(ox - 2 * k, y1 - lift, 4 * k, lift + 3 * k);
+      const seg = (y1 - y0) / 6;
+      for (let i = 0; i < 6; i++) { c.fillStyle = i % 2 ? '#e8453c' : '#f7f4ee'; c.fillRect(ox - 3.5 * k, y0 - lift + i * seg, 7 * k, seg + 0.5); }
     }
-    // Ziel
-    const fx = px + (end - 2 - g.pos) * u;
-    if (fx < W + 40) for (let k = 0; k < 12; k++) { c.fillStyle = k % 2 ? '#fff' : '#222'; c.fillRect(fx, gy - 12 * 10 + k * 10, 10, 10); }
-    // Pokémon
+    // Pokémon: Schatten bleibt am Boden, Figur hebt beim Sprung ab (Größe aus der Laufanimation, damit sie nicht springt)
     if (spr.ready) {
-      const f = frameOf(spr, g.y > 0 ? 'Hop' : 'Walk', 2, g.t * 1000 * (0.6 + g.mult)), sc = (u * 1.25) / Math.max(f.fh, 32);
-      c.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(px - (f.fw * sc) / 2), Math.round(gy - g.y * u - f.fh * sc * 0.85), f.fw * sc, f.fh * sc);
+      const walk = spr.anims.Walk || spr.anims.Idle, sc = ((lh * 1.2) / Math.max(walk.fh, 30)) * (1 + g.y * 0.06), lift = g.y * lh * 0.45;
+      c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(px, ly + lh * 0.18, lh * (0.32 - g.y * 0.05), lh * 0.1, 0, 0, Math.PI * 2); c.fill();
+      const fr = frameOf(spr, g.y > 0 && spr.anims.Hop ? 'Hop' : 'Walk', 2, g.t * 1000 * (0.6 + g.mult));
+      c.drawImage(fr.img, fr.sx, fr.sy, fr.fw, fr.fh, Math.round(px - (fr.fw * sc) / 2), Math.round(ly + lh * 0.18 - fr.fh * sc * 0.62 - lift), fr.fw * sc, fr.fh * sc);
+      if (g.mult < 0.7) { c.font = `${Math.round(lh * 0.4)}px sans-serif`; c.fillText('💫', px - lh * 0.2, ly - lh * 0.7 - lift); }
     }
-    if (g.mult < 0.7) { c.font = `${Math.round(u * 0.4)}px sans-serif`; c.fillText('💫', px - u * 0.2, gy - g.y * u - u * 1.4); }
-    c.fillStyle = 'rgba(0,0,0,.55)'; c.font = `bold ${Math.round(u * 0.32)}px sans-serif`; c.textAlign = 'right';
+    c.fillStyle = 'rgba(255,255,255,.9)'; c.font = `bold ${Math.round(Math.max(14, lh * 0.28))}px sans-serif`; c.textAlign = 'right';
     c.fillText(`${Math.round(Math.min(100, (100 * g.pos) / end))} %`, W - 12, 28); c.textAlign = 'left';
   }
   function finish(gaveUp) {
