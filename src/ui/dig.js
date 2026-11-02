@@ -1,41 +1,79 @@
-// Ausgrabung im Vollbild: oben die Wand mit dem wachsenden Riss, darunter das Feld, unten Hacke und Hammer.
+// Ausgrabung: Auswahl mit Inventar, Radarschätzung und das Spiel im Hochformat – oben der Riss in der Wand, darunter das Feld, unten die Werkzeuge.
 import { CFG } from '../config.js';
 import { app } from '../app.js';
 import * as DG from '../game/dig.js';
-import { now } from '../time.js';
-import { h } from './dom.js';
+import { h, confirmDialog } from './dom.js';
 import { setMusic, playFile } from '../audio.js';
 import { haptic } from '../haptics.js';
 
 const D = () => CFG.dig;
-const ART = `${import.meta.env.BASE_URL}art/dig/`, CELL = 32, WALL = 72, SAND = 6, IRON = 7;
+const ART = `${import.meta.env.BASE_URL}art/dig/`, CELL = 32, WALL = 56, SAND = 6, IRON = 7;
 const pic = (f) => { const i = new Image(); i.src = ART + f; return i; };
 const sound = (k) => { const s = D().sounds[k]; playFile(s.file, s.vol); };
+const sheet = pic('items.png');
+// Bild eines Fundstücks als kleine Leinwand
+function itemPic(it) {
+  const c = h('canvas.dig-item', { width: it.w * CELL, height: it.h * CELL }), draw = () => { const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(sheet, it.x, it.y, it.w * CELL, it.h * CELL, 0, 0, it.w * CELL, it.h * CELL); };
+  if (sheet.complete) draw(); else sheet.addEventListener('load', draw, { once: true });
+  return c;
+}
+
+export function renderDigSetup(el, back) {
+  const inv = DG.inventory(app.state), again = () => renderDigSetup(el, back);
+  el.replaceChildren(h('div.bs',
+    h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
+    h('div.bs-head', h('h2', '⛏ Ausgrabung')),
+    h('button.btn.primary.big.dig-setup-go', { onclick: () => startDig(again) }, 'Ausgraben'),
+    h('h3', `🎒 Inventar (${inv.reduce((n, e) => n + e.count, 0)})`),
+    inv.length ? h('div.dig-inv', inv.map((e) => h('div.dig-slot', h('span.n', `×${e.count}`), itemPic(e.it), h('span', e.it.name)))) : h('p.note', 'Noch leer – alles, was du ausgräbst, landet hier.')));
+}
 
 export function startDig(onClose) {
-  const tiles = pic('tiles.png'), sheet = pic('items.png'), site = DG.newSite(), { cols, rows } = D();
+  const tiles = pic('tiles.png'), site = DG.newSite(), { cols, rows } = D();
   const W = cols * CELL, H = rows * CELL + WALL;
   const canvas = h('canvas.dig-cv', { width: W, height: H }), ctx = canvas.getContext('2d');
   let tool = 'hacke', raf = 0, shake = 0, ended = false, fall = -1;
   const fx = [], marks = [];
   const btnImg = { hacke: h('img', { alt: 'Hacke' }), hammer: h('img', { alt: 'Hammer' }) };
+  const info = h('div.dig-info');
+  const radarText = () => `${site.radar[0]}–${site.radar[1]}`;
+  const updateInfo = () => { info.textContent = `📡 ${radarText()} · ${site.items.filter((e) => e.got).length} gefunden`; };
   const setTool = (id) => {
     tool = id;
     btnImg.hacke.src = ART + (id === 'hacke' ? 'hacke_an.png' : 'hacke_aus.png');
     btnImg.hammer.src = ART + (id === 'hammer' ? 'hammer_an.png' : 'hammer_aus.png');
-    updateInfo();
   };
-  const info = h('div.dig-info');
-  const updateInfo = () => {
-    const got = site.items.filter((e) => e.got).length, T = D().tools[tool];
-    info.textContent = `${got}/${site.items.length} gefunden · ${T.name}: ${T.damage === 1 ? 'genau, schont die Stelle' : 'breit, schwächt die Stelle stärker'}`;
-  };
-  const root = h('div.dig',
-    h('button.fp-close', { onclick: () => finish(), title: 'Beenden' }, '✕'),
-    h('div.dig-board', canvas), info,
-    h('div.dig-tools', ['hacke', 'hammer'].map((id) => h('button.dig-tool', { onclick: () => { if (tool !== id) { sound('tool'); haptic('tick'); setTool(id); } } }, btnImg[id]))));
-  document.body.append(root); document.body.classList.add('in-battle'); setMusic('menu');
+  const root = h('div.dig');
+  document.body.append(root); document.body.classList.add('in-battle'); setMusic('track:' + D().music.track, D().music.volume);
   setTool('hacke');
+
+  // Radar zuerst: nur wie viele, nicht wo
+  root.replaceChildren(h('div.fp-end',
+    h('div.dig-radar'),
+    h('h2', 'Radarschätzung'),
+    h('p.dig-num', `${radarText()} Fundstücke`),
+    h('p', 'Wo sie liegen, verrät das Radar nicht.'),
+    h('div.row', h('button.btn.primary.big', { onclick: () => { sound('tool'); play(); } }, 'Los graben!'), h('button.btn', { onclick: leave }, 'Zurück'))));
+
+  function leave() { cancelAnimationFrame(raf); root.remove(); document.body.classList.remove('in-battle'); setMusic('menu'); onClose(); }
+
+  function play() {
+    const board = h('div.dig-board', canvas);
+    // Feld so groß wie möglich: füllt die Breite des Handys, solange die Höhe reicht
+    new ResizeObserver(() => {
+      const k = Math.min(board.clientWidth / W, board.clientHeight / H);
+      canvas.style.width = W * k + 'px'; canvas.style.height = H * k + 'px';
+    }).observe(board);
+    root.replaceChildren(
+      board,
+      h('div.dig-bar', info, h('button.btn.small', { onclick: async () => {
+        const n = site.items.filter((e) => e.got).length;
+        if (await confirmDialog(n ? `Ausgrabung beenden und ${n === 1 ? 'das freigelegte Fundstück' : `die ${n} freigelegten Fundstücke`} einsammeln?` : 'Ausgrabung beenden? Du hast noch nichts freigelegt.', 'Beenden')) finish();
+      } }, 'Beenden & einsammeln')),
+      h('div.dig-tools', ['hacke', 'hammer'].map((id) => h('button.dig-tool', { onclick: () => { if (tool !== id) { sound('tool'); haptic('tick'); setTool(id); } } }, btnImg[id]))));
+    updateInfo();
+    raf = requestAnimationFrame(loop);
+  }
 
   canvas.addEventListener('pointerdown', (e) => {
     if (ended || site.over) return;
@@ -45,28 +83,27 @@ export function startDig(onClose) {
     const res = DG.strike(site, x, y, tool);
     if (res.noop) return;
     marks.push({ x, y, t: performance.now(), tool });
-    shake = tool === 'hammer' ? 5 : 2.5;
-    for (let i = 0; i < (tool === 'hammer' ? 14 : 7); i++) fx.push({ x: (x + 0.5) * CELL, y: (y + 0.5) * CELL + WALL, vx: (Math.random() - 0.5) * 170, vy: -40 - Math.random() * 130, life: 0.5 });
+    shake = tool === 'hammer' ? 7 : 2.5;
+    for (let i = 0; i < (tool === 'hammer' ? 18 : 7); i++) fx.push({ x: (x + 0.5) * CELL, y: (y + 0.5) * CELL + WALL, vx: (Math.random() - 0.5) * 170, vy: -40 - Math.random() * 130, life: 0.5 });
     sound(res.iron ? 'iron' : 'hit'); haptic(tool === 'hammer' ? 'medium' : 'tick');
     if (res.found.length) { sound('found'); haptic('strong'); }
     updateInfo();
-    if (res.done) { sound('win'); setTimeout(() => finish(), 1100); }
-    if (res.collapsed) { sound('collapse'); fall = 0; shake = 12; haptic('strong'); setTimeout(() => finish(), 1300); }
+    if (res.done) { sound('win'); setTimeout(finish, 1100); }
+    if (res.collapsed) { sound('collapse'); fall = 0; shake = 12; haptic('strong'); setTimeout(finish, 1300); }
   });
 
   // Riss in der Wand: läuft von rechts nach links und wird breiter, je schwächer die Stelle ist
-  const crackY = Array.from({ length: Math.ceil(W / 14) + 2 }, (_, i) => (i % 2 ? -9 : 9) + (Math.random() - 0.5) * 8);
+  const crackY = Array.from({ length: Math.ceil(W / 14) + 2 }, (_, i) => (i % 2 ? -8 : 8) + (Math.random() - 0.5) * 7);
   function drawWall() {
     ctx.fillStyle = '#b89f6e'; ctx.fillRect(0, 0, W, WALL);
-    ctx.fillStyle = '#a58c5e'; for (let x = 6; x < W; x += 34) ctx.fillRect(x, 8 + (x % 3) * 12, 10, 3);
-    ctx.fillStyle = '#6e5a43'; ctx.fillRect(0, WALL - 6, W, 6);
+    ctx.fillStyle = '#a58c5e'; for (let x = 6; x < W; x += 34) ctx.fillRect(x, 8 + (x % 3) * 10, 10, 3);
+    ctx.fillStyle = '#6e5a43'; ctx.fillRect(0, WALL - 5, W, 5);
     const share = 1 - site.health / D().health;
     if (share <= 0) return;
     const reach = W * share;
-    ctx.strokeStyle = '#3a2a1e'; ctx.lineJoin = 'miter'; ctx.lineWidth = 3 + share * 14;
+    ctx.strokeStyle = '#3a2a1e'; ctx.lineJoin = 'miter'; ctx.lineWidth = 3 + share * 12;
     ctx.beginPath();
-    let first = true;
-    for (let i = 0; i * 14 <= reach + 14; i++) { const x = W - i * 14, y = WALL / 2 + crackY[i]; if (first) ctx.moveTo(x, y); else ctx.lineTo(x, y); first = false; }
+    for (let i = 0; i * 14 <= reach + 14; i++) { const x = W - i * 14, y = (WALL - 5) / 2 + crackY[i]; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
     ctx.stroke();
   }
   const tile = (i, x, y) => ctx.drawImage(tiles, i * CELL, 0, CELL, CELL, x * CELL, y * CELL + WALL, CELL, CELL);
@@ -82,7 +119,7 @@ export function startDig(onClose) {
       for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) tile(DG.isIron(site, x, y) ? IRON : SAND, x, y);
       for (const e of site.items) ctx.drawImage(sheet, e.it.x, e.it.y, e.it.w * CELL, e.it.h * CELL, e.x * CELL, e.y * CELL + WALL, e.it.w * CELL, e.it.h * CELL);
       for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const d = site.cell[y][x]; if (d > 0) tile(d - 1, x, y); }
-      // Funde leuchten kurz auf, bleiben aber sichtbar
+      // Funde leuchten kurz auf
       for (const e of site.items) {
         const age = e.got ? (ms - e.gotAt) / 900 : 2;
         if (age >= 0 && age < 1) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.sin(age * Math.PI); ctx.drawImage(sheet, e.it.x, e.it.y, e.it.w * CELL, e.it.h * CELL, e.x * CELL, e.y * CELL + WALL, e.it.w * CELL, e.it.h * CELL); ctx.restore(); }
@@ -102,24 +139,17 @@ export function startDig(onClose) {
     if (fall >= 0) { fall = Math.min(1, fall + dt * 1.1); ctx.fillStyle = '#3a2a1e'; ctx.fillRect(0, 0, W, H * fall); }
     raf = requestAnimationFrame(loop);
   };
-  raf = requestAnimationFrame(loop);
 
   function finish() {
     if (ended) return;
     ended = true;
     cancelAnimationFrame(raf);
-    const res = app.act((s) => DG.claim(s, site, now()), true), rewards = res.rewards || [];
+    const res = app.act((s) => DG.claim(s, site), true), items = res.items || [];
     const done = site.items.every((e) => e.got), collapsed = site.health <= 0 && !done;
-    const row = (r) => {
-      const c = h('canvas.dig-item', { width: r.it.w * CELL, height: r.it.h * CELL });
-      const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(sheet, r.it.x, r.it.y, r.it.w * CELL, r.it.h * CELL, 0, 0, r.it.w * CELL, r.it.h * CELL);
-      return h('div.dig-row', c, h('b', r.it.name), h('small', r.stone ? 'im Beutel' : r.coins ? `+${r.coins} Münzen` : 'Tagesgrenze erreicht'));
-    };
-    const close = () => { root.remove(); document.body.classList.remove('in-battle'); onClose(); };
     root.replaceChildren(h('div.fp-end',
       h('h2', collapsed ? '💥 Die Stelle ist eingestürzt!' : done ? '✨ Alles ausgegraben!' : 'Ausgrabung beendet'),
-      rewards.length ? h('div.dig-list', rewards.map(row)) : h('p', 'Diesmal hast du nichts mitgenommen.'),
-      h('div.row', h('button.btn.primary', { onclick: () => { root.remove(); document.body.classList.remove('in-battle'); startDig(onClose); } }, 'Nochmal'), h('button.btn', { onclick: close }, 'Fertig'))));
+      items.length ? [h('p', 'Das kommt ins Inventar:'), h('div.dig-list', items.map((it) => h('div.dig-row', itemPic(it), h('b', it.name))))] : h('p', 'Diesmal hast du nichts mitgenommen.'),
+      h('div.row', h('button.btn.primary', { onclick: () => { root.remove(); startDig(onClose); } }, 'Nochmal'), h('button.btn', { onclick: leave }, 'Fertig'))));
   }
   if (import.meta.env.DEV) app.dig = { site, finish, DG, canvas, get tool() { return tool; }, setTool };
 }

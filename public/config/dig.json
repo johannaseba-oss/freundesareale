@@ -1,12 +1,12 @@
 {
- "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit, coins = Münzen je Fund (Steine aus der Gruppe stein gibt es stattdessen als echten Entwicklungsstein). dailyCoinCap = höchstens so viele Münzen pro Tag. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt.",
- "cols": 13,
- "rows": 10,
+ "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. radarSpread = so weit kann die Radarschätzung nach unten und oben danebenliegen (Spanne = 2 × radarSpread). ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt.",
+ "cols": 10,
+ "rows": 14,
  "depth": [
   1,
   6
  ],
- "patches": 9,
+ "patches": 11,
  "itemCount": [
   2,
   4
@@ -27,43 +27,35 @@
   },
   "hammer": {
    "name": "Hammer",
-   "hit": 2,
-   "side": 1,
+   "hit": 3,
+   "side": 2,
    "diagonal": true,
-   "damage": 2
+   "damage": 4
   }
  },
  "groups": {
   "kugel": {
-   "weight": 30,
-   "coins": 20
+   "weight": 30
   },
   "grossKugel": {
-   "weight": 18,
-   "coins": 50
+   "weight": 18
   },
   "juwel": {
-   "weight": 14,
-   "coins": 60
+   "weight": 14
   },
   "schatz": {
-   "weight": 14,
-   "coins": 80
+   "weight": 14
   },
   "scherbe": {
-   "weight": 10,
-   "coins": 120
+   "weight": 10
   },
   "fossil": {
-   "weight": 8,
-   "coins": 150
+   "weight": 8
   },
   "stein": {
-   "weight": 6,
-   "coins": 0
+   "weight": 6
   }
  },
- "dailyCoinCap": 400,
  "sounds": {
   "hit": {
    "file": "fp_tick",
@@ -3872,5 +3864,10 @@
     ]
    ]
   }
- ]
+ ],
+ "radarSpread": 1,
+ "music": {
+  "track": "underground",
+  "volume": 0.35
+ }
 }

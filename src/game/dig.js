@@ -1,6 +1,5 @@
 // Ausgrabung (public/config/dig.json): zufällige Erdschichten, darunter Fundstücke und Eisen. Jeder Schlag trägt Erde ab und schwächt die Stelle.
 import { CFG } from '../config.js';
-import { dayKey } from '../time.js';
 
 const D = () => CFG.dig;
 const IRON = [[[0, 0], [1, 0]], [[0, 0], [0, 1]], [[0, 0], [1, 0], [0, 1], [1, 1]], [[0, 0], [1, 0], [2, 0]], [[0, 0], [0, 1], [0, 2]]];
@@ -14,7 +13,7 @@ function pickItem(rnd) {
 }
 
 export function newSite(rnd = Math.random) {
-  const { cols, rows, depth: [lo, hi] } = D(), mid = Math.round((lo + hi) / 2);
+  const { cols, rows, depth: [lo, hi] } = D(), mid = Math.round((lo + hi) / 2) - 1;
   const cell = Array.from({ length: rows }, () => Array(cols).fill(mid));
   // Flecken aus höheren und tieferen Schichten
   for (let n = 0; n < D().patches; n++) {
@@ -41,7 +40,9 @@ export function newSite(rnd = Math.random) {
     const shape = IRON[Math.floor(rnd() * IRON.length)], w = Math.max(...shape.map((c) => c[0])) + 1, h = Math.max(...shape.map((c) => c[1])) + 1, at = place(w, h, shape);
     if (at) shape.forEach(([a, b]) => iron.add(key(at.x + a, at.y + b)));
   }
-  return { cell, items, iron, health: D().health, over: false };
+  // Radar: nur eine Schätzung der Anzahl, nie der Ort
+  const low = Math.max(1, items.length - between([0, 2 * D().radarSpread], rnd));
+  return { cell, items, iron, health: D().health, over: false, radar: [low, low + 2 * D().radarSpread] };
 }
 
 export const isIron = (site, x, y) => site.iron.has(y * D().cols + x);
@@ -70,19 +71,14 @@ export function strike(site, x, y, toolId) {
   return { iron, found, done, collapsed };
 }
 
-// Am Ende auszahlen: Entwicklungssteine in den Beutel, alles andere in Münzen (Tagesgrenze)
-export function claim(s, site, t) {
-  const d = dayKey(t);
-  s.dig ||= { sites: 0, found: 0, day: '', coinsToday: 0 };
-  if (s.dig.day !== d) { s.dig.day = d; s.dig.coinsToday = 0; }
+// Am Ende einsammeln: alle freigelegten Fundstücke kommen ins Inventar (Schlüssel = Name, Bilder gibt es je Name mehrere)
+export function claim(s, site) {
+  s.dig ||= { sites: 0, found: 0 };
+  s.dig.inventory ||= {};
   s.dig.sites++;
-  const rewards = site.items.filter((e) => e.got).map(({ it }) => {
-    s.dig.found++;
-    if (it.stone) { s.items ||= {}; s.items.stones ||= {}; s.items.stones[it.stone] = (s.items.stones[it.stone] || 0) + 1; return { it, stone: true, coins: 0 }; }
-    const coins = Math.max(0, Math.min(D().groups[it.group].coins, D().dailyCoinCap - s.dig.coinsToday));
-    s.dig.coinsToday += coins; s.coins += coins;
-    if (coins) s.stats.coinsEarned = (s.stats.coinsEarned || 0) + coins;
-    return { it, coins };
-  });
-  return { ok: true, rewards };
+  const items = site.items.filter((e) => e.got).map((e) => e.it);
+  for (const it of items) { s.dig.found++; s.dig.inventory[it.name] = (s.dig.inventory[it.name] || 0) + 1; }
+  return { ok: true, items };
 }
+// Inventar zum Anzeigen: [{ it, count }]
+export const inventory = (s) => Object.entries(s.dig?.inventory || {}).map(([name, count]) => ({ it: D().items.find((i) => i.name === name), count })).filter((e) => e.it).sort((a, b) => a.it.group.localeCompare(b.it.group) || a.it.name.localeCompare(b.it.name));

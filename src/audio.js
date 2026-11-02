@@ -10,7 +10,7 @@ const save = () => { try { localStorage.setItem(KEY, JSON.stringify(audioSetting
 // Musik je Bereich (public/config/music.json): 'areas' (Playlist), 'menu', 'arena', 'chaos' oder ein Level-Stück 'track:<name>'.
 // Wechsel werden kurz übergeblendet; null = Stille (z. B. App im Hintergrund).
 import { CFG } from './config.js';
-let music = null, musicGain = null, want = null, playing = null, unlocked = false, lastFile = null, fadeTimer = 0;
+let volMul = 1, music = null, musicGain = null, want = null, playing = null, unlocked = false, lastFile = null, fadeTimer = 0;
 function player() {
   if (!music) {
     music = new Audio();
@@ -46,15 +46,17 @@ function start(key, force = false) {
   lastFile = file;
   m.loop = !Array.isArray(CFG.music?.[key]); // einzelne Stücke laufen in Schleife, Listen wechseln zufällig
   playing = key;
-  if (musicGain) { musicGain.gain.cancelScheduledValues(ac.currentTime); musicGain.gain.setValueAtTime(0.0001, ac.currentTime); musicGain.gain.setTargetAtTime(audioSettings.music, ac.currentTime, 0.25); }
-  else setVol(audioSettings.music);
+  if (musicGain) { musicGain.gain.cancelScheduledValues(ac.currentTime); musicGain.gain.setValueAtTime(0.0001, ac.currentTime); musicGain.gain.setTargetAtTime(audioSettings.music * volMul, ac.currentTime, 0.25); }
+  else setVol(audioSettings.music * volMul);
   m.play().catch(() => {});
 }
 // key = gewünschter Musik-Bereich (siehe oben)
 let lastKey = null;
-export const resumeMusic = () => setMusic(lastKey); // nach dem Zurückkehren in die App weiterspielen
-export function setMusic(key) {
+export const resumeMusic = () => setMusic(lastKey, volMul); // nach dem Zurückkehren in die App weiterspielen
+// mul = Lautstärke-Faktor für dieses Stück (z. B. leiser im Minispiel)
+export function setMusic(key, mul = 1) {
   want = key || null;
+  volMul = mul;
   if (want) lastKey = want;
   if (!unlocked) return;
   if (!want) { clearInterval(fadeTimer); if (music) music.pause(); playing = null; return; }
@@ -66,7 +68,7 @@ export const musicForLevel = (types) => (CFG.music?.byType[types?.[0]] ? 'track:
 export function setMusicVolume(v) {
   audioSettings.music = v; save();
   clearInterval(fadeTimer);
-  setVol(v);
+  setVol(v * volMul);
   if (v > 0 && want && unlocked && (!music || music.paused)) start(want, true);
   else if (v <= 0 && music) { music.pause(); playing = null; }
 }

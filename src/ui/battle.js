@@ -10,7 +10,7 @@ import { $, h, toast, modal, confirmDialog } from './dom.js';
 import { renderDefenseSetup, openChaos } from './defense.js';
 import { renderRouteSetup } from './route.js';
 import { openItemShop } from './rocks.js';
-import { startDig } from './dig.js';
+import { renderDigSetup } from './dig.js';
 import { renderWalkSetup } from './walk.js';
 import { renderRaceSetup } from './race.js';
 import { renderFootprintSetup } from './footprint.js';
@@ -76,7 +76,7 @@ export function renderBattleSetup() {
     el.replaceChildren(h('div.bs', h('div.bs-head', h('h2', 'Kampf'), h('button.btn.small.gold', { onclick: () => openItemShop() }, '🛒 Item-Shop')),
       h('button.mode-card.chaos-card', { onclick: () => openChaos() }, h('b', '🎲 Chaos-Modus'), h('small', 'Endlose Wellen, Pokébälle statt Sterne – jede große Welle andere Gegner. Wie weit kommst du?'), app.state.defense?.chaosBest ? h('small.chaos-best', `Dein Rekord: Welle ${app.state.defense.chaosBest}`) : null),
       h('button.mode-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/footprint/tile.webp)` }, onclick: () => { mode = 'footprint'; renderBattleSetup(); } }, h('b', '🐾 Fußabdrücke'), h('small', 'Wem gehört der Fußabdruck? Rate zehnmal und hol dir Rang SS.')),
-      h('button.mode-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/dig/tile.webp)` }, onclick: () => startDig(renderBattleSetup) }, h('b', '⛏ Ausgrabung'), h('small', 'Grabe Schätze aus, bevor die Stelle einbricht. Hacke oder Hammer?')),
+      h('button.mode-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/dig/tile.webp)` }, onclick: () => { mode = 'dig'; renderBattleSetup(); } }, h('b', '⛏ Ausgrabung'), h('small', 'Grabe Schätze aus, bevor die Stelle einbricht. Hacke oder Hammer?')),
       h('button.mode-card', { onclick: () => { mode = 'route'; renderBattleSetup(); } }, h('b', '🛤 Route'), h('small', 'Tower Defense mit fester Strecke: Pokémon auf Bauplätze setzen, EP verdienen und dauerhaft trainieren.')),
       h('button.mode-card.race-card', { onclick: () => { mode = 'race'; renderBattleSetup(); } }, h('b', '🏇 Rennen'), h('small', `Pferde-Pokémon im Stall pflegen und trainieren – jeden Tag um ${CFG.race.race.hour} Uhr ein Rennen auf 5 Bahnen.`), raceNote()),
       h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
@@ -88,6 +88,7 @@ export function renderBattleSetup() {
   if (mode === 'walk') { renderWalkSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'route') { renderRouteSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'race') { renderRaceSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
+  if (mode === 'dig') { renderDigSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'footprint') { renderFootprintSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   const mons = owned();
   const N = B().teamSize;
