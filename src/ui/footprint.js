@@ -1,4 +1,4 @@
-// Fußabdruck-Minispiel: Auswahl der Modi, Ladebildschirm, die Runde mit Zeitblöcken und Krakeelos Urteil, am Ende der Rang.
+// Fußabdruck-Minispiel: Auswahl der Modi, Krakeelos Ansage, die Runde mit Zeitblöcken und Krakeelos Urteil, am Ende der Rang.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import * as FP from '../game/footprint.js';
@@ -25,7 +25,7 @@ export function renderFootprintSetup(el, back) {
 }
 
 function start(makeRound, onClose) {
-  const root = h('div.fp', h('img.fp-loading', { src: ART + 'laden.png', alt: '' }));
+  const root = h('div.fp');
   document.body.append(root); document.body.classList.add('in-battle'); setMusic('menu');
   let raf = 0, timer = 0, closed = false, at = 0, points = 0, correct = 0;
   const close = () => { cancelAnimationFrame(raf); clearTimeout(timer); closed = true; root.remove(); document.body.classList.remove('in-battle'); onClose(); };
@@ -144,5 +144,9 @@ function start(makeRound, onClose) {
     if (rank.min >= 60) haptic('strong');
   }
 
-  timer = setTimeout(() => (guard ? showList() : ask()), F().loadingMs);
+  // Krakeelo erklärt kurz, dann geht es los
+  shell(h('div.fp-intro',
+    h('img.fp-who.big', { src: portraitUrl(F().announcer, 'Happy'), alt: 'Krakeelo' }),
+    h('div.fp-say', h('p', F().texts.intro)),
+    h('button.btn.primary.big', { onclick: () => { sound('tap'); if (guard) showList(); else ask(); } }, F().texts.introOk)));
 }

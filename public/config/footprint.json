@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Fußabdruck-Minispiel. rounds = Fußabdrücke pro Runde. phases = Zeitabschnitte: seconds = Dauer, show = was in den Antwort-Boxen zu sehen ist (name, portrait, sprite), color = Farbe der Zeitblöcke. blocksPerSecond = Zeitblöcke je Sekunde. loadingMs = Dauer des Ladebildschirms. slideMs = Dauer, bis der Fußabdruck nach oben verschwunden ist. messageMs = so lange bleibt Krakeelos Antwort stehen (Antippen geht schneller). announcer = Pokédex-Nr. von Krakeelo. dex = Pokémon mit Fußabdruck (erzeugt von tools/build_footprints.mjs).",
+  "_hinweis": "Fußabdruck-Minispiel. rounds = Fußabdrücke pro Runde. phases = Zeitabschnitte: seconds = Dauer, show = was in den Antwort-Boxen zu sehen ist (name, portrait, sprite), color = Farbe der Zeitblöcke. blocksPerSecond = Zeitblöcke je Sekunde. slideMs = Dauer, bis der Fußabdruck nach oben verschwunden ist. messageMs = so lange bleibt Krakeelos Antwort stehen (Antippen geht schneller). announcer = Pokédex-Nr. von Krakeelo. dex = Pokémon mit Fußabdruck (erzeugt von tools/build_footprints.mjs).",
   "rounds": 10,
   "phases": [
     {
@@ -19,7 +19,6 @@
     }
   ],
   "blocksPerSecond": 2,
-  "loadingMs": 1800,
   "slideMs": 550,
   "messageMs": 2800,
   "announcer": 294,
@@ -83,6 +82,8 @@
     "listVisible": true
   },
   "texts": {
+    "intro": "Du schaust auf die Fußabdrücke und ich öffne das Tor, verstanden?",
+    "introOk": "Verstanden!",
     "ask": "Wessen Fußabdruck ist das?",
     "right": [
       "Korrekt!",

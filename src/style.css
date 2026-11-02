@@ -971,7 +971,6 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .fp-banner { width: 100%; border: 3px solid var(--line); border-radius: 14px; display: block; }
 .fp-best { font-weight: 700; color: var(--green-d) !important; }
 .fp { position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; background: #2a1712; color: #fff; overflow: hidden; touch-action: manipulation; padding-bottom: env(safe-area-inset-bottom); }
-.fp-loading { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
 .fp-close { position: absolute; z-index: 3; top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); width: 34px; height: 34px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.45); color: #fff; font: inherit; cursor: pointer; }
 .fp-top { position: relative; flex: 1 1 36%; min-height: 150px; background: #3a1510 center / cover no-repeat; image-rendering: pixelated; overflow: hidden; display: flex; align-items: center; justify-content: center; }
 .fp-print { width: min(30vw, 22vh); height: min(30vw, 22vh); image-rendering: pixelated; animation: fp-in .35s ease-out; transition: transform .55s cubic-bezier(.5, 0, .9, .4); }
@@ -1002,6 +1001,7 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .fp-say { display: flex; align-items: center; gap: 8px; padding: 6px 8px; color: #4a2340; }
 .fp-say p { margin: 0; font-size: 14px; line-height: 1.25; }
 .fp-who { width: 48px; height: 48px; flex: none; image-rendering: pixelated; border-radius: 6px; }
+.fp-who.big { width: 120px; height: 120px; }
 .fp-intro, .fp-end { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 20px; text-align: center; }
 .fp-intro .fp-say { background: #f8dcef; border-radius: 10px; text-align: left; }
 .fp-intro .fp-list { border-radius: 10px; padding: 10px; } .fp-intro .fp-list img { width: 60px; height: 60px; }
