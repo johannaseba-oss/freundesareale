@@ -1,4 +1,4 @@
-// Putz-Minispiel für haarige und warzige Pokémon.
+// Putz-Minispiel für haarige, warzige und schuppige Pokémon.
 // 1) Seife aus der Ablage greifen und über die Dreckhaufen schieben: hinter der Seife entstehen Bläschen,
 //    die Haufen schrumpfen Stufe für Stufe und es bleibt Schaum zurück.
 // 2) Brause greifen und über Schaum und Bläschen ziehen: Wasserpixel spülen alles nach unten weg.

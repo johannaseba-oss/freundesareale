@@ -44,7 +44,7 @@ export const species = (dex) => CFG.dexById.get(dex);
 export const berryById = (id) => CFG.balance.berries.find((b) => b.id === id);
 export const ballById = (id) => CFG.balance.gacha.balls.find((b) => b.id === id);
 
-// Haarige und warzige Pokémon (nur sie haben Sauberkeit und das Putz-Minispiel)
+// Haarige, warzige und schuppige Pokémon (nur sie haben Sauberkeit und das Putz-Minispiel)
 export const furOf = (dex) => CFG.grooming?.pokemon[dex] || null;
 export const isHairy = (dex) => !!furOf(dex);
-export const skinWord = (dex) => (CFG.grooming?.warts?.includes(furOf(dex)) ? 'Haut' : 'Fell');
+export const coverOf = (dex) => CFG.grooming?.covers?.find((v) => v.furs.includes(furOf(dex))) || { word: 'Fell', dirty: 'Das Fell ist' };

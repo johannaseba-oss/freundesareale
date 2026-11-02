@@ -1,5 +1,5 @@
 // Detailansicht eines Pokémon: Pflege (Streicheln durch Reiben, Füttern), Beeren, Areal-Zuweisung.
-import { CFG, species, areaById, isHairy, skinWord } from '../config.js';
+import { CFG, species, areaById, isHairy, coverOf } from '../config.js';
 import { openGrooming } from './groom.js';
 import { app } from '../app.js';
 import { haptic } from '../haptics.js';
@@ -204,7 +204,7 @@ export function openSheet(p) {
     lHun.v.textContent = Math.round(p.fullness) + ' %';
     const notes = [];
     if (p.shineUntil && p.shineUntil > t) notes.push(h('div.note', `✨ Glänzt frisch geputzt (noch ${fmtDuration(p.shineUntil - t)})`));
-    if (hairy && (p.cleanliness ?? 100) < CFG.grooming.dirtyBelow) notes.push(h('div.note.warn', `${skinWord(p.dex) === 'Haut' ? 'Die Haut' : 'Das Fell'} ist schmutzig – Zeit zum Putzen!`));
+    if (hairy && (p.cleanliness ?? 100) < CFG.grooming.dirtyBelow) notes.push(h('div.note.warn', `${coverOf(p.dex).dirty} schmutzig – Zeit zum Putzen!`));
     if (p.area && p.fullness < CFG.balance.needs.hungryBelow) notes.push(h('div.note.warn', 'Hat Hunger – gib ihm eine Beere!'));
     if (p.area) {
       const mates = residents(st, p.area).filter((q) => q.uid !== p.uid).map((q) => ({ q, v: affinity(p.dex, q.dex) }));
@@ -271,7 +271,7 @@ export function openSheet(p) {
       if ((p.cleanliness ?? 0) >= 97) return toast(`${nameOf(p)} ist schon ganz sauber.`);
       closeSheet();
       openGrooming(p, () => openSheet(p));
-    } }, `🧽 ${skinWord(p.dex)} putzen`)) : null,
+    } }, `🧽 ${coverOf(p.dex).word} putzen`)) : null,
     itemRow,
     contestBox,
     moveRow));
