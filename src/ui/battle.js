@@ -12,6 +12,7 @@ import { renderRouteSetup } from './route.js';
 import { renderRocksSetup, openItemShop } from './rocks.js';
 import { renderWalkSetup } from './walk.js';
 import { renderRaceSetup } from './race.js';
+import { renderFootprintSetup } from './footprint.js';
 import { raceClock, myEntry, pendingRaces } from '../game/race.js';
 import { fmtDuration } from '../time.js';
 import { physBuff } from '../game/rocks.js';
@@ -78,6 +79,7 @@ export function renderBattleSetup() {
       h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
       h('button.mode-card', { onclick: () => { mode = 'arena'; step = 'opponent'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.')),
       h('button.mode-card', { onclick: () => { mode = 'rocks'; renderBattleSetup(); } }, h('b', '⛏ Felsbrecher'), h('small', 'Wettbewerb wie Piano Tiles: Felsen zertrümmern, bevor sie unten ankommen. Kraft und Tempo deines Pokémon entscheiden.')),
+      h('button.mode-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/footprint/tile.webp)` }, onclick: () => { mode = 'footprint'; renderBattleSetup(); } }, h('b', '🐾 Fußabdrücke'), h('small', 'Wem gehört der Fußabdruck? Rate zehnmal und hol dir Rang SS.')),
       h('button.mode-card', { onclick: () => { mode = 'walk'; renderBattleSetup(); } }, h('b', '🐾 Spaziergang'), h('small', 'Route auf der Karte einzeichnen, wilden Pokémon ausweichen oder sie klassisch bekämpfen – Attacken kosten Münzen.'))));
     return;
   }
@@ -86,6 +88,7 @@ export function renderBattleSetup() {
   if (mode === 'rocks') { renderRocksSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'route') { renderRouteSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   if (mode === 'race') { renderRaceSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
+  if (mode === 'footprint') { renderFootprintSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
   const mons = owned();
   const N = B().teamSize;
   const back = (fn) => h('button.btn.small.mode-back', { onclick: fn }, '‹ Zurück');
