@@ -1,0 +1,88 @@
+// Ausgrabung (public/config/dig.json): zufällige Erdschichten, darunter Fundstücke und Eisen. Jeder Schlag trägt Erde ab und schwächt die Stelle.
+import { CFG } from '../config.js';
+import { dayKey } from '../time.js';
+
+const D = () => CFG.dig;
+const IRON = [[[0, 0], [1, 0]], [[0, 0], [0, 1]], [[0, 0], [1, 0], [0, 1], [1, 1]], [[0, 0], [1, 0], [2, 0]], [[0, 0], [0, 1], [0, 2]]];
+const between = ([a, b], rnd) => a + Math.floor(rnd() * (b - a + 1));
+function pickItem(rnd) {
+  const G = Object.entries(D().groups), tot = G.reduce((n, [, g]) => n + g.weight, 0);
+  let r = rnd() * tot, group = G[0][0];
+  for (const [k, g] of G) { if (r < g.weight) { group = k; break; } r -= g.weight; }
+  const list = D().items.filter((i) => i.group === group);
+  return list[Math.floor(rnd() * list.length)];
+}
+
+export function newSite(rnd = Math.random) {
+  const { cols, rows, depth: [lo, hi] } = D(), mid = Math.round((lo + hi) / 2);
+  const cell = Array.from({ length: rows }, () => Array(cols).fill(mid));
+  // Flecken aus höheren und tieferen Schichten
+  for (let n = 0; n < D().patches; n++) {
+    const cx = rnd() * cols, cy = rnd() * rows, rad = 1.5 + rnd() * 2.5, add = rnd() < 0.5 ? -1 - Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 3);
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (Math.hypot(x - cx, y - cy) <= rad) cell[y][x] = Math.max(lo, Math.min(hi, cell[y][x] + add));
+  }
+  const used = new Set(), key = (x, y) => y * cols + x;
+  const place = (w, h, cells) => {
+    for (let tries = 0; tries < 80; tries++) {
+      const x = Math.floor(rnd() * (cols - w + 1)), y = Math.floor(rnd() * (rows - h + 1));
+      if (cells.some(([a, b]) => used.has(key(x + a, y + b)))) continue;
+      cells.forEach(([a, b]) => used.add(key(x + a, y + b)));
+      return { x, y };
+    }
+    return null;
+  };
+  const items = [];
+  for (let n = between(D().itemCount, rnd); n > 0; n--) {
+    const it = pickItem(rnd), at = place(it.w, it.h, it.cells);
+    if (at) items.push({ it, ...at, got: false });
+  }
+  const iron = new Set();
+  for (let n = between(D().ironCount, rnd); n > 0; n--) {
+    const shape = IRON[Math.floor(rnd() * IRON.length)], w = Math.max(...shape.map((c) => c[0])) + 1, h = Math.max(...shape.map((c) => c[1])) + 1, at = place(w, h, shape);
+    if (at) shape.forEach(([a, b]) => iron.add(key(at.x + a, at.y + b)));
+  }
+  return { cell, items, iron, health: D().health, over: false };
+}
+
+export const isIron = (site, x, y) => site.iron.has(y * D().cols + x);
+const revealed = (site, e) => e.it.cells.filter(([a, b]) => site.cell[e.y + b][e.x + a] === 0).length / e.it.cells.length;
+
+// Ein Schlag: trägt Erde ab, kostet Stabilität, meldet neue Funde. Auf bereits freier Erde passiert nichts.
+export function strike(site, x, y, toolId) {
+  const T = D().tools[toolId], { cols, rows } = D();
+  if (site.over) return { noop: true };
+  let removed = 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const nx = x + dx, ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
+    const center = !dx && !dy;
+    if (!center && dx && dy && !T.diagonal) continue;
+    const take = Math.min(site.cell[ny][nx], center ? T.hit : T.side);
+    site.cell[ny][nx] -= take; removed += take;
+  }
+  const iron = !removed && isIron(site, x, y);
+  if (!removed && !iron) return { noop: true };
+  site.health = Math.max(0, site.health - T.damage);
+  const found = site.items.filter((e) => !e.got && revealed(site, e) >= D().revealShare);
+  found.forEach((e) => { e.got = true; e.gotAt = performance.now(); });
+  const done = site.items.every((e) => e.got), collapsed = !done && site.health <= 0;
+  site.over = done || collapsed;
+  return { iron, found, done, collapsed };
+}
+
+// Am Ende auszahlen: Entwicklungssteine in den Beutel, alles andere in Münzen (Tagesgrenze)
+export function claim(s, site, t) {
+  const d = dayKey(t);
+  s.dig ||= { sites: 0, found: 0, day: '', coinsToday: 0 };
+  if (s.dig.day !== d) { s.dig.day = d; s.dig.coinsToday = 0; }
+  s.dig.sites++;
+  const rewards = site.items.filter((e) => e.got).map(({ it }) => {
+    s.dig.found++;
+    if (it.stone) { s.items ||= {}; s.items.stones ||= {}; s.items.stones[it.stone] = (s.items.stones[it.stone] || 0) + 1; return { it, stone: true, coins: 0 }; }
+    const coins = Math.max(0, Math.min(D().groups[it.group].coins, D().dailyCoinCap - s.dig.coinsToday));
+    s.dig.coinsToday += coins; s.coins += coins;
+    if (coins) s.stats.coinsEarned = (s.stats.coinsEarned || 0) + coins;
+    return { it, coins };
+  });
+  return { ok: true, rewards };
+}

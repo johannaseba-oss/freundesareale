@@ -1010,3 +1010,16 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .fp-rank { font-family: Arial, Helvetica, sans-serif; font-size: 120px; font-weight: 900; line-height: 1; text-transform: uppercase; animation: fp-glow 1.4s ease-in-out infinite; }
 @keyframes fp-glow { 0%, 100% { text-shadow: 0 0 6px currentColor, 0 0 14px currentColor; transform: scale(1); } 50% { text-shadow: 0 0 14px currentColor, 0 0 34px currentColor, 0 0 60px currentColor; transform: scale(1.05); } }
 .fp-end .btn:not(.primary) { color: var(--ink); }
+
+/* Ausgrabung */
+.dig { position: fixed; inset: 0; z-index: 45; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: #2a1712; color: #fff; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); overflow: auto; }
+.dig-board { width: min(100vw, calc((100dvh - 210px) * 416 / 392)); }
+.dig-cv { display: block; width: 100%; height: auto; image-rendering: pixelated; touch-action: none; }
+.dig-info { font-size: 13px; text-align: center; padding: 0 12px; }
+.dig-tools { display: flex; gap: 22px; }
+.dig-tool { padding: 0; border: 0; background: none; cursor: pointer; }
+.dig-tool img { display: block; width: 86px; height: 118px; image-rendering: pixelated; }
+.dig-list { display: flex; flex-direction: column; gap: 8px; width: min(100%, 340px); max-height: 50vh; overflow: auto; }
+.dig-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.12); border-radius: 10px; padding: 6px 10px; text-align: left; }
+.dig-row b { flex: 1; }
+.dig-item { max-width: 56px; max-height: 56px; image-rendering: pixelated; }
