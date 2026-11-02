@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Putz-Minispiel für haarige Pokémon. pokemon = Pokédex-Nr. -> Fellfarbe (Datei in public/art/fell, Quelle assets-input/fell). Nur diese Pokémon haben Sauberkeit.",
+  "_hinweis": "Putz-Minispiel für haarige und warzige Pokémon. pokemon = Pokédex-Nr. -> Fell-/Hautfarbe (Datei in public/art/fell, Quelle assets-input/fell). Nur diese Pokémon haben Sauberkeit. Farben in warts = warzige Haut (Texte sagen dann „Haut“ statt „Fell“).",
   "furs": {
     "dunkelgrau": "dunkelgrau.webp",
     "rot": "rot.webp",
@@ -15,9 +15,16 @@
     "hellgruen": "hellgruen.webp",
     "lila": "lila.webp",
     "grau": "grau.webp",
-    "hellbeige": "hellbeige.webp"
+    "hellbeige": "hellbeige.webp",
+    "warzig_braun": "warzig_braun.webp",
+    "warzig_lila": "warzig_lila.webp",
+    "warzig_gruen": "warzig_gruen.webp",
+    "warzig_blau": "warzig_blau.webp"
   },
   "pokemon": {
+    "1": "warzig_gruen",
+    "2": "warzig_gruen",
+    "3": "warzig_gruen",
     "19": "lila",
     "20": "beige",
     "25": "gelb",
@@ -49,6 +56,7 @@
     "174": "rosa",
     "181": "gelb",
     "184": "hellblau",
+    "186": "warzig_gruen",
     "196": "lila",
     "197": "dunkelgrau",
     "203": "gelb",
@@ -83,6 +91,8 @@
     "431": "dunkelblau",
     "447": "dunkelblau",
     "448": "dunkelblau",
+    "453": "warzig_blau",
+    "454": "warzig_blau",
     "466": "gelb",
     "492": "weiss",
     "506": "beige",
@@ -91,6 +101,8 @@
     "509": "lila",
     "527": "hellblau",
     "528": "grau",
+    "536": "warzig_blau",
+    "537": "warzig_blau",
     "546": "hellgruen",
     "547": "hellbeige",
     "570": "dunkelgrau",
@@ -126,7 +138,13 @@
     "685": "rosa",
     "702": "orange",
     "714": "lila",
-    "715": "dunkelgrau"
+    "715": "dunkelgrau",
+    "816": "warzig_blau",
+    "817": "warzig_blau",
+    "818": "warzig_blau",
+    "859": "warzig_lila",
+    "860": "warzig_lila",
+    "861": "warzig_lila"
   },
   "cleanPerHour": 1.2,
   "_effect": "Sauberkeit wirkt langsam auf die Zufriedenheit: pro Stunde effectPerHour × (Sauberkeit−50)/50 (sauber +, schmutzig −).",
@@ -227,5 +245,11 @@
     }
   ],
   "_shine": "Glanz nach vollständiger Reinigung (Stunden), sichtbar im Areal.",
-  "shineHours": 1
+  "shineHours": 1,
+  "warts": [
+    "warzig_braun",
+    "warzig_lila",
+    "warzig_gruen",
+    "warzig_blau"
+  ]
 }
