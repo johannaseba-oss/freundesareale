@@ -1007,5 +1007,6 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .fp-intro .fp-list { border-radius: 10px; padding: 10px; } .fp-intro .fp-list img { width: 60px; height: 60px; }
 .fp-black { color: #ff8a80; } .fp-green { color: #8cf08c; }
 .fp-intro h2, .fp-end h2 { margin: 0; } .fp-end p { margin: 0; }
-.fp-rank { font-size: 110px; font-weight: 900; line-height: 1; color: #ffe14a; text-shadow: 0 5px 0 #8a4a00, 0 0 24px rgba(255, 220, 80, .7); }
-.fp-rank.r-E, .fp-rank.r-F { color: #c9c9c9; text-shadow: 0 5px 0 #444; }
+.fp-rank { font-family: Arial, Helvetica, sans-serif; font-size: 120px; font-weight: 900; line-height: 1; text-transform: uppercase; animation: fp-glow 1.4s ease-in-out infinite; }
+@keyframes fp-glow { 0%, 100% { text-shadow: 0 0 6px currentColor, 0 0 14px currentColor; transform: scale(1); } 50% { text-shadow: 0 0 14px currentColor, 0 0 34px currentColor, 0 0 60px currentColor; transform: scale(1.05); } }
+.fp-end .btn:not(.primary) { color: var(--ink); }

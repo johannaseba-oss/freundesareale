@@ -23,42 +23,50 @@
   "slideMs": 550,
   "messageMs": 2800,
   "announcer": 294,
-  "_scoring": "Punkte je richtiger Antwort: base + speed × verbleibender Zeitanteil. ranks: min = nötiger Anteil der Höchstpunktzahl in Prozent (höchster zuerst).",
+  "_scoring": "Punkte je richtiger Antwort: base + speed × verbleibender Zeitanteil. ranks: min = nötiger Anteil der Höchstpunktzahl in Prozent (höchster zuerst), color = Farbe des Rangs am Ende.",
   "scoring": {
     "base": 50,
     "speed": 50,
     "ranks": [
       {
         "id": "SS",
-        "min": 85
+        "min": 85,
+        "color": "#ff8ad1"
       },
       {
         "id": "S",
-        "min": 72
+        "min": 72,
+        "color": "#b18cff"
       },
       {
         "id": "A",
-        "min": 60
+        "min": 60,
+        "color": "#6fd3ff"
       },
       {
         "id": "B",
-        "min": 48
+        "min": 48,
+        "color": "#a6f05a"
       },
       {
         "id": "C",
-        "min": 36
+        "min": 36,
+        "color": "#28c840"
       },
       {
         "id": "D",
-        "min": 24
+        "min": 24,
+        "color": "#ffe01f"
       },
       {
         "id": "E",
-        "min": 12
+        "min": 12,
+        "color": "#ff9500"
       },
       {
         "id": "F",
-        "min": 0
+        "min": 0,
+        "color": "#ff3b30"
       }
     ]
   },
@@ -755,5 +763,32 @@
     896,
     897,
     898
-  ]
+  ],
+  "_sounds": "Geräusche (Dateien in public/audio/sfx): file = Name, vol = Lautstärke. enter = Pokémon tritt ein, tap = Antwort getippt, tick = jede abgelaufene Sekunde, right/wrong = Auflösung, rank = Rang am Ende.",
+  "sounds": {
+    "enter": {
+      "file": "fp_whoosh",
+      "vol": 0.7
+    },
+    "tap": {
+      "file": "fp_klick",
+      "vol": 0.8
+    },
+    "tick": {
+      "file": "fp_tick",
+      "vol": 0.35
+    },
+    "right": {
+      "file": "fp_richtig",
+      "vol": 0.9
+    },
+    "wrong": {
+      "file": "fp_fehler",
+      "vol": 0.8
+    },
+    "rank": {
+      "file": "fp_rang",
+      "vol": 0.9
+    }
+  }
 }

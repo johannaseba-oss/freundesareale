@@ -75,7 +75,7 @@ export function setSfxVolume(v) { audioSettings.sfx = v; save(); }
 window.addEventListener('pointerdown', () => {
   if (unlocked) return;
   unlocked = true; ctx(); setMusic(want);
-  for (const n of ['muenze', 'muenzeinwurf', 'mechanik', 'ballfall', 'seife', 'wasser']) loadBuf(n); // vorladen
+  for (const n of ['muenze', 'muenzeinwurf', 'mechanik', 'ballfall', 'seife', 'wasser', 'fp_whoosh', 'fp_klick', 'fp_tick', 'fp_richtig', 'fp_fehler', 'fp_rang']) loadBuf(n); // vorladen
 }, { capture: true });
 
 // ---------- Soundeffekte ----------

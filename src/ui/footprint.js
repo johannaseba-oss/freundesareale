@@ -4,7 +4,7 @@ import { app } from '../app.js';
 import * as FP from '../game/footprint.js';
 import { loadSprites, frameOf, portraitUrl } from '../gfx/sprites.js';
 import { h } from './dom.js';
-import { setMusic, sfx } from '../audio.js';
+import { setMusic, playFile } from '../audio.js';
 import { haptic } from '../haptics.js';
 
 const F = () => CFG.footprint;
@@ -12,6 +12,7 @@ const ART = `${import.meta.env.BASE_URL}art/footprint/`;
 const name = (d) => species(d).name;
 const fill = (txt, v) => txt.replace(/\{(\w+)\}/g, (_, k) => v[k]);
 const any = (list) => list[Math.floor(Math.random() * list.length)];
+const sound = (k) => { const s = F().sounds[k]; playFile(s.file, s.vol); };
 
 export function renderFootprintSetup(el, back) {
   const best = (m) => { const b = app.state.footprint?.best?.[m]; return b ? h('small.fp-best', `Bestes Ergebnis: Rang ${b.rank} · ${b.correct}/${F().rounds} · ${b.points} Punkte`) : ''; };
@@ -45,7 +46,7 @@ function start(makeRound, onClose) {
   const showList = () => shell(h('div.fp-intro',
     h('h2.' + (round.type === 'black' ? 'fp-black' : 'fp-green'), round.type === 'black' ? '⛔ Schwarze Liste' : '✅ Gästeliste'),
     speech(F().texts.guardIntro[round.type]),
-    listStrip(), h('button.btn.primary.big', { onclick: ask }, 'Los geht’s!')));
+    listStrip(), h('button.btn.primary.big', { onclick: () => { sound('tap'); ask(); } }, 'Los geht’s!')));
 
   function ask() {
     if (closed) return;
@@ -71,7 +72,8 @@ function start(makeRound, onClose) {
     if (guard) parts.push(reject);
     parts.push(say);
     shell(...parts);
-    let done = false, shown = 'name';
+    let done = false, shown = 'name', second = 0;
+    sound('enter');
     const t0 = performance.now();
     const showAt = (t) => { let s = 0; for (const p of F().phases) { s += p.seconds; if (t < s) return p.show; } return F().phases.at(-1).show; };
     const reveal = (c) => { if (!c.por.firstChild) c.por.append(h('img', { src: portraitUrl(c.d), alt: '' })); };
@@ -85,6 +87,7 @@ function start(makeRound, onClose) {
       if (closed || done) return;
       const t = (ms - t0) / 1000;
       blocks.forEach((b) => b.el.classList.toggle('off', t >= b.at)); // abgelaufene Blöcke verschwinden
+      if (Math.floor(t) > second && t < total) { second = Math.floor(t); sound('tick'); }
       if (!guard) {
         const now = showAt(t);
         if (now !== shown) { shown = now; haptic('tick'); }
@@ -102,10 +105,12 @@ function start(makeRound, onClose) {
       cards.forEach((c) => { c.card.disabled = true; });
       reject.disabled = true;
       cards.find((c) => c.d === pick)?.card.classList.add('picked');
+      if (pick != null) sound('tap');
       print.classList.add('leave'); // Fußabdruck zieht nach oben hinaus, erst danach die Auflösung
       haptic('tick');
       timer = setTimeout(() => {
-        if (ok) { correct++; points += FP.pointsFor(Math.max(0, 1 - t / total)); sfx.coin?.(); haptic('medium'); }
+        if (ok) { correct++; points += FP.pointsFor(Math.max(0, 1 - t / total)); haptic('medium'); }
+        sound(ok ? 'right' : 'wrong');
         pts.textContent = `${points} P`;
         const v = { guess: pick && pick !== 'reject' ? name(pick) : '', real: name(q.dex) };
         const allowed = !guard || FP.mayEnter(round, q.dex);
@@ -131,11 +136,12 @@ function start(makeRound, onClose) {
   function finish() {
     const rank = FP.rankOf(points), r = app.act((s) => FP.saveResult(s, round.mode, points, correct), true);
     shell(h('div.fp-end',
-      h('div.fp-rank.r-' + rank.id, rank.id),
+      h('div.fp-rank', { style: { color: rank.color } }, rank.id),
       h('h2', `${correct} von ${round.questions.length} richtig`),
       h('p', `${points} Punkte${r?.isNew ? ' – neue Bestleistung!' : ''}`),
       h('div.row', h('button.btn.primary', { onclick: () => { close(); start(makeRound, onClose); } }, 'Nochmal'), h('button.btn', { onclick: close }, 'Fertig'))));
-    if (rank.min >= 60) { sfx.coin?.(); haptic('strong'); }
+    sound('rank');
+    if (rank.min >= 60) haptic('strong');
   }
 
   timer = setTimeout(() => (guard ? showList() : ask()), F().loadingMs);
