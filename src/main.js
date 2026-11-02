@@ -178,8 +178,15 @@ function collectAll() {
 }
 
 // „Alle füttern“ (immer in der Kopfzeile): alle hungrigen Pokémon mit Beeren aus dem Beutel versorgen
-function feedAllBerries() {
-  const r = app.act((s, t) => A.feedAllInventory(s, t), true);
+async function feedAllBerries() {
+  // keine Beeren mehr: anbieten, genug zu kaufen, um alle satt zu machen
+  const noBerries = !CFG.balance.berries.some((b) => app.state.berries[b.id] > 0), plan = noBerries && A.feedBuyPlan(app.state);
+  if (plan) {
+    const what = `${plan.count} ${plan.berry.name}${plan.count > 1 ? 'n' : ''}`;
+    if (app.state.coins < plan.cost) { toast(`Keine Beeren mehr – ${what} für alle ${plan.pokemon} hungrigen Pokémon kosten ${plan.cost} Münzen, du hast ${app.state.coins}.`, true); return; }
+    if (!(await confirmDialog(`Du hast keine Beeren mehr. ${what} für ${plan.cost} Münzen kaufen und damit alle ${plan.pokemon} hungrigen Pokémon satt machen?`, 'Kaufen & füttern'))) return;
+  }
+  const r = app.act((s, t) => (plan ? A.feedAllBuy(s, t) : A.feedAllInventory(s, t)), true);
   if (r.ok === false) return;
   app.feedOffer = false;
   lastHud = '';

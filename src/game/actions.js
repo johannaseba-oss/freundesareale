@@ -112,6 +112,26 @@ export function feedAllInventory(s, t) {
   return { ok: true, used, fed, pokemon: fed.size };
 }
 
+// Beutel leer: wie viele Beeren müsste man kaufen, damit alle Pokémon in Arealen satt sind? (günstigste kaufbare Sorte je Hunger-Punkt)
+export function feedBuyPlan(s) {
+  const mons = s.pokemon.filter((q) => q.area && q.fullness < 99);
+  const berry = CFG.balance.berries.filter((b) => b.buyable !== false && b.hunger > 0).sort((a, c) => a.cost / a.hunger - c.cost / c.hunger)[0];
+  if (!mons.length || !berry) return null;
+  const count = mons.reduce((n, q) => n + Math.ceil((99 - q.fullness) / berry.hunger), 0);
+  return { berry, count, cost: count * berry.cost, pokemon: mons.length };
+}
+// Plan ausführen: giveBerry kauft jede Beere, weil der Beutel leer ist
+export function feedAllBuy(s, t) {
+  const plan = feedBuyPlan(s);
+  if (!plan) return fail('Alle Pokémon in deinen Arealen sind satt.');
+  if (s.coins < plan.cost) return fail(`Das kostet ${plan.cost} Münzen, du hast ${s.coins}.`);
+  const fed = new Map();
+  for (const p of s.pokemon.filter((q) => q.area && q.fullness < 99)) {
+    while (p.fullness < 99) { if (!giveBerry(s, p, plan.berry.id, t).ok) break; fed.set(p.uid, plan.berry.id); }
+  }
+  return { ok: true, used: { [plan.berry.id]: plan.count }, fed, pokemon: fed.size };
+}
+
 // ---- Route: EP-Konto und dauerhaftes Training ----
 export function addRouteEp(s, n) { s.route ||= { ep: 0, cleared: 0 }; s.route.ep += Math.max(0, Math.round(n)); return { ok: true }; }
 // Route: beste Wellenzahl eines einzelnen Durchgangs je Level (für die Freischaltung des nächsten Levels)
