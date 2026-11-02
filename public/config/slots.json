@@ -1,9 +1,9 @@
 {
   "_hinweis": "Spielautomat (Automat-Seite): Einsatz mindestens bets[0] Münzen. Hauptgewinne (drei gleiche): Pokémon, Entwicklungssteine oder Items zum Tragen. Zwei gleiche (pairs): Replay = Gratisspiel, sonst 20 % des Einsatzes zurück. weight = Chance in % pro Spiel beim kleinsten Einsatz; höhere Einsätze multiplizieren die Hauptgewinn-Chancen (betMult). Alles andere ist eine Niete.",
   "bets": [
-    100,
-    250,
-    500
+    1000,
+    2500,
+    5000
   ],
   "betMult": [
     1,

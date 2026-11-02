@@ -1,4 +1,4 @@
-// Spielautomat: Einsatz (mind. 100 Münzen) → Ergebnis wird beim Start ausgelost, die Walzen zeigen es nur an.
+// Spielautomat: Einsatz (slots.json bets) → Ergebnis wird beim Start ausgelost, die Walzen zeigen es nur an.
 // Drei gleiche: Pokémon (Spielautomat-exklusive Mysteriöse/Trio-Legendäre/Jirachi oder seltene), Entwicklungssteine, Items.
 // Zwei gleiche: Replay = Gratisspiel, sonst 20 % des Einsatzes zurück. Werte in slots.json.
 import { CFG, species } from '../config.js';

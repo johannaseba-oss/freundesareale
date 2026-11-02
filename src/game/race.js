@@ -164,39 +164,26 @@ export function buildField(day, entries) {
 }
 
 // ---------- Rennen berechnen ----------
-// Ergebnis: tracks[i] = Positionen alle 0,1 s, events[i] = Sprünge ({ h, ok, t }), finish[i] = Zielzeit, place[i] = Platz (1 = Sieg)
+// Rein zufällig: alle laufen nach denselben Regeln, die Werte zählen nicht. Ergebnis: tracks[i] = Positionen alle 0,1 s, finish[i] = Zielzeit, place[i] = Platz (1 = Sieg), hideT = Zeitpunkt des Ausblendens
 export function simulateRace(day, runners) {
-  const C = R().race, M = R().stats.max, dt = 0.05, rnd = mulberry32(hashString(`rennen|${day}|${runners.map((r) => r.key + ':' + r.dex).join(',')}`));
-  const hurdles = Array.from({ length: C.hurdles }, (_, i) => Math.round((C.length * (i + 1)) / (C.hurdles + 1) * 10) / 10);
-  const st = runners.map((r) => {
-    const v = r.stats;
-    return { x: 0, v: 0, mult: 1, noise: 1, next: 0, finish: null, track: [0], events: [],
-      top: lerp(C.speed[0], C.speed[1], v.tempo / M) * (1 + (rnd() * 2 - 1) * C.form) * (1 + (C.beautyEffect || 0) * (v.schoenheit / M)),
-      rec: lerp(C.recover[0], C.recover[1], v.tempo / M),
-      pj: Math.min(C.jumpMax, C.jumpBase + (v.sprung / M) * C.jumpSprung + (v.wendig / M) * C.jumpWendig) };
-  });
-  let t = 0, step = 0;
+  const C = R().race, dt = 0.05, seg = Math.round(C.segment / dt), rnd = mulberry32(hashString(`rennen|${day}|${runners.map((r) => r.key + ':' + r.dex).join(',')}`));
+  const st = runners.map(() => ({ x: 0, v: 0, noise: 1, finish: null, track: [0] }));
+  let t = 0, step = 0, hideT = null;
   while (st.some((r) => r.finish == null) && t < 600) {
     t += dt; step++;
-    for (const r of st) {
-      if (r.finish != null) continue;
-      if (step % 20 === 1) r.noise = 1 + (rnd() * 2 - 1) * C.noise;
-      r.mult = Math.min(1, r.mult + r.rec * dt);
-      r.v += (r.top * r.noise * r.mult - r.v) * Math.min(1, dt * 2.2);
+    const open = st.filter((r) => r.finish == null), mean = open.reduce((n, r) => n + r.x, 0) / open.length;
+    for (const r of open) {
+      if (step % seg === 1) r.noise = 1 + (rnd() * 2 - 1) * C.noise;
+      r.v += (C.speed * r.noise + C.bunch * (mean - r.x) - r.v) * Math.min(1, dt * 2.2);
       r.x += r.v * dt;
-      if (r.next < hurdles.length && r.x >= hurdles[r.next] - 0.4) {
-        const ok = rnd() < r.pj;
-        r.events.push({ h: r.next, ok, t: Math.round(t * 100) / 100 });
-        if (!ok) { r.mult = C.slow; r.v *= C.slow; }
-        r.next++;
-      }
+      if (hideT == null && r.x >= C.length * C.hideAt) hideT = t;
       if (r.x >= C.length) r.finish = t - (r.x - C.length) / Math.max(0.1, r.v) + rnd() * 1e-4;
     }
     if (step % 2 === 0) for (const r of st) r.track.push(Math.round(Math.min(r.x, C.length + 3) * 100) / 100);
   }
-  const order = st.map((_, i) => i).sort((a, b) => st[a].finish - st[b].finish);
+  const order = st.map((_, i) => i).sort((p, q) => st[p].finish - st[q].finish);
   const place = []; order.forEach((i, k) => (place[i] = k + 1));
-  return { hurdles, length: C.length, step: 0.1, tracks: st.map((r) => r.track), events: st.map((r) => r.events), finish: st.map((r) => Math.round(r.finish * 100) / 100), place, order };
+  return { length: C.length, step: 0.1, hideT, tracks: st.map((r) => r.track), finish: st.map((r) => Math.round(r.finish * 100) / 100), place, order };
 }
 
 // ---------- Wetten (zufällige Trainer setzen auf ein Pokémon) ----------

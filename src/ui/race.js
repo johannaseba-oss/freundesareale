@@ -49,7 +49,7 @@ export function renderRaceSetup(el, back) {
 // Stall-Szene: Hintergrundbild (Ausschnitt um die Boxen), jedes Pokémon läuft nur in seiner Box herum
 function showHelp() {
   modal((m, close) => m.append(h('h3', '🏇 Rennen'),
-    h('p', `Jeden Tag um ${R().race.hour} Uhr läuft ein Hürdenrennen auf ${R().race.lanes} Bahnen. Melde vorher ein Pokémon aus deinem Stall an – freie Bahnen füllt der Computer auf. Gute Werte verbessern die Chancen, sicher ist nichts.`),
+    h('p', `Jeden Tag um ${R().race.hour} Uhr läuft ein Rennen auf ${R().race.lanes} Bahnen. Melde vorher ein Pokémon aus deinem Stall an – freie Bahnen füllt der Computer auf. Der Ausgang ist reiner Zufall und zeigt sich erst ganz am Ende.`),
     h('p', 'Tippe auf eine leere Box, um ein Pokémon einziehen zu lassen, oder auf ein Pokémon für sein Profil. Jedes Pokémon hat eigene Werte: ★ gefüllt = erreicht, hell = noch möglich, schwarz = da geht nichts mehr. Pro Tag kann jeder Wert nur ein Stück wachsen.'),
     h('div.row', h('button.btn', { onclick: close }, 'OK'))));
 }
@@ -260,12 +260,12 @@ async function watchRace(day) {
   const canvas = h('canvas.arena-canvas'), pos = h('span.rk-score');
   const top = h('div.b-top', h('img.rk-top-por', { src: portraitUrl(mine.dex, 'Normal', mine.shiny), alt: '' }),
     h('div.b-name', h('b', `Rennen vom ${RC.fmtDay(day)}`), h('small', `${mine.name} auf Bahn ${me + 1}`)), pos,
-    h('button.b-btn', { onclick: () => { st.t = Math.max(st.t, maxT + 0.1); }, title: 'Zum Ergebnis' }, '⏭'));
+    h('button.b-btn', { onclick: () => { st.t = Math.max(st.t, maxT); }, title: 'Zum Ergebnis' }, '⏭'));
   const betBox = h('div.rc-bets', h('b', 'Wetten'), bets.map((b) => h('div', `${b.trainer} setzt ${b.item ? b.stake : b.stake + ' Münzen'} auf ${runners[b.on].name}`)));
   const root = h('div.battle.rc-race', top, h('div.b-field', canvas, betBox));
   document.body.append(root); document.body.classList.add('in-battle'); setMusic('arena');
   const sprites = runners.map((r) => loadSprites(r.dex, r.gender, r.shiny));
-  const maxT = (Math.max(...res.tracks.map((tr) => tr.length)) - 1) * res.step;
+  const maxT = res.hideT, photo = R().race.photoSeconds; // ab maxT ist die Bahn ausgeblendet: Ergebnis erst am Ende
   const st = { t: -3, done: false }; // 3 s Countdown
   play = { root };
   const xAt = (i, t) => { const tr = res.tracks[i], k = Math.max(0, t) / res.step, a = Math.floor(k); return a >= tr.length - 1 ? tr[tr.length - 1] : tr[a] + (tr[a + 1] - tr[a]) * (k - a); };
@@ -276,7 +276,7 @@ async function watchRace(day) {
     st.t += dt;
     if (st.t > -0.5) betBox.classList.add('fade');
     draw();
-    if (st.t > maxT + 0.6 && !st.done) { st.done = true; showResult(); }
+    if (st.t > maxT + photo && !st.done) { st.done = true; showResult(); }
     raf = requestAnimationFrame(loop);
   };
   function draw() {
@@ -285,7 +285,7 @@ async function watchRace(day) {
     const c = canvas.getContext('2d'), W = r.width, H = r.height, k = Math.min(H / T.tileH, 1.2), oy = (H - T.tileH * k) / 2, unit = 34 * k;
     c.setTransform(dpr, 0, 0, dpr, 0, 0); c.imageSmoothingEnabled = false;
     c.fillStyle = '#3c7a3a'; c.fillRect(0, 0, W, H);
-    const t = Math.max(0, Math.min(st.t, maxT)), myX = xAt(me, t);
+    const t = Math.max(0, Math.min(st.t, maxT + 0.3)), myX = xAt(me, t);
     const want = myX * unit - W * 0.4; cam += (want - cam) * 0.15; if (st.t < 0) cam = want;
     const tw = T.tileW * k;
     if (tile.complete && tile.naturalWidth) for (let i = Math.floor(cam / tw) - 1; i * tw - cam < W; i++) c.drawImage(tile, Math.round(i * tw - cam), Math.round(oy), Math.ceil(tw) + 1, Math.round(T.tileH * k));
@@ -295,29 +295,18 @@ async function watchRace(day) {
       const sx = lx * unit - cam; if (sx < -20 || sx > W + 20) continue;
       for (let y = 0; y < (T.laneH * runners.length) / 10; y++) for (let xx = 0; xx < 2; xx++) { c.fillStyle = (y + xx) % 2 ? col : '#222'; c.fillRect(sx + xx * 6 * k, oy + T.laneTop * k + y * 10 * k, 6 * k, 10 * k); }
     }
-    // Hürden je Bahn (umgestoßen, wenn das Pokémon dort hängen geblieben ist)
-    runners.forEach((_, i) => res.hurdles.forEach((hx, j) => {
-      const sx = hx * unit - cam; if (sx < -30 || sx > W + 30) return;
-      const ev = res.events[i].find((e) => e.h === j), down = ev && !ev.ok && xAt(i, t) >= hx - 0.4;
-      c.save(); c.translate(sx, laneY(i) + lh * 0.3); if (down) c.rotate(1.1);
-      c.fillStyle = '#ddd'; c.fillRect(-2 * k, -lh * 0.45, 4 * k, lh * 0.45);
-      c.fillStyle = '#fff'; c.fillRect(-4 * k, -lh * 0.5, 8 * k, lh * 0.12); c.fillStyle = '#e8453c'; c.fillRect(-4 * k, -lh * 0.38, 8 * k, lh * 0.08);
-      c.restore();
-    }));
     // Pokémon
-    const order = runners.map((_, i) => i).sort((a, b) => (st.t > res.finish[a] && st.t > res.finish[b] ? res.finish[a] - res.finish[b] : xAt(b, t) - xAt(a, t)));
     runners.forEach((rn, i) => {
       const x = xAt(i, t), sx = x * unit - cam, e = sprites[i];
       if (sx < -80 || sx > W + 80 || !e.ready) return;
-      let lift = 0, stumble = false;
-      for (const ev of res.events[i]) { const hx = res.hurdles[ev.h], d = x - (hx - 1.1); if (ev.ok && d > 0 && d < 2.2) lift = Math.sin((Math.PI * d) / 2.2) * lh * 0.55; if (!ev.ok && x >= hx - 0.4 && x < hx + 2.5) stumble = true; }
-      const moving = st.t > 0 && st.t < res.finish[i] + 0.3;
+      const moving = st.t > 0;
       const f = frameOf(e, moving ? 'Walk' : 'Idle', 2, Math.max(0, st.t) * 1400), sc = (lh * 1.15) / Math.max(f.fh, 30);
-      c.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(sx - (f.fw * sc) / 2), Math.round(laneY(i) - f.fh * sc * 0.72 - lift), f.fw * sc, f.fh * sc);
-      if (stumble) { c.font = `${Math.round(lh * 0.35)}px sans-serif`; c.fillText('💫', sx - lh * 0.2, laneY(i) - lh * 0.75); }
-      if (rn.me) { c.fillStyle = '#ffe066'; c.beginPath(); c.moveTo(sx, laneY(i) - lh * 0.95 - lift); c.lineTo(sx - 7, laneY(i) - lh * 1.1 - lift); c.lineTo(sx + 7, laneY(i) - lh * 1.1 - lift); c.fill(); }
+      c.drawImage(f.img, f.sx, f.sy, f.fw, f.fh, Math.round(sx - (f.fw * sc) / 2), Math.round(laneY(i) - f.fh * sc * 0.72), f.fw * sc, f.fh * sc);
+      if (rn.me) { c.fillStyle = '#ffe066'; c.beginPath(); c.moveTo(sx, laneY(i) - lh * 0.95); c.lineTo(sx - 7, laneY(i) - lh * 1.1); c.lineTo(sx + 7, laneY(i) - lh * 1.1); c.fill(); }
     });
-    pos.textContent = st.t < 0 ? `Start in ${Math.ceil(-st.t)}` : `Platz ${order.indexOf(me) + 1}`;
+    pos.textContent = st.t < 0 ? `Start in ${Math.ceil(-st.t)}` : st.t < maxT ? '🏁' : '📸';
+    // kurz vor dem Ziel ausblenden: wer gewonnen hat, zeigt erst das Ergebnis
+    if (st.t >= maxT) { c.fillStyle = `rgba(20,20,30,${Math.min(1, (st.t - maxT) / 0.3)})`; c.fillRect(0, 0, W, H); c.fillStyle = '#fff'; c.font = `bold ${Math.round(Math.max(20, H * 0.05))}px sans-serif`; c.textAlign = 'center'; c.fillText('📸 Zielfoto …', W / 2, H / 2); c.textAlign = 'left'; }
     if (st.t < 0) { c.fillStyle = 'rgba(0,0,0,.35)'; c.fillRect(0, 0, W, H); c.fillStyle = '#fff'; c.font = `bold ${Math.round(H * 0.18)}px sans-serif`; c.textAlign = 'center'; c.fillText(String(Math.ceil(-st.t)), W / 2, H / 2 + H * 0.06); c.textAlign = 'left'; }
   }
   function showResult() {

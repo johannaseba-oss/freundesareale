@@ -167,28 +167,17 @@
     "perDay": 2
   },
   "race": {
-    "_hinweis": "Tägliches Rennen um hour Uhr (Zeitzone timeZone). lanes = Bahnen (Computer füllt leere auf). length = Streckenlänge in Feldern, hurdles = Hürden auf der Strecke. Tempo = speed [Wert 0 → max] Felder/s, form = Tagesform-Zufall ±, noise = Tempo-Zufall je Abschnitt ±. Hürde: Erfolgs-Chance = jumpBase + Sprungkraft/max × jumpSprung + Wendigkeit/max × jumpWendig (höchstens jumpMax); Fehlsprung bremst auf slow, Erholung über recover [0 → max] je Sekunde (Geschwindigkeit). beautyEffect = Einfluss der Schönheit aufs Rennen (noch offen: 0). cpuStats = Werte der Computer-Pokémon [min, max]. keepDays = so viele Tage bleiben Anmeldungen im Spielstand.",
+    "_hinweis": "Tägliches Rennen um hour Uhr (Zeitzone timeZone) ohne Hindernisse und rein zufällig: die Werte der Pokémon spielen keine Rolle. lanes = Bahnen (Computer füllt leere auf). length = Streckenlänge in Feldern, speed = Grundtempo in Feldern/s, noise = Tempo-Zufall ± (Anteil), je Abschnitt von segment Sekunden neu ausgelost. bunch = wie stark das Feld zusammenbleibt (damit bis zum Schluss alles offen ist). Sobald das erste Pokémon hideAt der Strecke geschafft hat, wird ausgeblendet; nach photoSeconds Sekunden Zielfoto kommt das Ergebnis. cpuStats = Werte der Computer-Pokémon [min, max] (nur für die Wetten). keepDays = so viele Tage bleiben Anmeldungen im Spielstand.",
     "hour": 18,
     "timeZone": "Europe/Berlin",
     "lanes": 5,
     "length": 120,
-    "hurdles": 8,
-    "speed": [
-      3.2,
-      4.6
-    ],
-    "form": 0.06,
-    "noise": 0.08,
-    "jumpBase": 0.45,
-    "jumpSprung": 0.3,
-    "jumpWendig": 0.2,
-    "jumpMax": 0.95,
-    "slow": 0.45,
-    "recover": [
-      0.35,
-      1
-    ],
-    "beautyEffect": 0,
+    "speed": 4,
+    "noise": 0.25,
+    "segment": 1,
+    "bunch": 0.15,
+    "hideAt": 0.92,
+    "photoSeconds": 2,
     "cpuStats": [
       10,
       45
