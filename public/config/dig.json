@@ -1,10 +1,10 @@
 {
- "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level).",
+ "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level). groups: revealShare = eigener Freilege-Anteil dieser Gruppe statt des allgemeinen (Fossilien: komplett freilegen).",
  "cols": 10,
  "rows": 14,
  "depth": [
   1,
-  6
+  7
  ],
  "patches": 11,
  "itemCount": [
@@ -50,7 +50,8 @@
    "weight": 10
   },
   "fossil": {
-   "weight": 8
+   "weight": 2,
+   "revealShare": 1
   },
   "stein": {
    "weight": 6

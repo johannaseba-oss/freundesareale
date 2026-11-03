@@ -6,14 +6,15 @@ import sharp from 'sharp';
 const IN = 'assets-input/dig/', OUT = 'public/art/dig/', CF = 'public/config/dig.json', CELL = 32;
 fs.mkdirSync(OUT, { recursive: true });
 
-// Kacheln aus der großen Vorlage (eine Zelle = 120 px): Reihenfolge = Tiefe 1 … 6, danach Sand und Eisen
+// Kacheln aus der großen Vorlage (eine Zelle = 120 px): Reihenfolge = Tiefe 1 … 6, danach Sand, Eisen und das harte Gestein (Tiefe 7: abgedunkelter Fels)
 const TILES = [[360, 120], [480, 0], [600, 480], [360, 0], [600, 120], [0, 0], [480, 120], [840, 360]];
-const sheet = sharp({ create: { width: CELL * TILES.length, height: CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
+const sheet = sharp({ create: { width: CELL * (TILES.length + 1), height: CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
 const parts = [];
 for (let i = 0; i < TILES.length; i++) {
   const input = await sharp(IN + 'vorlage.webp').extract({ left: TILES[i][0], top: TILES[i][1], width: 120, height: 120 }).resize(CELL, CELL, { kernel: 'nearest' }).png().toBuffer();
   parts.push({ input, left: i * CELL, top: 0 });
 }
+parts.push({ input: await sharp(IN + 'vorlage.webp').extract({ left: 0, top: 0, width: 120, height: 120 }).resize(CELL, CELL, { kernel: 'nearest' }).modulate({ brightness: 0.55, saturation: 0.5 }).png().toBuffer(), left: TILES.length * CELL, top: 0 });
 await sheet.composite(parts).png().toFile(OUT + 'tiles.png');
 
 fs.copyFileSync(IN + 'items.png', OUT + 'items.png');

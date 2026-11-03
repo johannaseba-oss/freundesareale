@@ -67,7 +67,7 @@ export function strike(site, x, y, toolId) {
   const iron = !removed && isIron(site, x, y);
   if (!removed && !iron) return { noop: true };
   site.health = Math.max(0, site.health - T.damage);
-  const found = site.items.filter((e) => !e.got && revealed(site, e) >= D().revealShare);
+  const found = site.items.filter((e) => !e.got && revealed(site, e) >= (D().groups[e.it.group].revealShare ?? D().revealShare));
   found.forEach((e) => { e.got = true; e.gotAt = performance.now(); });
   const done = site.items.every((e) => e.got), collapsed = !done && site.health <= 0;
   site.over = done || collapsed;

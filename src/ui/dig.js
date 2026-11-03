@@ -10,7 +10,7 @@ import { setMusic, playFile } from '../audio.js';
 import { haptic } from '../haptics.js';
 
 const D = () => CFG.dig;
-const ART = `${import.meta.env.BASE_URL}art/dig/`, CELL = 32, WALL = 56, SAND = 6, IRON = 7;
+const ART = `${import.meta.env.BASE_URL}art/dig/`, CELL = 32, WALL = 56, SAND = 6, IRON = 7, HARD = 8;
 const pic = (f) => { const i = new Image(); i.src = ART + f; return i; };
 const sound = (k) => { const s = D().sounds[k]; playFile(s.file, s.vol); };
 const sheet = pic('items.png');
@@ -128,7 +128,7 @@ export function startDig(onClose) {
     if (tiles.complete && sheet.complete) {
       for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) tile(DG.isIron(site, x, y) ? IRON : SAND, x, y);
       for (const e of site.items) ctx.drawImage(sheet, e.it.x, e.it.y, e.it.w * CELL, e.it.h * CELL, e.x * CELL, e.y * CELL + WALL, e.it.w * CELL, e.it.h * CELL);
-      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const d = site.cell[y][x]; if (d > 0) tile(d - 1, x, y); }
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const d = site.cell[y][x]; if (d > 0) tile(d >= 7 ? HARD : d - 1, x, y); }
       // Funde leuchten kurz auf
       for (const e of site.items) {
         const age = e.got ? (ms - e.gotAt) / 900 : 2;
