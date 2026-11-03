@@ -1,4 +1,4 @@
-// Bodenkacheln für Sonderattacken in PokeDefense/Chaos: Eis aus dem Tileset, Wurzeln und Schleim als Pixelgrafik (24 × 24, nahtlos).
+// Bodenkacheln für Sonderattacken in PokeDefense/Chaos: Eis aus dem Tileset, Wurzeln (transparent) und Schleim (nahtlos) als Pixelgrafik.
 // Aufruf: node tools/build_terrain.mjs
 import fs from 'fs';
 import sharp from 'sharp';
@@ -13,19 +13,23 @@ const canvas = () => Buffer.alloc(S * S * 4);
 const put = (d, x, y, c) => { x = ((x % S) + S) % S; y = ((y % S) + S) % S; d.set(c, (y * S + x) * 4); };
 const save = (d, name) => sharp(d, { raw: { width: S, height: S, channels: 4 } }).png().toFile(OUT + name);
 
-// Wurzeln: dunkler Erdton, darauf verschlungene Stränge mit heller Kante
-const roots = canvas();
-for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) put(roots, x, y, (x * 3 + y * 5) % 7 === 0 ? [52, 38, 24, 215] : [66, 48, 30, 205]);
-for (let n = 0; n < 5; n++) {
-  let x = Math.floor(rnd() * S), y = Math.floor(rnd() * S), dx = rnd() < 0.5 ? 1 : -1;
-  for (let i = 0; i < 26; i++) {
-    put(roots, x, y, [124, 86, 48, 255]); put(roots, x + 1, y, [92, 62, 34, 255]); put(roots, x, y - 1, [160, 118, 70, 255]);
-    if (i % 7 === 3) { put(roots, x + 1, y - 1, [122, 199, 76, 255]); put(roots, x + 2, y - 2, [79, 143, 48, 255]); }
-    if (rnd() < 0.55) x += dx; else y += 1;
-    if (rnd() < 0.15) dx = -dx;
+// Wurzeln: einzelne Stränge auf transparentem Grund, die Mitte treibt nach außen und läuft dünner aus (32 × 32)
+const R = 32, rootPx = Buffer.alloc(R * R * 4);
+const dab = (x, y, r, c) => { for (let b = -r; b <= r; b++) for (let a = -r; a <= r; a++) if (a * a + b * b <= r * r + 0.5) { const X = Math.round(x + a), Y = Math.round(y + b); if (X >= 0 && Y >= 0 && X < R && Y < R) rootPx.set(c, (Y * R + X) * 4); } };
+const strands = [];
+const grow = (x, y, ang, len, width) => {
+  for (let i = 0; i < len; i++) {
+    const w = width * (1 - i / len);
+    strands.push({ x, y, r: Math.max(0, Math.round(w)) });
+    ang += (rnd() - 0.5) * 0.6; x += Math.cos(ang); y += Math.sin(ang);
+    if (i > 2 && i % 5 === 0 && w > 0.8) grow(x, y, ang + (rnd() < 0.5 ? 0.9 : -0.9), Math.round(len * 0.45), w * 0.7);
   }
-}
-await save(roots, 'boden_wurzel.png');
+};
+for (let n = 0; n < 6; n++) grow(16, 17, (n / 6) * Math.PI * 2 + rnd() * 0.5, 13, 2.4);
+for (const q of strands) dab(q.x, q.y, q.r + 1, [46, 30, 16, 255]); // dunkle Kontur
+for (const q of strands) dab(q.x, q.y, q.r, [120, 82, 44, 255]);
+for (const q of strands) if (q.r > 0) dab(q.x - 0.5, q.y - 0.5, q.r - 1, [172, 128, 78, 255]); // heller Grat
+await sharp(rootPx, { raw: { width: R, height: R, channels: 4 } }).png().toFile(OUT + 'boden_wurzel.png');
 
 // Schleim: violette Fläche mit dunkleren Pfützen und hellen Glanzpunkten
 const slime = canvas();

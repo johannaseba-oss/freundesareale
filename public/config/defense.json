@@ -1930,8 +1930,8 @@
     "Pflanze": [
       {
         "kind": "terrain",
-        "name": "Wurzelfeld",
-        "text": "lässt auf den 3 Feldern vor sich Wurzeln wachsen, die Gegnern KP entziehen",
+        "name": "Wurzelfeld (passiv)",
+        "text": "lässt von selbst auf den 3 Feldern vor sich Wurzeln wachsen, die Gegnern KP entziehen",
         "every": 12,
         "duration": 8,
         "tile": "wurzel",
