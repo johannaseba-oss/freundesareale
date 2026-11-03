@@ -16,8 +16,8 @@ function weekStart(ms) {
 export const weekKey = (ms) => { const d = weekStart(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
 export const nextWeekStart = (ms) => { const d = weekStart(ms); d.setDate(d.getDate() + 7); return d.getTime(); };
 
-// nur über den Spielautomaten erhältlich (slots.json exclusive)
-const slotOnly = (dex) => !!CFG.slots?.exclusive?.includes(dex);
+// nicht im Pokéball-Automaten: nur über den Spielautomaten (slots.json exclusive) oder gar nicht ziehbar (balance.json gacha.excluded)
+const slotOnly = (dex) => !!CFG.slots?.exclusive?.includes(dex) || !!CFG.balance.gacha.excluded?.includes(dex);
 // ältere Wochen-Pools: Spielautomat-exklusive Pokémon gegen andere derselben Seltenheit tauschen
 function dropSlotOnly(s) {
   let changed = false;

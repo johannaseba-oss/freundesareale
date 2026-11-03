@@ -39,7 +39,7 @@ const LIST = [
   G('stern', 'Sternenstück', [8, 552, 80, 80], 'schatz'), G('knochen1', 'Dicker Knochen', [98, 566, 188, 52], 'schatz'), G('knochen2', 'Dicker Knochen', [118, 642, 52, 188], 'schatz'),
   G('eisenkugel', 'Eisenkugel', [290, 546, 92, 92], 'schatz'), G('heiss', 'Heißbrocken', [390, 550, 116, 90], 'schatz'), G('glatt', 'Glattbrocken', [554, 592, 116, 106], 'schatz'), G('eis', 'Eisbrocken', [546, 704, 126, 110], 'schatz'),
   G('stachel', 'Stachelkern', [674, 556, 92, 84], 'schatz'), G('oval', 'Ovaler Stein', [776, 548, 80, 90], 'schatz'), G('ewig', 'Ewigstein', [678, 640, 118, 62], 'schatz'),
-  G('glanz', 'Glanzsplitter', [24, 654, 48, 68], 'schatz'), G('lehm', 'Lichtlehm', [194, 654, 120, 94], 'schatz'), G('hart', 'Harter Stein', [330, 646, 108, 118], 'schatz'), G('feucht', 'Nassbrocken', [452, 640, 90, 78], 'schatz'),
+  G('glanz', 'Glanzsplitter', [24, 654, 48, 68], 'schatz'), G('lehm', 'Lichtlehm', [194, 654, 120, 94], 'schatz'), G('urzeit', 'Urzeitfossil', [330, 646, 108, 118], 'fossil'), G('feucht', 'Nassbrocken', [452, 640, 90, 78], 'schatz'),
   G('sternbruch', 'Sternbruch', [4, 740, 88, 88], 'schatz'), G('kiesel', 'Kieselkern', [194, 770, 60, 60], 'schatz'), G('herz', 'Herzschuppe', [256, 786, 48, 44], 'schatz'),
   G('scherbe_gruen', 'Grüne Scherbe', [804, 644, 120, 88], 'scherbe'), G('scherbe_rot', 'Rote Scherbe', [676, 708, 84, 88], 'scherbe'), G('scherbe_gelb', 'Gelbe Scherbe', [804, 740, 112, 88], 'scherbe'), G('scherbe_blau', 'Blaue Scherbe', [836, 836, 90, 88], 'scherbe'),
 ];

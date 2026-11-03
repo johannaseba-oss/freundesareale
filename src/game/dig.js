@@ -1,5 +1,7 @@
 // Ausgrabung (public/config/dig.json): zufällige Erdschichten, darunter Fundstücke und Eisen. Jeder Schlag trägt Erde ab und schwächt die Stelle.
-import { CFG } from '../config.js';
+import { CFG, species } from '../config.js';
+import { addCaught } from './actions.js';
+import { dayKey } from '../time.js';
 
 const D = () => CFG.dig;
 const IRON = [[[0, 0], [1, 0]], [[0, 0], [0, 1]], [[0, 0], [1, 0], [0, 1], [1, 1]], [[0, 0], [1, 0], [2, 0]], [[0, 0], [0, 1], [0, 2]]];
@@ -8,8 +10,10 @@ function pickItem(rnd) {
   const G = Object.entries(D().groups), tot = G.reduce((n, [, g]) => n + g.weight, 0);
   let r = rnd() * tot, group = G[0][0];
   for (const [k, g] of G) { if (r < g.weight) { group = k; break; } r -= g.weight; }
-  const list = D().items.filter((i) => i.group === group);
-  return list[Math.floor(rnd() * list.length)];
+  // erst der Name, dann eine der Bildvarianten: mehrere Lagen desselben Fundstücks machen es nicht häufiger
+  const list = D().items.filter((i) => i.group === group), names = [...new Set(list.map((i) => i.name))];
+  const name = names[Math.floor(rnd() * names.length)], same = list.filter((i) => i.name === name);
+  return same[Math.floor(rnd() * same.length)];
 }
 
 export function newSite(rnd = Math.random) {
@@ -80,3 +84,26 @@ export function claim(s, site) {
 }
 // Inventar zum Anzeigen: [{ it, count }]
 export const inventory = (s) => Object.entries(s.dig?.inventory || {}).map(([name, count]) => ({ it: D().items.find((i) => i.name === name), count })).filter((e) => e.it).sort((a, b) => a.it.group.localeCompare(b.it.group) || a.it.name.localeCompare(b.it.name));
+
+// Ausgrabungen pro Tag: je zufriedenem Pokémon der passenden Typen eine
+export function digsMax(s) {
+  const P = D().perDay;
+  return s.pokemon.filter((p) => (p.satisfaction ?? 0) >= P.minSatisfaction && species(p.dex)?.types.some((t) => P.types.includes(t))).length;
+}
+export const digsLeft = (s, t) => Math.max(0, digsMax(s) - (s.dig?.used?.day === dayKey(t) ? s.dig.used.n : 0));
+export function useDig(s, t) {
+  if (digsLeft(s, t) <= 0) return { ok: false, msg: 'Heute sind keine Ausgrabungen mehr möglich.' };
+  s.dig ||= { sites: 0, found: 0 };
+  const d = dayKey(t);
+  s.dig.used = { day: d, n: (s.dig.used?.day === d ? s.dig.used.n : 0) + 1 };
+  return { ok: true };
+}
+// Fossil aus dem Inventar wiederbeleben
+export const fossilOf = (name) => D().fossils[name] || null;
+export function revive(s, t, name, rnd = Math.random) {
+  const list = fossilOf(name)?.filter((d) => species(d));
+  if (!list?.length || !(s.dig?.inventory?.[name] > 0)) return { ok: false };
+  if (!--s.dig.inventory[name]) delete s.dig.inventory[name];
+  const p = addCaught(s, t, list[Math.floor(rnd() * list.length)], D().fossilBall, { fromFossil: true });
+  return { ok: true, pokemon: p };
+}

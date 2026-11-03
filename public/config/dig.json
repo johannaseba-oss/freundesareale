@@ -1,5 +1,5 @@
 {
- "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt.",
+ "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine.",
  "cols": 10,
  "rows": 14,
  "depth": [
@@ -2607,9 +2607,9 @@
    ]
   },
   {
-   "id": "hart",
-   "name": "Harter Stein",
-   "group": "schatz",
+   "id": "urzeit",
+   "name": "Urzeitfossil",
+   "group": "fossil",
    "x": 320,
    "y": 640,
    "w": 4,
@@ -3868,5 +3868,50 @@
  "music": {
   "track": "underground",
   "volume": 0.35
- }
+ },
+ "fossils": {
+  "Helixfossil": [
+   138
+  ],
+  "Domfossil": [
+   140
+  ],
+  "Klauenfossil": [
+   347
+  ],
+  "Wurzelfossil": [
+   345
+  ],
+  "Kopffossil": [
+   408
+  ],
+  "Schildfossil": [
+   410
+  ],
+  "Urzeitfossil": [
+   142,
+   566,
+   696,
+   698,
+   880,
+   881,
+   882,
+   883
+  ]
+ },
+ "fossilBall": "hyperball",
+ "perDay": {
+  "types": [
+   "Boden",
+   "Gestein"
+  ],
+  "minSatisfaction": 60
+ },
+ "walls": [
+  "wand_grau.png",
+  "wand_lila.png",
+  "wand_blau.png",
+  "wand_orange.png",
+  "wand_braun.png"
+ ]
 }

@@ -76,7 +76,7 @@ export function claim(s, t, outcome, rnd = Math.random) {
     const entries = Object.entries(pr.pool), tot = entries.reduce((a, [, w]) => a + w, 0);
     let r = rnd() * tot, rar = entries[0][0];
     for (const [k, w] of entries) { if (r < w) { rar = k; break; } r -= w; }
-    list = CFG.dex.filter((sp) => sp.rarity === rar && !isExclusive(sp.dex)).map((sp) => sp.dex);
+    list = CFG.dex.filter((sp) => sp.rarity === rar && !isExclusive(sp.dex) && !CFG.balance.gacha.excluded?.includes(sp.dex)).map((sp) => sp.dex);
     ball = rar === 'legendaer' ? 'meisterball' : 'hyperball';
   }
   const dex = list[Math.floor(rnd() * list.length)];

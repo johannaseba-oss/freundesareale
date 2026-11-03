@@ -1012,11 +1012,14 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .fp-end .btn:not(.primary) { color: var(--ink); }
 
 /* Ausgrabung */
+.dig .fp-end > :not(.dig-radar):not(.dig-start):not(.row):not(.dig-list), .dig-left .dig-info { background: rgba(20, 12, 8, .78); padding: 4px 12px; border-radius: 8px; }
+.dig-revive { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.dig-slot .btn { font-size: 11px; padding: 2px 6px; }
 .dig-setup-go { width: 100%; }
 .dig-inv { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
 .dig-slot { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 4px; background: var(--paper); border: 2px solid var(--line); border-radius: 10px; text-align: center; font-size: 12px; min-height: 92px; }
 .dig-slot .n { position: absolute; top: 3px; right: 6px; font-weight: 800; }
-.dig { position: fixed; inset: 0; z-index: 39; display: flex; flex-direction: column; background: #2a1712; color: #fff; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.dig { position: fixed; inset: 0; z-index: 39; display: flex; flex-direction: column; background-color: #2a1712; background-size: 72px 72px; image-rendering: pixelated; color: #fff; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
 .dig-board { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; }
 .dig-cv { display: block; image-rendering: pixelated; touch-action: none; }
 .dig-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 8px 10px 10px; }
