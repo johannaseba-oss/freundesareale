@@ -267,7 +267,7 @@
     },
     "5": {
       "type": "beam",
-      "name": "Feuerstrahl",
+      "name": "Flammenwurf",
       "text": "Flammenstrahl 2 Felder weit durch alle Gegner",
       "length": 2,
       "fx": "feuer",
@@ -275,7 +275,7 @@
     },
     "6": {
       "type": "beam",
-      "name": "Feuerstrahl",
+      "name": "Flammenwurf",
       "text": "Flammenstrahl 2 Felder weit durch alle Gegner",
       "length": 2,
       "fx": "feuer",
@@ -979,6 +979,57 @@
       "seconds": 5,
       "factor": 0.5
     },
+    "865": {
+      "type": "cone",
+      "name": "Breithieb",
+      "text": "trifft die 3 Felder vor sich und die 3 dahinter",
+      "range": 2,
+      "width": 3,
+      "mult": 1
+    },
+    "909": {
+      "type": "beam",
+      "name": "Flammenwurf",
+      "text": "langsamer, durchgehender Flammenstrahl – trifft alle Gegner in der Reihe",
+      "length": 9,
+      "fx": "feuer",
+      "mult": 1.1,
+      "cdMult": 2
+    },
+    "910": {
+      "type": "beam",
+      "name": "Flammenwurf",
+      "text": "langsamer, durchgehender Flammenstrahl – trifft alle Gegner in der Reihe",
+      "length": 9,
+      "fx": "feuer",
+      "mult": 1.1,
+      "cdMult": 2
+    },
+    "911": {
+      "type": "beam",
+      "name": "Flammenwurf",
+      "text": "langsamer, durchgehender Flammenstrahl – trifft alle Gegner in der Reihe",
+      "length": 9,
+      "fx": "feuer",
+      "mult": 1.1,
+      "cdMult": 2
+    },
+    "936": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "937": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
     "_hinweis": "Sonderfähigkeiten einzelner Pokémon (Pokédex-Nummer). Typen: beam (Strahl über length Felder, durchschlägt), shield (Panzer, hpMult statt Mauer-Faktor), confuse (chance auf Verwirrung für seconds), reactive (explodiert bei Angriff), boomerang (hin und zurück, pierce Gegner je Richtung), heal (heilt pct der KP im radius alle every s), sleep (chance, dass Gegner seconds lang schlafen), cone (Flächenattacke geradeaus + schräg links/rechts bis range Felder, mult = Schaden ×; status slow|paralysis|poison|freeze|atkDown|confuse mit chance für seconds, factor = Verlangsamung bzw. Angriff ×), switch (Fernkampf rangedMult, ab meleeRange Feldern Nahkampf meleeMult und Abklingzeit × meleeCd), backline (greift die hintersten Gegner in Reichweite zuerst an, rangeBonus = mehr Reichweite), bluefire (Treffer × mult, dafür starkes Nachbrennen pctPerSecond der KP für seconds), aura (alle every s Schaden × mult auf alle Gegner der 9 Felder ringsum plus Verbrennung). Neue Einträge einfach ergänzen."
   },
   "elecSlow": {
@@ -1505,5 +1556,267 @@
   "_unlockWaves": "Wellen je Level: Level 1 hat unlockWaves Wellen, das letzte Level unlockWavesTo (dazwischen gleichmäßig steigend). Das nächste Level öffnet sich erst, wenn ein Level in EINEM Durchgang komplett geschafft wurde (alle Wellen). Neu erzeugen: node tools/build_defense_levels.mjs",
   "chaosRulesInDefense": true,
   "_chaosRulesInDefense": "true = PokeDefense nutzt dieselben Kampfregeln wie der Chaos-Modus (Attacken-Reichweiten aus chaos.moves, Schlaf/Verwirrung als 3×3-Fläche, Explosionen im 3×3-Bereich, Minen zünden auch seitlich).",
-  "unlockWavesTo": 80
+  "unlockWavesTo": 80,
+  "_specials": "Sonderattacken zusätzlich zur normalen Attacke (specials = je Pokédex-Nr., typeSpecials = je Typ). every = Abklingzeit in Sekunden. kind: stun (Gegner in der eigenen Reihe bis range Felder sitzt seconds lang), roar (alle Gegner seconds lang), terrain (Boden: tile eis|wurzel|schleim, shape front3 = vorne + schräg, line = ganze Reihe, duration Sekunden, slow = Tempo ×, drainPct = KP-Anteil pro Sekunde), storm (strikes Blitze auf zufällige Felder, aimShare = Anteil gezielt auf Gegner, mult = Schaden ×). mimic = diese Pokémon nehmen alle every Sekunden die Form des stärksten eigenen Pokémon an.",
+  "specials": {
+    "145": [
+      {
+        "kind": "storm",
+        "name": "Gewitter",
+        "text": "lässt 6 Blitze auf zufällige Felder einschlagen",
+        "every": 8,
+        "strikes": 6,
+        "mult": 1.4,
+        "aimShare": 0.5
+      }
+    ],
+    "294": [
+      {
+        "kind": "roar",
+        "name": "Schallwelle",
+        "text": "lässt alle Gegner kurz stehen bleiben",
+        "every": 16,
+        "seconds": 1.2
+      }
+    ],
+    "295": [
+      {
+        "kind": "roar",
+        "name": "Schallwelle",
+        "text": "lässt alle Gegner kurz stehen bleiben",
+        "every": 16,
+        "seconds": 1.2
+      }
+    ],
+    "642": [
+      {
+        "kind": "storm",
+        "name": "Gewitter",
+        "text": "lässt 6 Blitze auf zufällige Felder einschlagen",
+        "every": 8,
+        "strikes": 6,
+        "mult": 1.4,
+        "aimShare": 0.5
+      }
+    ],
+    "644": [
+      {
+        "kind": "storm",
+        "name": "Gewitter",
+        "text": "lässt 6 Blitze auf zufällige Felder einschlagen",
+        "every": 8,
+        "strikes": 6,
+        "mult": 1.4,
+        "aimShare": 0.5
+      }
+    ],
+    "704": [
+      {
+        "kind": "terrain",
+        "name": "Schleimspur",
+        "text": "macht die ganze Reihe vor sich zu Schleim, der Gegner verlangsamt",
+        "every": 12,
+        "duration": 8,
+        "tile": "schleim",
+        "shape": "line",
+        "slow": 0.45
+      }
+    ],
+    "705": [
+      {
+        "kind": "terrain",
+        "name": "Schleimspur",
+        "text": "macht die ganze Reihe vor sich zu Schleim, der Gegner verlangsamt",
+        "every": 12,
+        "duration": 8,
+        "tile": "schleim",
+        "shape": "line",
+        "slow": 0.45
+      }
+    ],
+    "706": [
+      {
+        "kind": "terrain",
+        "name": "Schleimspur",
+        "text": "macht die ganze Reihe vor sich zu Schleim, der Gegner verlangsamt",
+        "every": 12,
+        "duration": 8,
+        "tile": "schleim",
+        "shape": "line",
+        "slow": 0.45
+      }
+    ],
+    "714": [
+      {
+        "kind": "roar",
+        "name": "Schallwelle",
+        "text": "lässt alle Gegner kurz stehen bleiben",
+        "every": 16,
+        "seconds": 1.2
+      }
+    ],
+    "715": [
+      {
+        "kind": "roar",
+        "name": "Schallwelle",
+        "text": "lässt alle Gegner kurz stehen bleiben",
+        "every": 16,
+        "seconds": 1.2
+      }
+    ],
+    "848": [
+      {
+        "kind": "storm",
+        "name": "Gewitter",
+        "text": "lässt 2 Blitze auf zufällige Felder einschlagen",
+        "every": 9,
+        "strikes": 2,
+        "mult": 0.6,
+        "aimShare": 0.5
+      }
+    ],
+    "849": [
+      {
+        "kind": "storm",
+        "name": "Gewitter",
+        "text": "lässt 5 Blitze auf zufällige Felder einschlagen",
+        "every": 8,
+        "strikes": 5,
+        "mult": 1.1,
+        "aimShare": 0.5
+      }
+    ],
+    "990": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "991": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "992": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "993": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "994": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "995": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "1006": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "1010": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "1022": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ],
+    "1023": [
+      {
+        "kind": "stun",
+        "name": "Schockstoß",
+        "text": "betäubt den vordersten Gegner in der Reihe kurz",
+        "every": 8,
+        "seconds": 1.5,
+        "range": 5
+      }
+    ]
+  },
+  "typeSpecials": {
+    "Eis": [
+      {
+        "kind": "terrain",
+        "name": "Eisfläche",
+        "text": "macht die 3 Felder vor sich zu Eis, auf dem Gegner langsamer sind",
+        "every": 12,
+        "duration": 8,
+        "tile": "eis",
+        "shape": "front3",
+        "slow": 0.5
+      }
+    ],
+    "Pflanze": [
+      {
+        "kind": "terrain",
+        "name": "Wurzelfeld",
+        "text": "lässt auf den 3 Feldern vor sich Wurzeln wachsen, die Gegnern KP entziehen",
+        "every": 12,
+        "duration": 8,
+        "tile": "wurzel",
+        "shape": "front3",
+        "drainPct": 0.025
+      }
+    ]
+  },
+  "mimic": {
+    "dex": [
+      778
+    ],
+    "every": 3
+  }
 }

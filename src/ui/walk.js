@@ -314,13 +314,13 @@ async function choose(choice) {
   const steps = battleTurn(B.me, B.foe, choice, Math.random);
   for (const st of steps) {
     if (!ui || ui.battle !== B) return;
-    if (st.key) { B.anim[st.who] = performance.now(); sfx.attack?.(); B.moveType = moveData(st.key).type; }
+    if (st.key) { B.anim[st.who] = performance.now(); sfx.attack?.(); B.moveType = moveData(st.key).type; B.moveNah = moveData(st.key).range === 'nah'; }
     if (st.status) setStatus(st.status === 'p' ? B.mb : B.fb, st.value);
     if (st.set) { B.shown[st.set] = st.hp; updateBars(); }
     if (st.hit) {
       await wait(250);
       B.shown[st.hit] = st.hp; B.hurt[st.hit] = performance.now(); updateBars();
-      if (st.dmg) hitVfx(B.vfx, B.moveType || 'Normal', WB_POS[st.hit], st.eff > 1);
+      if (st.dmg) hitVfx(B.vfx, B.moveType || 'Normal', WB_POS[st.hit], st.eff > 1, B.moveNah);
       if (st.dmg) { st.eff > 1 ? sfx.crit() : sfx.hit(); haptic(st.hit === 'p' ? 'medium' : 'tick'); }
     }
     if (st.text) say(st.text);

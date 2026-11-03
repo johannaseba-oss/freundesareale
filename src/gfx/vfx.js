@@ -19,9 +19,10 @@ export function spawnVfx(list, name, o, size = 1, dy = 0) {
   list.push({ name, o: { x: o.x, y: o.y }, size, dy, t: 0 });
 }
 const typeOf = (type) => V().types[type] || V().types.Normal;
-// Treffer nach Attackentyp, Volltreffer zusätzlich mit eigenem Effekt
-export function hitVfx(list, type, o, crit = false) {
-  spawnVfx(list, typeOf(type).hit, o, V().sizes.hit * (crit ? 1.3 : 1), V().hitLift);
+// Treffer nach Attackentyp (Nahkampf: immer der Hieb), Volltreffer zusätzlich mit eigenem Effekt
+export function hitVfx(list, type, o, crit = false, melee = false) {
+  if (melee) spawnVfx(list, V().effects.melee, o, V().sizes.melee * (crit ? 1.3 : 1), V().hitLift);
+  else spawnVfx(list, typeOf(type).hit, o, V().sizes.hit * (crit ? 1.3 : 1), V().hitLift);
   if (crit) spawnVfx(list, V().effects.crit, o, V().sizes.crit, V().hitLift);
 }
 export const effectVfx = (list, key, o, size) => spawnVfx(list, V().effects[key], o, size ?? V().sizes[key] ?? 1, V().hitLift);

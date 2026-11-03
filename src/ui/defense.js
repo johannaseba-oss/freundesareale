@@ -4,7 +4,7 @@ import { hitVfx, effectVfx, drawVfx, drawMissile, preloadVfx } from '../gfx/vfx.
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import * as A from '../game/actions.js';
-import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam, abilityOf, tempoLabel, recommendTeam } from '../game/defense.js';
+import { Defense, roleOf, costOf, rechargeOf, abilityText, levelsList, loanerTeam, abilityOf, specialsOf, tempoLabel, recommendTeam } from '../game/defense.js';
 import { ballCanvas, ballSprite } from '../gfx/balls.js';
 import { fromPokemon, canBattle, moveOf, bdata } from '../game/battle.js';
 import { typeColor, typeChip } from '../game/types.js';
@@ -424,7 +424,7 @@ function buildCards() {
     const el = h('button.d-card.r-' + c.role,
       h('span.d-card-types', types.map((t) => h('i', { style: { background: typeColor(t) } }, t))),
       h('img', { src: portraitUrl(c.dex, 'Normal', c.shiny), alt: '', draggable: false }),
-      h('span.d-card-ab.r-' + c.role, ab ? ab.name : ROLE_SHORT[c.role]),
+      h('span.d-card-ab.r-' + c.role, ab ? ab.name : specialsOf(c.dex)[0]?.name || ROLE_SHORT[c.role]),
       h('span.d-card-cost', c.once ? '1×' : String(c.cost)),
       h('i.d-card-cool'),
       c.once ? h('span.d-card-del', { title: 'Löschen', onclick: (e) => { e.stopPropagation(); askDiscard(c); } }, '×') : null);
@@ -547,7 +547,20 @@ function draw(dt) {
       x.strokeStyle = game.canPlace(...U.hover) || swapT || (there && U.sel && game.canUpgrade(U.sel, there)) ? '#fff' : 'rgba(255,90,90,.9)'; x.lineWidth = 2; x.strokeRect(U.ox + U.hover[0] * T + 1, U.oy + U.hover[1] * T + 1, T - 2, T - 2);
     }
   }
-  const P = (o) => [U.ox + o.x * T, U.oy + o.y * T];
+  const P = (o) => {
+    let X = o.x, Y = o.y;
+    if (o.dash) { const k = (game.t - o.dash.t0) / 0.3; if (k < 1) { const s = Math.sin(k * Math.PI); X += (o.dash.x - X) * s; Y += (o.dash.y - Y) * s; } else o.dash = null; } // Blitzhieb: hin und zurück
+    return [U.ox + X * T, U.oy + Y * T];
+  };
+  // Bodeneffekte unter den Pokémon
+  x.imageSmoothingEnabled = false;
+  for (const q of game.terrain || []) {
+    const i = groundTile(q.tile);
+    if (!i.complete || !i.naturalWidth) continue;
+    x.globalAlpha = Math.min(1, (q.until - game.t) / 0.6) * 0.92;
+    x.drawImage(i, U.ox + q.col * T, U.oy + q.row * T, T, T);
+  }
+  x.globalAlpha = 1;
   // eigene Pokémon und Gegner (nach Tiefe)
   const all = [...game.units.map((u) => ({ o: u, mine: true })), ...game.enemies.map((e) => ({ o: e, mine: false }))].sort((a, b) => a.o.y - b.o.y);
   for (const { o, mine } of all) drawMon(x, o, mine, P(o), T, now);
@@ -564,7 +577,7 @@ function draw(dt) {
     x.fillStyle = col; x.fillRect(X - s / 2, Y - s / 2, s, s);
     x.fillStyle = '#fff'; x.fillRect(X - s / 4, Y - s / 4, s / 3, s / 3);
   }
-  // Strahlen (Rankenhieb, Feuerstrahl, Wasserstrahl): Pixel-Säule über length Felder
+  // Strahlen (Rankenhieb, Flammenwurf, Wasserstrahl): Pixel-Säule über length Felder
   U.beams = U.beams.filter((b) => {
     b.t += dt; if (b.t > 0.32) return false;
     if (b.u.dir) { // Seitenfeld: Strahl quer über das Feld (gedreht)
@@ -877,6 +890,8 @@ function buzz(kind) {
 }
 
 const aimDist = (u, e) => (u.dir ? Math.abs(e.x - u.x) : Math.abs(u.y - e.y));
+const groundTiles = {};
+function groundTile(name) { if (!groundTiles[name]) { const i = new Image(); i.src = `${base}art/defense/boden_${name}.png`; groundTiles[name] = i; } return groundTiles[name]; }
 function handleEvents() {
   for (const ev of game.events) {
     if (ev.type === 'shoot') { if (!ev.melee) sfx.attack(ev.moveType); burstAt({ x: ev.u.x + (ev.u.dir || 0) * 0.3, y: ev.u.y - (ev.u.dir ? 0.15 : 0.45) }, ev.moveType, 3, 0.5, 0.6); continue; }
@@ -917,9 +932,14 @@ function handleEvents() {
     }
     if (ev.type === 'level') { effectVfx(ui.vfx ||= [], 'level', ev.u); say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
     if (ev.type === 'evolve') { evolveFx(ev); continue; }
-    if (ev.type === 'dot') { say(ev.e, String(ev.dmg), { Gift: '#d48ae0', Feuer: '#ffa75c', Elektro: '#ffe066', Blaufeuer: '#7fc8ff' }[ev.dot] || '#ffffff', 0.24, 0.6, -0.3); burst(ev.e, ev.dot === 'Blaufeuer' ? 'Wasser' : ev.dot, ev.dot === 'Blaufeuer' ? 7 : 4, 0.6, 0.7); continue; }
+    if (ev.type === 'dot') { say(ev.e, String(ev.dmg), { Gift: '#d48ae0', Wurzel: '#9fe36a', Feuer: '#ffa75c', Elektro: '#ffe066', Blaufeuer: '#7fc8ff' }[ev.dot] || '#ffffff', 0.24, 0.6, -0.3); burst(ev.e, ev.dot === 'Blaufeuer' ? 'Wasser' : ev.dot, ev.dot === 'Blaufeuer' ? 7 : 4, 0.6, 0.7); continue; }
     if (ev.type === 'handFull') { toast(`Höchstens ${D().chaos.handMax} Karten – setz erst eins ein.`); continue; }
     if (ev.type === 'collect' && ev.drop.dex) { const p = dropPos(ev.drop); say({ x: p.x, y: p.y }, species(ev.drop.dex).name + '!', '#ffffff', 0.28, 1); }
+    if (ev.type === 'stun') { effectVfx(ui.vfx ||= [], 'paralysis', ev.e); say(ev.e, 'Betäubt!', '#ffe066', 0.26, 0.9, -0.9); sfx.attack('Elektro'); continue; }
+    if (ev.type === 'roar') { ring(ev.u, '#ffffff', 0.3, 3, 0.5); ring(ev.u, '#ffe066', 0.3, 2, 0.4); for (const e of ev.foes.slice(0, 8)) effectVfx(ui.vfx ||= [], 'roar', e); shake(T() * 0.1); sfx.attack('Normal'); message('Alle Gegner bleiben stehen!'); continue; }
+    if (ev.type === 'terrain') { sfx.attack(ev.tile === 'eis' ? 'Eis' : ev.tile === 'wurzel' ? 'Pflanze' : 'Gift'); continue; }
+    if (ev.type === 'strike') { effectVfx(ui.vfx ||= [], 'strike', { x: ev.x, y: ev.y }); sfx.attack('Elektro'); shake(T() * 0.04); continue; }
+    if (ev.type === 'mimic') { loadSprites(ev.to, ev.u.gender, ev.u.shiny); ring(ev.u, '#ffffff', 0.2, 1, 0.5); say(ev.u, species(ev.to).name + '!', '#ffd6ec', 0.26, 1, -0.9); continue; }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
     if (ev.type === 'heal') { for (const { o } of ev.healed) effectVfx(ui.vfx ||= [], 'heal', o); ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
     if (ev.type === 'remove') { burst(ev.u, species(ev.u.dex).types[0], 10, 0.8); continue; }
@@ -932,7 +952,7 @@ function handleEvents() {
       if (ev.crit && !ev.mine) sfx.crit();
       if (ev.mine) { burst(o, 'Unlicht', 4, 0.7, 0.8); sfx.bite(); continue; } // eigenes Pokémon wird gebissen
       sfx.hit();
-      hitVfx(ui.vfx ||= [], type, o, ev.crit);
+      hitVfx(ui.vfx ||= [], type, o, ev.crit, ev.melee);
       burst(o, type, ev.crit ? 8 : 3, ev.crit ? 1.6 : 1, ev.crit ? 1.3 : 1);
       ring(o, typeColor(type), 0.15, ev.crit ? 1.1 : 0.6, ev.crit ? 0.4 : 0.25);
       if (ev.melee) ui.slashes.push({ x: o.x, y: o.y, color: typeColor(type), t: 0 });

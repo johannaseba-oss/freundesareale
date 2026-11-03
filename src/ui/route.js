@@ -525,7 +525,7 @@ function handleEvents() {
       sfx.attack(moveOf(bdata(u.dex).move).type);
     } else if (ev.type === 'hit') {
       const col = ev.crit ? '#ffe066' : ev.eff > 1 ? '#ffd23f' : ev.eff < 1 ? '#d0c8bc' : '#ffffff';
-      say(ev.e, String(ev.dmg), col, ev.crit || ev.eff > 1 ? 0.38 : 0.3); hitVfx(ui.vfx ||= [], ev.move.type, ev.e, ev.crit); burst(ev.e, ev.move.type, ev.crit ? 8 : 3, ev.crit ? 1.5 : 1.1, ev.crit ? 1.6 : 1.25); sfx.hit();
+      say(ev.e, String(ev.dmg), col, ev.crit || ev.eff > 1 ? 0.38 : 0.3); hitVfx(ui.vfx ||= [], ev.move.type, ev.e, ev.crit, ev.move.range === 'nah'); burst(ev.e, ev.move.type, ev.crit ? 8 : 3, ev.crit ? 1.5 : 1.1, ev.crit ? 1.6 : 1.25); sfx.hit();
     } else if (ev.type === 'status') { effectVfx(ui.vfx ||= [], ev.kind, ev.e); say(ev.e, ev.name + '!', { burn: '#ffa75c', poison: '#d48ae0', paralysis: '#ffe066', sleep: '#cfe0ff', slow: '#9fd0ff' }[ev.kind], 0.22, 0.9); }
     else if (ev.type === 'dot') { say(ev.e, String(ev.dmg), ev.kind === 'burn' ? '#ffa75c' : '#d48ae0', 0.22, 0.6); }
     else if (ev.type === 'defeat') { effectVfx(ui.vfx ||= [], 'ko', ev.e); say(ev.e, `+${ev.ep} EP`, ev.lucky ? '#ffd23f' : '#9fe8ff', ev.lucky ? 0.36 : 0.26, ev.lucky ? 1.4 : 1); burst(ev.e, species(ev.e.dex).types[0], 14, 1.4, 1.1); if (ev.lucky) burst(ev.e, 'Fee', 22, 1.6, 1.2); sfx.ko(); if (ev.lucky) sfx.star(); }

@@ -13,6 +13,8 @@ const bst = (dex) => bdata(dex).base.reduce((a, b) => a + b, 0);
 
 // Sonderfähigkeit einer Art (defense.json abilities)
 export const abilityOf = (dex) => D().abilities?.[dex] || null;
+// Sonderattacken zusätzlich zur normalen Attacke: eigene der Art und solche ihres Typs
+export const specialsOf = (dex) => [...(D().specials?.[dex] || []), ...(species(dex)?.types || []).flatMap((t) => D().typeSpecials?.[t] || [])];
 
 // Angriffstempo: Faktor auf die Abklingzeit nach Stärke der Attacke (stark = langsamer, schwach = schneller).
 // Der Schaden hängt ohnehin von der Attackenstärke ab – so gibt es harte, langsame und schnelle, leichte Angreifer.
@@ -28,6 +30,7 @@ export function roleOf(dex) {
   const R = D().roles, ab = abilityOf(dex);
   if (ab?.type === 'shield') return 'mauer';
   if (ab?.type === 'reactive') return 'explosiv';
+  if (ab?.type === 'dash') return 'nahkampf';
   if (ab?.type === 'cone') return 'fernkampf'; // Flächenattacke: greift immer an (auch frühere Sammler/Explosive)
   for (const r of ['produzent', 'explosiv', 'mauer']) if (R[r].dex.includes(dex)) return r;
   return moveOf(bdata(dex).move)?.range === 'nah' ? 'nahkampf' : 'fernkampf';
@@ -59,7 +62,9 @@ export const roleInfo = (dex) => D().roles[roleOf(dex)];
 // Kurzbeschreibung der Fähigkeit (für Karten und Teamwahl)
 export function abilityText(dex) {
   const role = roleOf(dex), mv = moveOf(bdata(dex).move), R = D().roles, ab = abilityOf(dex);
-  if (ab) return `${ab.name}: ${ab.text}`;
+  const extra = specialsOf(dex).map((q) => ` · ${q.name}: ${q.text}`).join('');
+  if (ab) return `${ab.name}: ${ab.text}${extra}`;
+  if (extra) return extra.slice(3);
   if (role === 'produzent') return `erzeugt alle ${R.produzent.every[0]}–${R.produzent.every[1]} s ${evolved(dex) ? R.produzent.valueEvolved : R.produzent.value} Sterne`;
   if (role === 'explosiv') return evolved(dex) ? 'explodiert sofort und trifft alles in der Nähe' : `Mine: explodiert, sobald ein Gegner sie erreicht (${R.explosiv.armSeconds} s scharf machen)`;
   if (role === 'mauer') return 'sehr robust – hält Gegner auf';
@@ -157,6 +162,59 @@ export class Defense {
     this.events.push({ type: 'evolve', u, from, to: u.dex });
     return true;
   }
+  // Sonderattacken und Mimigma: laufen unabhängig von der normalen Attacke
+  runSpecials(u) {
+    const M = D().mimic;
+    if (M && (u.mimic || M.dex.includes(u.dex)) && this.t >= (u.nextMimic || 0)) {
+      u.nextMimic = this.t + M.every;
+      const power = (q) => q.stats.reduce((n, v) => n + v, 0);
+      let best = null;
+      for (const o of this.units) if (o !== u && o.hp > 0 && !o.mimic && !M.dex.includes(o.dex) && (!best || power(o) > power(best))) best = o;
+      if (best && best.dex !== u.dex) {
+        const from = u.dex, share = u.hp / u.maxHp;
+        u.mimic = true; u.dex = best.dex; u.role = chaosRole(u.dex); u.hpMult = this.hpMultOf(u.dex, u.role); this.restat(u); u.hp = Math.max(1, Math.round(u.maxHp * share));
+        if (u.role === 'explosiv') u.armAt = this.t + 0.8;
+        this.events.push({ type: 'mimic', u, from, to: u.dex });
+      }
+    }
+    const list = specialsOf(u.dex);
+    if (!list.length) return;
+    const foes = this.enemies.filter((e) => e.hp > 0 && e.y > -0.2);
+    if (!foes.length) return;
+    u.spNext ||= {};
+    for (const q of list) {
+      if (this.t < (u.spNext[q.name] ??= this.t + q.every * 0.4)) continue;
+      if (q.kind === 'stun') {
+        let t = null, best = Infinity;
+        for (const e of foes) { const a = aim(u, e); if (a.lat < 0.5 && a.fwd > -0.3 && a.fwd <= q.range && a.fwd < best) { t = e; best = a.fwd; } }
+        if (!t) continue;
+        t.sleepUntil = Math.max(t.sleepUntil || 0, this.t + q.seconds);
+        this.events.push({ type: 'stun', e: t, u });
+      } else if (q.kind === 'roar') {
+        for (const e of foes) e.sleepUntil = Math.max(e.sleepUntil || 0, this.t + q.seconds);
+        this.events.push({ type: 'roar', u, foes });
+      } else if (q.kind === 'terrain') {
+        const G = D().grid, [dx, dy] = u.dir ? [u.dir, 0] : [0, -1], cx = Math.floor(u.x), cy = Math.floor(u.y), cells = [];
+        if (q.shape === 'line') for (let n = 1; n < 12; n++) cells.push([cx + dx * n, cy + dy * n]);
+        else for (const s of [-1, 0, 1]) cells.push([cx + dx + dy * s, cy + dy + dx * s]);
+        for (const [col, row] of cells) {
+          if (col < 0 || col >= G.cols || row < 0 || row >= G.rows) continue;
+          this.terrain = this.terrain.filter((o) => o.col !== col || o.row !== row);
+          this.terrain.push({ col, row, tile: q.tile, until: this.t + q.duration, slow: q.slow, drainPct: q.drainPct, from: u.id });
+        }
+        this.events.push({ type: 'terrain', u, tile: q.tile });
+      } else if (q.kind === 'storm') {
+        const G = D().grid;
+        for (let n = 0; n < q.strikes; n++) {
+          const aimed = this.rnd() < q.aimShare ? foes[Math.floor(this.rnd() * foes.length)] : null;
+          const col = aimed ? Math.floor(aimed.x) : Math.floor(this.rnd() * G.cols), row = aimed ? Math.max(0, Math.floor(aimed.y)) : Math.floor(this.rnd() * G.rows);
+          this.events.push({ type: 'strike', x: col + 0.5, y: row + 0.5 });
+          for (const e of foes) if (e.hp > 0 && Math.floor(e.x) === col && Math.floor(e.y) === row) { const r = this.damage(u, u.level, e, q.mult); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); }
+        }
+      }
+      u.spNext[q.name] = this.t + q.every;
+    }
+  }
   hpMultOf(dex, role) {
     const ab = abilityOf(dex);
     return D().defenderHpMult * (ab?.type === 'shield' ? ab.hpMult : role === 'mauer' ? D().roles.mauer.hpMult : 1);
@@ -216,7 +274,7 @@ export class Defense {
     const box = (a) => (e) => Math.abs(e.x - u.x) <= a + 0.5 && Math.abs(e.y - u.y) <= a + 0.5;
     if (role === 'explosiv') each(this.cr ? box(D().chaos.explosionArea) : (e) => dist(e, u) <= (ab?.type === 'reactive' ? ab.radius : evolved(dex) ? R.explosiv.radiusBig : R.explosiv.radiusSmall) + 0.3, area);
     else if (role === 'nahkampf' || role === 'fernkampf') {
-      let range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'boomerang' ? ab.range : ab?.type === 'cone' ? ab.range + 0.3 : ab?.type === 'switch' ? R.fernkampf.range : rule ? rule.range : R[role].range;
+      let range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'dash' ? ab.range + 0.3 : ab?.type === 'boomerang' ? ab.range : ab?.type === 'cone' ? ab.range + 0.3 : ab?.type === 'switch' ? R.fernkampf.range : rule ? rule.range : R[role].range;
       if (ab?.type === 'backline') range += ab.rangeBonus || 0;
       const lat = rule?.width ? rule.width / 2 : 0.5;
       each((e) => { const a = aim(u, e); return a.lat < (ab?.type === 'cone' ? Math.max(0.5, a.fwd + 0.5) : lat) && a.fwd >= -0.3 && a.fwd <= range && (u.dir || e.y < u.y + 0.3); }, attack);
@@ -589,9 +647,13 @@ export class Defense {
       this.nextWaveAt = this.t + W.spread + D().waveGap;
     }
     while (this.queue.length && this.queue[0].at <= this.t) this.spawn(this.queue.shift());
+    // Bodeneffekte (Eis, Wurzeln, Schleim)
+    this.terrain = (this.terrain || []).filter((q) => q.until > this.t);
+    const ground = new Map(this.terrain.map((q) => [q.col + q.row * 100, q]));
     // eigene Pokémon
     for (const u of this.units) {
       if (u.hp <= 0) continue;
+      this.runSpecials(u);
       if (u.item?.regen && u.hp < u.maxHp && this.t >= (u.regenAt || 0)) { u.regenAt = this.t + (CFG.items.regenEvery || 2); u.hp = Math.min(u.maxHp, u.hp + u.maxHp * u.item.regen); } // Überreste
       if (u.role === 'produzent') {
         if (this.t >= u.nextStar) { u.nextStar = this.t + this.between(R.produzent.every); this.dropStar(u.x, u.y - 0.3, u.y, evolved(u.dex) ? R.produzent.valueEvolved : R.produzent.value); u.anim = { name: 'Hop', t0: this.t }; }
@@ -658,7 +720,7 @@ export class Defense {
       for (const e of this.enemies) {
         if (e.hp <= 0 || e.y < -0.2) continue;
         const a = aim(u, e);
-        const latMax = ab?.type === 'cone' ? Math.max(0.5, a.fwd + 0.5) : rule?.width ? rule.width / 2 : 0.5; // Fläche: geradeaus + schräg
+        const latMax = ab?.type === 'cone' ? (ab.width ? ab.width / 2 : Math.max(0.5, a.fwd + 0.5)) : rule?.width ? rule.width / 2 : 0.5; // Fläche: geradeaus + schräg
         const score = ab?.type === 'backline' ? -a.fwd : a.fwd; // Fernsicht: die hintersten zuerst
         if (a.lat < latMax && a.fwd >= -0.3 && a.fwd <= range && score < best) { target = e; best = score; }
       }
@@ -669,12 +731,16 @@ export class Defense {
       const spd = u.stats[5] / refSpeed(u.level);
       u.cd = (R[u.role].cooldown * tempoOf(u.dex)) / Math.max(0.7, Math.min(1.4, Math.pow(spd, 0.3))) / (u.item?.speedMult || 1) * (close ? ab.meleeCd : 1); // Wahlschal, Kampfwechsel
       if (u.item?.quick && this.rnd() < u.item.quick) u.cd *= 0.3; // Flinkklaue: gleich noch einmal
+      if (ab?.cdMult) u.cd *= ab.cdMult; // z. B. langsamer Flammenwurf, schneller Blitzhieb
       u.anim = { name: melee ? 'Attack' : 'Shoot', t0: this.t };
       this.events.push({ type: 'shoot', u, moveType: mv.type, melee });
       const [dx, dy] = u.dir ? [u.dir, 0] : [0, -1], x0 = u.x + dx * 0.3, y0 = u.y + dy * 0.3;
-      if (ab?.type === 'cone') { // Flächenattacke: geradeaus, schräg links und schräg rechts
-        this.events.push({ type: 'cone', u, range: ab.range, moveType: mv.type, status: ab.status });
-        for (const e of this.enemies) { const a = aim(u, e); if (e.hp > 0 && a.fwd > -0.3 && a.fwd <= ab.range + 0.3 && a.lat < Math.max(0.5, a.fwd + 0.5)) { const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); this.coneStatus(e, ab, u); } }
+      if (ab?.type === 'dash') { // stürmt zum Gegner und kehrt zurück (nur Darstellung, das Pokémon bleibt auf seinem Feld)
+        u.dash = { t0: this.t, x: target.x, y: target.y + 0.45 };
+        const r = this.damage(u, u.level, target, (R.nahkampf.damageMult || 1) * (ab.mult || 1)); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit);
+      } else if (ab?.type === 'cone') { // Flächenattacke: geradeaus, schräg links und schräg rechts
+        this.events.push(ab.width ? { type: 'cloud', u, range: ab.range, width: ab.width, moveType: mv.type } : { type: 'cone', u, range: ab.range, moveType: mv.type, status: ab.status });
+        for (const e of this.enemies) { const a = aim(u, e); if (e.hp > 0 && a.fwd > -0.3 && a.fwd <= ab.range + 0.3 && a.lat < (ab.width ? ab.width / 2 : Math.max(0.5, a.fwd + 0.5))) { const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); this.coneStatus(e, ab, u); } }
       } else if (ab?.type === 'switch') {
         if (close) { const r = this.damage(u, u.level, target, ab.meleeMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); this.events.push({ type: 'switchMelee', u }); }
         else this.projectiles.push({ x: x0, y: y0, vx: dx * 6, vy: dy * 6, dist: 0, from: u, type: mv.type, range: 99, left: 1, hits: new Set(), mult: ab.rangedMult });
@@ -706,6 +772,8 @@ export class Defense {
     const E = D().enemy;
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
+      const soil = ground.get(Math.floor(e.x) + Math.floor(e.y) * 100);
+      if (soil?.drainPct && e.y > -0.2) (e.dots ||= {}).Wurzel = { until: this.t + 0.3, dps: e.maxHp * soil.drainPct, from: this.units.find((u) => u.id === soil.from) || { hp: 0 }, tick: e.dots?.Wurzel?.tick || 0 };
       // Statuseffekte (Gift, Verbrennung, Elektroschock): Schaden über Zeit, Anzeige alle 0,5 s
       let died = false;
       for (const [type, st] of Object.entries(e.dots || {})) {
@@ -748,7 +816,7 @@ export class Defense {
         continue;
       }
       e.eating = false;
-      const sp = E.tilesPerSecond * (e.pace || 1) * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (this.t < e.slowUntil ? e.slowFactor || D().iceSlow.factor : 1);
+      const sp = E.tilesPerSecond * (e.pace || 1) * Math.pow(e.stats[5] / refSpeed(e.level), E.speedExp) * (this.t < e.slowUntil ? e.slowFactor || D().iceSlow.factor : 1) * (soil?.slow || 1);
       e.y += sp * dt;
       if (e.y >= G.rows) {
         if (this.lives > 0) { this.lives--; e.hp = 0; e.hurtT = this.t; this.events.push({ type: 'lifeLost', e }); continue; } // Chaos: ein Leben verloren
