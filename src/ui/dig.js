@@ -102,7 +102,7 @@ export function startDig(onClose) {
     if (res.found.length) { sound('found'); haptic('strong'); }
     updateInfo();
     if (res.done) { sound('win'); setTimeout(finish, 1100); }
-    if (res.collapsed) { sound('collapse'); fall = 0; shake = 12; haptic('strong'); setTimeout(finish, 1300); }
+    if (res.collapsed) { sound('collapse'); fall = 0; shake = 12; haptic('strong'); root.classList.add('quake'); setTimeout(() => haptic('strong'), 500); setTimeout(() => { root.classList.remove('quake'); finish(); }, 1500); }
   });
 
   // Riss in der Wand: läuft von rechts nach links und wird breiter, je schwächer die Stelle ist
@@ -118,6 +118,9 @@ export function startDig(onClose) {
     for (let i = 0; i * 14 <= reach + 14; i++) { const x = W - i * 14, y = (WALL - 5) / 2 + crackY[i]; if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
     ctx.stroke();
   }
+  // Zacken der einstürzenden Wand; sie wird beim Fallen immer schneller
+  const jag = Array.from({ length: Math.ceil(W / 24) }, () => 8 + Math.floor(Math.random() * 4) * 8);
+  const fall_speed = (f) => 0.45 + f * 1.5;
   const tile = (i, x, y) => ctx.drawImage(tiles, i * CELL, 0, CELL, CELL, x * CELL, y * CELL + WALL, CELL, CELL);
   let last = performance.now();
   const loop = (ms) => {
@@ -147,8 +150,13 @@ export function startDig(onClose) {
     }
     ctx.fillStyle = '#8a7558';
     for (let i = fx.length - 1; i >= 0; i--) { const p = fx[i]; p.vy += 520 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; if (p.life <= 0) fx.splice(i, 1); else ctx.fillRect(Math.round(p.x), Math.round(p.y), 4, 4); }
-    // Einsturz: Erde fällt von oben über das Feld
-    if (fall >= 0) { fall = Math.min(1, fall + dt * 1.1); ctx.fillStyle = '#3a2a1e'; ctx.fillRect(0, 0, W, H * fall); }
+    // Einsturz: die Felswand rutscht von oben über das Feld, die Unterkante ist zerklüftet
+    if (fall >= 0) {
+      fall = Math.min(1, fall + dt * fall_speed(fall));
+      const bottom = (H + 48) * fall;
+      for (let y = bottom - 48; y > -48; y -= 48) for (let x = 0; x < W; x += 48) ctx.drawImage(wall, x, y, 48, 48);
+      for (let i = 0; i < jag.length; i++) { const x = i * 24, h = jag[i]; ctx.drawImage(wall, 0, 0, 24, h / 2, x, bottom, 24, h); ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillRect(x, bottom + h - 4, 24, 4); }
+    }
     raf = requestAnimationFrame(loop);
   };
 
