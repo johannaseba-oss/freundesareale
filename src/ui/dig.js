@@ -11,7 +11,9 @@ import { haptic } from '../haptics.js';
 import { startRevive } from './revive.js';
 
 const D = () => CFG.dig;
-const ART = `${import.meta.env.BASE_URL}art/dig/`, CELL = 32, WALL = 56, SAND = 6, IRON = 7, HARD = 8;
+const ART = `${import.meta.env.BASE_URL}art/dig/`, CELL = 32, WALL = 56, IRON = 8;
+// Kachel je verbleibender Schichtdicke: dunkler Fels, hellbraun, hellgrau, ganz unten ganz dunkel (je zwei Varianten)
+const layerOf = (d, H) => (d > 2 * H ? 0 : d > H ? 2 : d > 0 ? 4 : 6);
 const pic = (f) => { const i = new Image(); i.src = ART + f; return i; };
 const sound = (k) => { const s = D().sounds[k]; playFile(s.file, s.vol); };
 const sheet = pic('items.png');
@@ -135,13 +137,15 @@ export function startDig(onClose) {
     ctx.imageSmoothingEnabled = false;
     drawWall();
     if (tiles.complete && sheet.complete) {
-      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) tile(DG.isIron(site, x, y) ? IRON : SAND, x, y);
-      for (const e of site.items) ctx.drawImage(sheet, e.it.x, e.it.y, e.it.w * CELL, e.it.h * CELL, e.x * CELL, e.y * CELL + WALL, e.it.w * CELL, e.it.h * CELL);
-      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const d = site.cell[y][x]; if (d > 0) tile(d >= 7 ? HARD : d - 1, x, y); }
+      const H2 = D().layerHits;
+      for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) { const d = site.cell[y][x]; tile(DG.isIron(site, x, y) && d <= H2 ? IRON : layerOf(d, H2) + ((x * 7 + y * 13) % 2), x, y); }
+      // Fundstücke nur auf Feldern zeichnen, die schon bis zu ihrer Schicht freigelegt sind
+      const part = (e) => { for (let b = 0; b < e.it.h; b++) for (let a = 0; a < e.it.w; a++) if (site.cell[e.y + b][e.x + a] <= e.depth) ctx.drawImage(sheet, e.it.x + a * CELL, e.it.y + b * CELL, CELL, CELL, (e.x + a) * CELL, (e.y + b) * CELL + WALL, CELL, CELL); };
+      for (const e of site.items) part(e);
       // Funde leuchten kurz auf
       for (const e of site.items) {
         const age = e.got ? (ms - e.gotAt) / 900 : 2;
-        if (age >= 0 && age < 1) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.sin(age * Math.PI); ctx.drawImage(sheet, e.it.x, e.it.y, e.it.w * CELL, e.it.h * CELL, e.x * CELL, e.y * CELL + WALL, e.it.w * CELL, e.it.h * CELL); ctx.restore(); }
+        if (age >= 0 && age < 1) { ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.sin(age * Math.PI); part(e); ctx.restore(); }
       }
     }
     for (let i = marks.length - 1; i >= 0; i--) {

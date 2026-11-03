@@ -1,12 +1,7 @@
 {
- "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level). groups: revealShare = eigener Freilege-Anteil dieser Gruppe statt des allgemeinen (Fossilien: komplett freilegen). Fossilien, deren Pokémon es im Spiel noch nicht gibt, kommen nicht vor. fossilCombos = zwei Fossil-Hälften ergeben zusammen ein Pokémon. revive = Wiederbelebungsmaschine: cost = Münzen (erst am Ende bezahlt), perCircle = Prozent je geschlossenem Kreis, decayDelay = Sekunden ohne Bewegung, bis der Wert sinkt, decayPerSecond = Prozent pro Sekunde, centerX/centerY = Mitte der Maschine im Bild, minRadius = so weit vom Mittelpunkt muss der Finger bleiben (Anteil der Bildbreite).",
+ "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. Schichten von oben: dunkler Fels, hellbraun, hellgrau, ganz unten ganz dunkel. layerHits = Abtrag, bis eine Schicht durch ist. levelChance = je Gruppe die Häufigkeit, unter der 1., 2. oder 3. Schicht zu liegen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level). groups: revealShare = eigener Freilege-Anteil dieser Gruppe statt des allgemeinen (Fossilien: komplett freilegen). Fossilien, deren Pokémon es im Spiel noch nicht gibt, kommen nicht vor. fossilCombos = zwei Fossil-Hälften ergeben zusammen ein Pokémon. revive = Wiederbelebungsmaschine: cost = Münzen (erst am Ende bezahlt), perCircle = Prozent je geschlossenem Kreis, decayDelay = Sekunden ohne Bewegung, bis der Wert sinkt, decayPerSecond = Prozent pro Sekunde, centerX/centerY = Mitte der Maschine im Bild, minRadius = so weit vom Mittelpunkt muss der Finger bleiben (Anteil der Bildbreite).",
  "cols": 10,
  "rows": 14,
- "depth": [
-  1,
-  7
- ],
- "patches": 11,
  "itemCount": [
   2,
   4
@@ -16,7 +11,7 @@
   5
  ],
  "revealShare": 0.8,
- "health": 50,
+ "health": 70,
  "tools": {
   "hacke": {
    "name": "Hacke",
@@ -4091,5 +4086,43 @@
   "centerX": 0.495,
   "centerY": 0.5,
   "minRadius": 0.17
+ },
+ "layerHits": 2,
+ "levelChance": {
+  "kugel": [
+   5,
+   3,
+   2
+  ],
+  "grossKugel": [
+   3,
+   4,
+   3
+  ],
+  "juwel": [
+   2,
+   4,
+   4
+  ],
+  "schatz": [
+   3,
+   4,
+   3
+  ],
+  "scherbe": [
+   1,
+   4,
+   5
+  ],
+  "stein": [
+   1,
+   3,
+   6
+  ],
+  "fossil": [
+   0,
+   1,
+   9
+  ]
  }
 }

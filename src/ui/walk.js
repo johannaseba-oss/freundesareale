@@ -1,4 +1,5 @@
 // Spaziergang-Oberfläche: Pokémon wählen, Route auf der Karte zeichnen, losgehen – wilde Pokémon meiden oder bekämpfen.
+import { hitVfx, effectVfx, drawVfx, drawMissile, preloadVfx } from '../gfx/vfx.js';
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import { canBattle } from '../game/battle.js';
@@ -268,6 +269,7 @@ function openBattle(w) {
   const foe = makeFighter({ dex: w.dex, ivs: [10, 10, 10, 10, 10, 10] }, w.level);
   loadSprites(w.dex);
   sfx.wave(false); haptic('strong');
+  preloadVfx();
   const scene = h('canvas.wb-scene');
   const box = (f, mine) => {
     const bar = h('div.wb-hp', h('i')), num = mine ? h('small.wb-num') : null;
@@ -275,7 +277,7 @@ function openBattle(w) {
     return { el: h('div.wb-box' + (mine ? '.me' : '.foe'), h('div.wb-name', h('b', f.nick || species(f.dex).name, st), h('small', 'Lv' + f.level)), h('div.wb-hpline', h('span', 'KP'), bar), num), bar: bar.firstChild, num, st };
   };
   const B = { w, foe, me: ui.me, fb: box(foe, false), mb: box(ui.me, true), scene, text: h('div.wb-text'), moves: h('div.wb-moves'), busy: false,
-    shown: { p: ui.me.hp, w: foe.hp }, anim: { p: null, w: null }, hurt: { p: -9, w: -9 }, t0: performance.now() };
+    vfx: [], shown: { p: ui.me.hp, w: foe.hp }, anim: { p: null, w: null }, hurt: { p: -9, w: -9 }, t0: performance.now() };
   B.el = h('div.wb', h('div.wb-stage', scene, B.fb.el, B.mb.el), B.text, B.moves);
   ui.root.append(B.el);
   ui.battle = B;
@@ -312,12 +314,13 @@ async function choose(choice) {
   const steps = battleTurn(B.me, B.foe, choice, Math.random);
   for (const st of steps) {
     if (!ui || ui.battle !== B) return;
-    if (st.key) { B.anim[st.who] = performance.now(); sfx.attack?.(); }
+    if (st.key) { B.anim[st.who] = performance.now(); sfx.attack?.(); B.moveType = moveData(st.key).type; }
     if (st.status) setStatus(st.status === 'p' ? B.mb : B.fb, st.value);
     if (st.set) { B.shown[st.set] = st.hp; updateBars(); }
     if (st.hit) {
       await wait(250);
       B.shown[st.hit] = st.hp; B.hurt[st.hit] = performance.now(); updateBars();
+      if (st.dmg) hitVfx(B.vfx, B.moveType || 'Normal', WB_POS[st.hit], st.eff > 1);
       if (st.dmg) { st.eff > 1 ? sfx.crit() : sfx.hit(); haptic(st.hit === 'p' ? 'medium' : 'tick'); }
     }
     if (st.text) say(st.text);
@@ -346,6 +349,7 @@ async function endBattle(result) {
   if (result === 'lost') finish(false);
 }
 // Kampfszene: Wiese, Plattformen, Gegner oben rechts (frontal), eigenes Pokémon unten links (Rücken)
+const WB_POS = { w: { x: 0.72, y: 0.34 }, p: { x: 0.28, y: 0.74 } };
 function drawScene(B) {
   const c = B.scene, r = c.getBoundingClientRect(), dpr = ui.dpr;
   if (!r.width) return;
@@ -371,6 +375,7 @@ function drawScene(B) {
   };
   mon(B.foe, 'w', W * 0.72, H * 0.42, 0, H * 0.42);
   mon(B.me, 'p', W * 0.28, H * 0.86, 4, H * 0.5);
+  { const n = performance.now(), dt = Math.min(0.1, (n - (B.vfxT || n)) / 1000); B.vfxT = n; drawVfx(x, B.vfx, dt, (o) => [W * o.x, H * o.y], H * 0.3); }
 }
 
 // ================= Ende =================

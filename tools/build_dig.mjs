@@ -6,16 +6,17 @@ import sharp from 'sharp';
 const IN = 'assets-input/dig/', OUT = 'public/art/dig/', CF = 'public/config/dig.json', CELL = 32;
 fs.mkdirSync(OUT, { recursive: true });
 
-// Kacheln aus der großen Vorlage (eine Zelle = 120 px): Reihenfolge = Tiefe 1 … 6, danach Sand, Eisen und das harte Gestein (Tiefe 7: abgedunkelter Fels)
-const TILES = [[360, 120], [480, 0], [600, 480], [360, 0], [600, 120], [0, 0], [480, 120], [840, 360]];
-const sheet = sharp({ create: { width: CELL * (TILES.length + 1), height: CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } });
+// Kacheln aus der großen Vorlage (eine Zelle = 120 px), je Schicht zwei Varianten: dunkler Fels, hellbraun, hellgrau, ganz dunkel; zuletzt Eisen
+const TILES = [[0, 0, 0.55], [600, 120, 0.5], [480, 0], [360, 120], [480, 120], [480, 120, 1, true], [480, 120, 0.3], [480, 120, 0.3, true], [840, 360]];
 const parts = [];
 for (let i = 0; i < TILES.length; i++) {
-  const input = await sharp(IN + 'vorlage.webp').extract({ left: TILES[i][0], top: TILES[i][1], width: 120, height: 120 }).resize(CELL, CELL, { kernel: 'nearest' }).png().toBuffer();
-  parts.push({ input, left: i * CELL, top: 0 });
+  const [left, top, dark = 1, flip] = TILES[i];
+  let im = sharp(IN + 'vorlage.webp').extract({ left, top, width: 120, height: 120 }).resize(CELL, CELL, { kernel: 'nearest' });
+  if (dark !== 1) im = im.modulate({ brightness: dark, saturation: 0.5 });
+  if (flip) im = im.flop();
+  parts.push({ input: await im.png().toBuffer(), left: i * CELL, top: 0 });
 }
-parts.push({ input: await sharp(IN + 'vorlage.webp').extract({ left: 0, top: 0, width: 120, height: 120 }).resize(CELL, CELL, { kernel: 'nearest' }).modulate({ brightness: 0.55, saturation: 0.5 }).png().toBuffer(), left: TILES.length * CELL, top: 0 });
-await sheet.composite(parts).png().toFile(OUT + 'tiles.png');
+await sharp({ create: { width: CELL * TILES.length, height: CELL, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite(parts).png().toFile(OUT + 'tiles.png');
 
 // Fossilien: eigene Bilder, weißer Hintergrund raus, verpixelt und unten an das Item-Blatt gehängt (je 128 px = 4 Felder)
 const FOSSILE = [['helix', 'Helixfossil'], ['dom', 'Domfossil'], ['bernstein', 'Altbernstein'], ['wurzel', 'Wurzelfossil'], ['klaue', 'Klauenfossil'], ['kopf', 'Kopffossil'], ['schild', 'Panzerfossil'], ['schale', 'Schildfossil'], ['feder', 'Federfossil'], ['kiefer', 'Kieferfossil'], ['flosse', 'Flossenfossil'], ['vogel', 'Vogelfossil'], ['drache', 'Drachenfossil'], ['dino', 'Paddelfossil'], ['fisch', 'Fischfossil']];

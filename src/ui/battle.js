@@ -1,5 +1,6 @@
 // Kampfmodus-Oberfläche: Team wählen (15), drei Verteidiger bestimmen, Gegner wählen – dann Echtzeit-Kampf im Vollbild.
 // Handkarten werden aufs Spielfeld gezogen (oder antippen + Feld antippen). Kampf-Level/Entwicklungen gelten nur im Kampf.
+import { hitVfx, effectVfx, drawVfx, drawMissile, preloadVfx } from '../gfx/vfx.js';
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import { Battle, fromPokemon, fromCpu, towerRole, movesOf, moveOf, calcStats, stonesFor, stoneName, stoneEvolution, canBattle } from '../game/battle.js';
@@ -367,6 +368,7 @@ function draw(dt) {
   // Geschosse
   for (const p of battle.projectiles) {
     const X = A.ox + p.x * T, Y = A.oy + p.y * T - T * 0.2, s = Math.max(3, Math.round(T / 9));
+    if (drawMissile(x, p.type, X, Y, Math.atan2(p.to.y - p.y, p.to.x - p.x), T, now)) continue;
     const col = typeColor(p.type);
     const d = Math.hypot(p.to.x - p.x, p.to.y - p.y) || 1, ux = (p.x - p.to.x) / d, uy = (p.y - p.to.y) / d;
     for (let k = 3; k >= 1; k--) { x.globalAlpha = 0.25 * (4 - k) / 3; x.fillStyle = col; x.fillRect(X + ux * k * s * 1.3 - s / 2, Y + uy * k * s * 1.3 - s / 2, s * 0.8, s * 0.8); }
@@ -374,6 +376,7 @@ function draw(dt) {
     x.fillStyle = '#fff'; x.fillRect(X - s / 2 - 1, Y - s / 2 - 1, s + 2, s + 2);
     x.fillStyle = col; x.fillRect(X - s / 2, Y - s / 2, s, s);
   }
+  drawVfx(x, A.vfx ||= [], dt, P, T);
   // Partikel
   A.fx = A.fx.filter((f) => {
     f.life -= dt;
@@ -506,12 +509,14 @@ function message(text) {
 }
 
 function handleEvents() {
+  preloadVfx();
   for (const ev of battle.events) {
     const u = ev.f;
     if (ev.type === 'hit') {
       const mv = moveOf(ev.move);
       sfx.attack(mv.type); sfx.hit();
-      burst(u, typeColor(mv.type), mv.cat === 'phys' ? 7 : 10, mv.cat === 'phys' ? 1.8 : 2.4);
+      hitVfx(arena.vfx ||= [], mv.type, u);
+      burst(u, typeColor(mv.type), 3, mv.cat === 'phys' ? 1.8 : 2.4);
       say(u, `-${ev.dmg}`, '#fff', 0.32, 0.7);
       if (ev.eff > 1) say(u, 'Sehr effektiv!', '#ffe066', 0.26, 1, -0.95);
       else if (ev.eff === 0) say(u, 'Keine Wirkung', '#cfcfcf', 0.24, 1, -0.95);
@@ -519,13 +524,16 @@ function handleEvents() {
       if (u.tower && u.side === 'p') haptic('tick');
     } else if (ev.type === 'miss') say(u, 'Daneben!', '#e8e8e8', 0.26, 0.8);
     else if (ev.type === 'faint') {
-      burst(u, '#ffffff', u.tower ? 22 : 10, u.tower ? 3.2 : 2, u.tower ? 7 : 5);
+      effectVfx(arena.vfx ||= [], u.tower ? 'explode' : 'ko', u);
+      burst(u, '#ffffff', u.tower ? 10 : 5, u.tower ? 3.2 : 2, u.tower ? 7 : 5);
       if (u.tower) { haptic('strong'); message(u.side === 'p' ? `Dein Verteidiger ${nameOf(u)} wurde besiegt!` : `${nameOf(u)} (Verteidiger) besiegt!`); }
     } else if (ev.type === 'level') {
+      effectVfx(arena.vfx ||= [], 'level', u);
       say(u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1.1, -0.9);
       if (u.side === 'p') haptic('tick');
     } else if (ev.type === 'evolve') {
       arena.flashes.push({ u, t: 0 });
+      effectVfx(arena.vfx ||= [], 'evolve', u);
       loadSprites(ev.to, u.gender, u.shiny);
       burst(u, '#fff6c0', 18, 3, 6);
       message(`${u.side === 'p' ? '' : 'Gegnerisches '}${species(ev.from).name} hat sich zu ${species(ev.to).name} entwickelt!`);

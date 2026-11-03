@@ -1,5 +1,6 @@
 // PokeDefense – Oberfläche: Team (6) mit Blick auf die angekündigten Gegner-Typen wählen (ohne Zeitlimit),
 // dann das vertikale Spielfeld: Sterne einsammeln, Karten antippen und Pokémon auf das untere Feld setzen.
+import { hitVfx, effectVfx, drawVfx, drawMissile, preloadVfx } from '../gfx/vfx.js';
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import * as A from '../game/actions.js';
@@ -237,6 +238,7 @@ function openField(themeId = null) {
   document.body.classList.add('in-battle');
   const levelMusic = game.chaos ? 'chaos' : musicForLevel(game.theme); // je Level ein passendes Stück
   setMusic(levelMusic);
+  preloadVfx();
   ui = { root, canvas, ctx: canvas.getContext('2d'), cards, info, starsEl, waveEl, livesEl, countEl: game.chaos ? go : null, msg, sel: null, fx: [], areas: [], texts: [], booms: [], rings: [], slashes: [], beams: [], shakeAmt: 0, freeze: 0, flash: 0, wx: [], wxKind: null, cardEls: [], last: performance.now(), raf: 0, hover: null };
   for (const c of game.cards) loadSprites(c.dex, c.src.gender, c.src.shiny);
   const tr = new Image(); tr.src = `${base}art/trainers/${app.state.profile?.sprite || 1}.png`; ui.trainer = tr;
@@ -553,6 +555,7 @@ function draw(dt) {
   for (const p of game.projectiles) {
     if (p.boomerang) { drawBone(x, P(p), T, p.spin || 0); continue; }
     const [X, Y] = P(p), col = typeColor(p.type), s = Math.max(4, Math.round(T / 6.5));
+    if (drawMissile(x, p.type, X, Y, Math.atan2(p.vy ?? p.dy ?? -1, p.vx ?? p.dx ?? 0), T, now)) continue;
     if (Math.random() < 0.35) burstAt(p, p.type, 1, 0.35, 0.6); // kleine Typ-Partikel entlang der Flugbahn
     (p.trail ||= []).push([X, Y]); if (p.trail.length > 7) p.trail.shift();
     p.trail.forEach(([tx, ty], i) => { const k = (i + 1) / p.trail.length; x.globalAlpha = k * 0.5; x.fillStyle = col; const q = s * (0.4 + k * 0.6); x.fillRect(tx - q / 2, ty - q / 2, q, q); });
@@ -612,6 +615,7 @@ function draw(dt) {
     return true;
   });
   // Partikel (Form je Typ: Funken, Tropfen, Blätter, Splitter, Brocken …)
+  drawVfx(x, U.vfx ||= [], dt, P, T);
   U.fx = U.fx.filter((f) => {
     f.life -= dt; if (f.life <= 0) return false;
     f.x += f.vx * dt; f.y += f.vy * dt; f.vy += f.g * dt; f.vx *= 1 - dt * f.drag;
@@ -911,37 +915,40 @@ function handleEvents() {
       for (let i = 0; i < 14; i++) burstAt({ x: rect.x + Math.random() * rect.w, y: rect.y + Math.random() * rect.h }, ev.moveType, 1, 0.3, 1);
       continue;
     }
-    if (ev.type === 'level') { say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
+    if (ev.type === 'level') { effectVfx(ui.vfx ||= [], 'level', ev.u); say(ev.u, `Lv ${ev.level}!`, '#ffd23f', 0.3, 1, -0.75); ring(ev.u, '#ffd23f', 0.2, 0.6, 0.4); sfx.levelUp(); continue; }
     if (ev.type === 'evolve') { evolveFx(ev); continue; }
     if (ev.type === 'dot') { say(ev.e, String(ev.dmg), { Gift: '#d48ae0', Feuer: '#ffa75c', Elektro: '#ffe066', Blaufeuer: '#7fc8ff' }[ev.dot] || '#ffffff', 0.24, 0.6, -0.3); burst(ev.e, ev.dot === 'Blaufeuer' ? 'Wasser' : ev.dot, ev.dot === 'Blaufeuer' ? 7 : 4, 0.6, 0.7); continue; }
     if (ev.type === 'handFull') { toast(`Höchstens ${D().chaos.handMax} Karten – setz erst eins ein.`); continue; }
     if (ev.type === 'collect' && ev.drop.dex) { const p = dropPos(ev.drop); say({ x: p.x, y: p.y }, species(ev.drop.dex).name + '!', '#ffffff', 0.28, 1); }
     if (ev.type === 'beam') { ui.beams.push({ u: ev.u, length: ev.length, fx: ev.fx, t: 0 }); sfx.attack({ ranke: 'Pflanze', feuer: 'Feuer', wasser: 'Wasser' }[ev.fx] || 'Normal'); shake(T() * 0.03); continue; }
-    if (ev.type === 'heal') { ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
+    if (ev.type === 'heal') { for (const { o } of ev.healed) effectVfx(ui.vfx ||= [], 'heal', o); ring(ev.u, '#7dff9a', 0.2, ev.radius, 0.6); for (const { o, amt } of ev.healed) { say(o, '+' + amt, '#7dff9a', 0.3); burst(o, 'Pflanze', 6, 0.8, 0.8); } if (ev.healed.length) sfx.levelUp(); continue; }
     if (ev.type === 'remove') { burst(ev.u, species(ev.u.dex).types[0], 10, 0.8); continue; }
     if (ev.type === 'boss') { banner('BOSS!', true); shake(T() * 0.08); haptic('strong'); sfx.wave(true); continue; }
-    if (ev.type === 'sleep') { say(ev.e, 'schläft ein!', '#cfe0ff', 0.26, 1, -0.9); burst(ev.e, 'Fee', 8, 0.8); continue; }
-    if (ev.type === 'confuse') { say(ev.e, 'verwirrt!', '#f95587', 0.28, 1, -0.9); burst(ev.e, 'Psycho', 10, 1.2); sfx.attack('Psycho'); continue; }
+    if (ev.type === 'sleep') { effectVfx(ui.vfx ||= [], 'sleep', ev.e); say(ev.e, 'schläft ein!', '#cfe0ff', 0.26, 1, -0.9); burst(ev.e, 'Fee', 8, 0.8); continue; }
+    if (ev.type === 'confuse') { effectVfx(ui.vfx ||= [], 'confuse', ev.e); say(ev.e, 'verwirrt!', '#f95587', 0.28, 1, -0.9); burst(ev.e, 'Psycho', 10, 1.2); sfx.attack('Psycho'); continue; }
     if (ev.type === 'hit') {
       const o = ev.target, type = ev.move?.type || 'Normal';
       if (!ev.mine && ev.melee) sfx.attack(type);
       if (ev.crit && !ev.mine) sfx.crit();
       if (ev.mine) { burst(o, 'Unlicht', 4, 0.7, 0.8); sfx.bite(); continue; } // eigenes Pokémon wird gebissen
       sfx.hit();
-      burst(o, type, ev.crit ? 18 : ev.eff > 1 ? 12 : 7, ev.crit ? 1.6 : 1, ev.crit ? 1.3 : 1);
+      hitVfx(ui.vfx ||= [], type, o, ev.crit);
+      burst(o, type, ev.crit ? 8 : 3, ev.crit ? 1.6 : 1, ev.crit ? 1.3 : 1);
       ring(o, typeColor(type), 0.15, ev.crit ? 1.1 : 0.6, ev.crit ? 0.4 : 0.25);
       if (ev.melee) ui.slashes.push({ x: o.x, y: o.y, color: typeColor(type), t: 0 });
       if (ev.crit) { say(o, 'VOLLTREFFER!', '#ffe066', 0.36, 1, -0.95); say(o, String(ev.dmg), '#ffe066', 0.55, 0.9); shake(T() * 0.12); ui.freeze = 0.07; ui.flash = Math.max(ui.flash, 0.12); buzz('medium'); }
       else { say(o, String(ev.dmg), ev.eff > 1 ? '#ffd23f' : ev.eff < 1 ? '#d0c8bc' : '#ffffff', ev.eff > 1 ? 0.42 : 0.32); if (ev.eff > 1) { shake(T() * 0.05); buzz('tick'); } }
     } else if (ev.type === 'defeat') {
       const e = ev.e, type = species(e.dex).types[0];
-      burst(e, type, 20, 1.6, 1.2); burst(e, 'Fee', 8, 1.2, 0.8);
+      effectVfx(ui.vfx ||= [], 'ko', e);
+      burst(e, type, 8, 1.6, 1.2);
       ring(e, '#ffffff', 0.2, 1.3, 0.45);
       shake(T() * 0.07); buzz('tick'); sfx.ko();
     } else if (ev.type === 'explode') {
       sfx.explosion();
       ui.booms.push({ u: ev.u, r: ev.radius, t: 0, square: ev.square });
-      burst(ev.u, 'Feuer', 34, 2.6, 1.5); burst(ev.u, 'Gestein', 16, 2.2, 1.2);
+      effectVfx(ui.vfx ||= [], 'explode', ev.u);
+      burst(ev.u, 'Feuer', 14, 2.6, 1.5); burst(ev.u, 'Gestein', 8, 2.2, 1.2);
       shake(T() * 0.3); ui.flash = 0.3; ui.freeze = 0.1; haptic('strong');
     } else if (ev.type === 'wave') {
       if (game.endless) saveChaosBest(ev.wave + 1);
@@ -963,6 +970,7 @@ const T = () => ui.tile;
 function evolveFx(ev) {
   const u = ev.u;
   loadSprites(ev.to, u.gender, u.shiny);
+  effectVfx(ui.vfx ||= [], 'evolve', u);
   ring(u, '#ffffff', 0.1, 1.6, 0.7); ring(u, '#ffe066', 0.3, 1.2, 0.9);
   burst(u, 'Fee', 26, 1.8, 1.2);
   ui.flash = Math.max(ui.flash, 0.18); shake(T() * 0.06);

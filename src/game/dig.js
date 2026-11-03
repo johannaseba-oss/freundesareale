@@ -21,13 +21,8 @@ function pickItem(rnd) {
 export const combosOf = (name) => (D().fossilCombos || []).filter((c) => (c.a === name || c.b === name) && species(c.dex));
 
 export function newSite(rnd = Math.random) {
-  const { cols, rows, depth: [lo, hi] } = D(), mid = Math.round((lo + hi) / 2) - 1;
-  const cell = Array.from({ length: rows }, () => Array(cols).fill(mid));
-  // Flecken aus höheren und tieferen Schichten
-  for (let n = 0; n < D().patches; n++) {
-    const cx = rnd() * cols, cy = rnd() * rows, rad = 1.5 + rnd() * 2.5, add = rnd() < 0.5 ? -1 - Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 3);
-    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (Math.hypot(x - cx, y - cy) <= rad) cell[y][x] = Math.max(lo, Math.min(hi, cell[y][x] + add));
-  }
+  const { cols, rows, layerHits: H } = D(), total = 3 * H;
+  const cell = Array.from({ length: rows }, () => Array(cols).fill(total)), floor = Array.from({ length: rows }, () => Array(cols).fill(0));
   const used = new Set(), key = (x, y) => y * cols + x;
   const place = (w, h, cells) => {
     for (let tries = 0; tries < 80; tries++) {
@@ -41,18 +36,25 @@ export function newSite(rnd = Math.random) {
   const items = [];
   for (let n = between(D().itemCount, rnd); n > 0; n--) {
     const it = pickItem(rnd), at = place(it.w, it.h, it.cells);
-    if (at) items.push({ it, ...at, got: false });
+    if (!at) continue;
+    // unter welcher Schicht es liegt: dort ist für diese Felder Schluss mit Graben
+    const chance = D().levelChance[it.group] || [1, 1, 1], sum = chance[0] + chance[1] + chance[2];
+    let r = rnd() * sum, level = 0;
+    while (level < 2 && r >= chance[level]) { r -= chance[level]; level++; }
+    const depth = total - (level + 1) * H;
+    it.cells.forEach(([a, b]) => { floor[at.y + b][at.x + a] = depth; });
+    items.push({ it, ...at, depth, got: false });
   }
   const iron = new Set();
   for (let n = between(D().ironCount, rnd); n > 0; n--) {
     const shape = IRON[Math.floor(rnd() * IRON.length)], w = Math.max(...shape.map((c) => c[0])) + 1, h = Math.max(...shape.map((c) => c[1])) + 1, at = place(w, h, shape);
-    if (at) shape.forEach(([a, b]) => iron.add(key(at.x + a, at.y + b)));
+    if (at) shape.forEach(([a, b]) => { iron.add(key(at.x + a, at.y + b)); floor[at.y + b][at.x + a] = H; });
   }
-  return { cell, items, iron, health: D().health, over: false };
+  return { cell, floor, items, iron, health: D().health, over: false };
 }
 
 export const isIron = (site, x, y) => site.iron.has(y * D().cols + x);
-const revealed = (site, e) => e.it.cells.filter(([a, b]) => site.cell[e.y + b][e.x + a] === 0).length / e.it.cells.length;
+const revealed = (site, e) => e.it.cells.filter(([a, b]) => site.cell[e.y + b][e.x + a] <= e.depth).length / e.it.cells.length;
 
 // Ein Schlag: trägt Erde ab, kostet Stabilität, meldet neue Funde. Auf bereits freier Erde passiert nichts.
 export function strike(site, x, y, toolId) {
@@ -64,7 +66,7 @@ export function strike(site, x, y, toolId) {
     if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) continue;
     const center = !dx && !dy;
     if (!center && dx && dy && !T.diagonal) continue;
-    const take = Math.min(site.cell[ny][nx], center ? T.hit : T.side);
+    const take = Math.min(site.cell[ny][nx] - site.floor[ny][nx], center ? T.hit : T.side);
     site.cell[ny][nx] -= take; removed += take;
   }
   const iron = !removed && isIron(site, x, y);

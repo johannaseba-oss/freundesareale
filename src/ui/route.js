@@ -1,5 +1,6 @@
 // Route – Oberfläche: Level wählen, Team (Empfehlung, anpassbar), dann das Feld mit fester Route und Bauplätzen.
 // Pokémon aus der Leiste unten auf einen Bauplatz setzen; ein platziertes Pokémon antippen = trainieren (EP) oder zurücknehmen.
+import { hitVfx, effectVfx, drawVfx, drawMissile, preloadVfx } from '../gfx/vfx.js';
 import { CFG, species } from '../config.js';
 import { app } from '../app.js';
 import * as A from '../game/actions.js';
@@ -106,6 +107,7 @@ function openField() {
   document.body.append(root);
   document.body.classList.add('in-battle');
   setMusic(musicForLevel(game.level.types));
+  preloadVfx();
   ui = { root, canvas, ctx: canvas.getContext('2d'), bar, info, msg, livesEl, epEl, waveEl, sel: null, selUnit: null, fx: [], texts: [], beams: [], waves: [], last: performance.now(), raf: 0 };
   for (const m of game.team) loadSprites(m.dex, m.gender, m.shiny);
   // Gebiet je Level nach Gegner-Typ (Wald, Kirschblüte, Herbst, Schnee, Strand, Nachtwald – tiles2.json)
@@ -446,6 +448,7 @@ function draw(dt) {
     x.globalAlpha = 1;
     return true;
   });
+  drawVfx(x, U.vfx ||= [], dt, P, T);
   drawParticles(x, U.fx, dt, U.ox, U.oy, T, now2);
   U.texts = U.texts.filter((t) => {
     t.t += dt; if (t.t > t.dur) return false;
@@ -522,14 +525,14 @@ function handleEvents() {
       sfx.attack(moveOf(bdata(u.dex).move).type);
     } else if (ev.type === 'hit') {
       const col = ev.crit ? '#ffe066' : ev.eff > 1 ? '#ffd23f' : ev.eff < 1 ? '#d0c8bc' : '#ffffff';
-      say(ev.e, String(ev.dmg), col, ev.crit || ev.eff > 1 ? 0.38 : 0.3); burst(ev.e, ev.move.type, ev.crit ? 18 : 9, ev.crit ? 1.5 : 1.1, ev.crit ? 1.6 : 1.25); sfx.hit();
-    } else if (ev.type === 'status') { say(ev.e, ev.name + '!', { burn: '#ffa75c', poison: '#d48ae0', paralysis: '#ffe066', sleep: '#cfe0ff', slow: '#9fd0ff' }[ev.kind], 0.22, 0.9); }
+      say(ev.e, String(ev.dmg), col, ev.crit || ev.eff > 1 ? 0.38 : 0.3); hitVfx(ui.vfx ||= [], ev.move.type, ev.e, ev.crit); burst(ev.e, ev.move.type, ev.crit ? 8 : 3, ev.crit ? 1.5 : 1.1, ev.crit ? 1.6 : 1.25); sfx.hit();
+    } else if (ev.type === 'status') { effectVfx(ui.vfx ||= [], ev.kind, ev.e); say(ev.e, ev.name + '!', { burn: '#ffa75c', poison: '#d48ae0', paralysis: '#ffe066', sleep: '#cfe0ff', slow: '#9fd0ff' }[ev.kind], 0.22, 0.9); }
     else if (ev.type === 'dot') { say(ev.e, String(ev.dmg), ev.kind === 'burn' ? '#ffa75c' : '#d48ae0', 0.22, 0.6); }
-    else if (ev.type === 'defeat') { say(ev.e, `+${ev.ep} EP`, ev.lucky ? '#ffd23f' : '#9fe8ff', ev.lucky ? 0.36 : 0.26, ev.lucky ? 1.4 : 1); burst(ev.e, species(ev.e.dex).types[0], 14, 1.4, 1.1); if (ev.lucky) burst(ev.e, 'Fee', 22, 1.6, 1.2); sfx.ko(); if (ev.lucky) sfx.star(); }
+    else if (ev.type === 'defeat') { effectVfx(ui.vfx ||= [], 'ko', ev.e); say(ev.e, `+${ev.ep} EP`, ev.lucky ? '#ffd23f' : '#9fe8ff', ev.lucky ? 0.36 : 0.26, ev.lucky ? 1.4 : 1); burst(ev.e, species(ev.e.dex).types[0], 14, 1.4, 1.1); if (ev.lucky) burst(ev.e, 'Fee', 22, 1.6, 1.2); sfx.ko(); if (ev.lucky) sfx.star(); }
     else if (ev.type === 'leak') { message(`Ein wildes Pokémon ist durchgekommen! Noch ${game.lives} ♥`); haptic('strong'); sfx.lose(); }
     else if (ev.type === 'wave') { message(ev.last ? 'Letzte Welle – mit Boss!' : `Welle ${ev.wave + 1}`); sfx.wave(ev.last); haptic('medium'); }
     else if (ev.type === 'boss') { message('Ein Boss erscheint!'); haptic('strong'); }
-    else if (ev.type === 'level') { say(ev.u, `Lv ${ev.u.level}!`, '#ffd23f', 0.32, 1); burst(ev.u, 'Fee', 18, 1.3, 1.1); burst(ev.u, 'Elektro', 8, 1); }
+    else if (ev.type === 'level') { effectVfx(ui.vfx ||= [], 'level', ev.u); say(ev.u, `Lv ${ev.u.level}!`, '#ffd23f', 0.32, 1); burst(ev.u, 'Fee', 18, 1.3, 1.1); burst(ev.u, 'Elektro', 8, 1); }
     else if (ev.type === 'place') burst(ev.u, 'Boden', 10, 1, 0.9);
   }
   game.events.length = 0;
