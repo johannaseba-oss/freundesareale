@@ -3909,9 +3909,10 @@
  },
  "walls": [
   "wand_grau.png",
-  "wand_lila.png",
-  "wand_blau.png",
+  "wand_hell.png",
+  "wand_braun.png",
+  "wand_dunkel.png",
   "wand_orange.png",
-  "wand_braun.png"
+  "wand_tuerkis.png"
  ]
 }
