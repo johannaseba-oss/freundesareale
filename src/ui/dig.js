@@ -23,7 +23,7 @@ function itemPic(it) {
 }
 
 export function renderDigSetup(el, back) {
-  const inv = DG.inventory(app.state), again = () => renderDigSetup(el, back), left = DG.digsLeft(app.state, now()), max = DG.digsMax(app.state), P = D().perDay;
+  const inv = DG.inventory(app.state), again = () => renderDigSetup(el, back), left = DG.digsLeft(app.state, now()), max = DG.digsMax(app.state, now()), P = D().perDay;
   const revive = (name, it) => startRevive([itemPic(it)], (s, t) => DG.revive(s, t, name), again);
   const combine = (name) => {
     const I = app.state.dig?.inventory || {}, pic = (n) => itemPic(D().items.find((i) => i.name === n));
@@ -36,7 +36,8 @@ export function renderDigSetup(el, back) {
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('div.bs-head', h('h2', '⛏ Ausgrabung')),
     h('button.btn.primary.big.dig-setup-go', { disabled: left <= 0, onclick: () => startDig(again) }, 'Ausgraben'),
-    h('p.note', `Heute noch ${left} von ${max} – jedes Boden- oder Gesteins-Pokémon mit mindestens ${P.minSatisfaction} % Zufriedenheit gräbt einmal am Tag.`),
+    h('div.dig-count', h('b', `${left} von ${max}`), h('span', 'Ausgrabungen heute übrig')),
+    h('p.note', `Jedes Boden- oder Gesteins-Pokémon mit mindestens ${P.minSatisfaction} % Zufriedenheit gräbt einmal am Tag.`),
     h('h3', `🎒 Inventar (${inv.reduce((n, e) => n + e.count, 0)})`),
     inv.length ? h('div.dig-inv', inv.map((e) => h('div.dig-slot', h('span.n', `×${e.count}`), itemPic(e.it), h('span', e.it.name), DG.fossilOf(e.it.name) ? h('button.btn.small.gold', { onclick: () => revive(e.it.name, e.it) }, 'Wiederbeleben') : DG.combosOf(e.it.name).length ? h('button.btn.small.gold', { onclick: () => combine(e.it.name) }, 'Zusammensetzen') : '')))  : h('p.note', 'Noch leer – alles, was du ausgräbst, landet hier.')));
 }
@@ -57,16 +58,19 @@ export function startDig(onClose) {
     btnImg.hammer.src = ART + (id === 'hammer' ? 'hammer_aus.png' : 'hammer_an.png');
   };
   const wall = pic(D().walls[Math.floor(Math.random() * D().walls.length)]);
+  const digger = DG.nextDigger(app.state, now()), left = DG.digsLeft(app.state, now());
   const root = h('div.dig', { style: { backgroundImage: `url(${wall.src})` } });
   document.body.append(root); document.body.classList.add('in-battle'); setMusic('track:' + D().music.track, D().music.volume);
   setTool('hacke');
 
   // Radar zuerst: Anzahl der Fundstücke
   root.replaceChildren(h('div.fp-end',
+    digger ? h('div.dig-digger', h('img', { src: portraitUrl(digger.dex, 'Determined', digger.shiny), alt: '' }), h('span', h('b', digger.nick || species(digger.dex).name), ' gräbt für dich')) : '',
     h('div.dig-radar'),
     h('h2', 'Radar'),
     h('p.dig-num', `${site.items.length} ${site.items.length === 1 ? 'Fundstück' : 'Fundstücke'}`),
-    h('div.dig-start', h('button.btn.primary', { onclick: () => { if (app.act((s) => DG.useDig(s, now()), true)?.ok === false) return; sound('tool'); play(); } }, 'Graben'), h('button.btn', { onclick: leave }, 'Zurück'))));
+    h('p', `Heute noch ${left} von ${DG.digsMax(app.state, now())} Ausgrabungen`),
+    h('div.dig-start', h('button.btn.primary', { onclick: () => { if (app.act((s) => DG.useDig(s, now(), digger?.uid), true)?.ok === false) return; sound('tool'); play(); } }, 'Graben'), h('button.btn', { onclick: leave }, 'Zurück'))));
 
   function leave() { cancelAnimationFrame(raf); root.remove(); document.body.classList.remove('in-battle'); setMusic('menu'); onClose(); }
 

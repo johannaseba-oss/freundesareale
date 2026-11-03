@@ -89,17 +89,19 @@ export function claim(s, site) {
 // Inventar zum Anzeigen: [{ it, count }]
 export const inventory = (s) => Object.entries(s.dig?.inventory || {}).map(([name, count]) => ({ it: D().items.find((i) => i.name === name), count })).filter((e) => e.it).sort((a, b) => a.it.group.localeCompare(b.it.group) || a.it.name.localeCompare(b.it.name));
 
-// Ausgrabungen pro Tag: je zufriedenem Pokémon der passenden Typen eine
-export function digsMax(s) {
-  const P = D().perDay;
-  return s.pokemon.filter((p) => (p.satisfaction ?? 0) >= P.minSatisfaction && species(p.dex)?.types.some((t) => P.types.includes(t))).length;
-}
-export const digsLeft = (s, t) => Math.max(0, digsMax(s) - (s.dig?.used?.day === dayKey(t) ? s.dig.used.n : 0));
-export function useDig(s, t) {
-  if (digsLeft(s, t) <= 0) return { ok: false, msg: 'Heute sind keine Ausgrabungen mehr möglich.' };
+// Ausgrabungen pro Tag: jedes zufriedene Pokémon der passenden Typen gräbt einmal
+const usedToday = (s, t) => { const u = s.dig?.used; return u?.day === dayKey(t) ? { n: u.n || 0, uids: u.uids || [] } : { n: 0, uids: [] }; };
+const diggers = (s) => { const P = D().perDay; return s.pokemon.filter((p) => (p.satisfaction ?? 0) >= P.minSatisfaction && species(p.dex)?.types.some((x) => P.types.includes(x))); };
+const freeDiggers = (s, t) => { const u = usedToday(s, t); return diggers(s).filter((p) => !u.uids.includes(p.uid)); };
+export function digsLeft(s, t) { const u = usedToday(s, t); return Math.max(0, freeDiggers(s, t).length - (u.n - u.uids.length)); } // n ohne uids: Ausgrabungen aus älteren Spielständen
+export const digsMax = (s, t) => digsLeft(s, t) + usedToday(s, t).n;
+// wer als Nächstes gräbt (zufällig unter denen, die heute noch nicht gegraben haben)
+export function nextDigger(s, t, rnd = Math.random) { const list = freeDiggers(s, t); return digsLeft(s, t) > 0 ? list[Math.floor(rnd() * list.length)] : null; }
+export function useDig(s, t, uid) {
+  if (digsLeft(s, t) <= 0 || !freeDiggers(s, t).some((p) => p.uid === uid)) return { ok: false, msg: 'Heute sind keine Ausgrabungen mehr möglich.' };
   s.dig ||= { sites: 0, found: 0 };
-  const d = dayKey(t);
-  s.dig.used = { day: d, n: (s.dig.used?.day === d ? s.dig.used.n : 0) + 1 };
+  const u = usedToday(s, t);
+  s.dig.used = { day: dayKey(t), n: u.n + 1, uids: [...u.uids, uid] };
   return { ok: true };
 }
 // Fossil aus dem Inventar wiederbeleben

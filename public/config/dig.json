@@ -86,7 +86,7 @@
  "items": [
   {
    "id": "kugel_gruen",
-   "name": "Kleine grüne Kugel",
+   "name": "Kleine grüne Sphäre",
    "group": "kugel",
    "x": 0,
    "y": 0,
@@ -113,7 +113,7 @@
   },
   {
    "id": "kugel_rot",
-   "name": "Kleine rote Kugel",
+   "name": "Kleine rote Sphäre",
    "group": "kugel",
    "x": 64,
    "y": 0,
@@ -140,7 +140,7 @@
   },
   {
    "id": "kugel_blau",
-   "name": "Kleine blaue Kugel",
+   "name": "Kleine blaue Sphäre",
    "group": "kugel",
    "x": 128,
    "y": 0,
@@ -167,7 +167,7 @@
   },
   {
    "id": "prisma_klein",
-   "name": "Kleine Prismakugel",
+   "name": "Kleine Prismasphäre",
    "group": "kugel",
    "x": 192,
    "y": 0,
@@ -194,7 +194,7 @@
   },
   {
    "id": "perle_klein",
-   "name": "Kleine Blasskugel",
+   "name": "Kleine Blasssphäre",
    "group": "kugel",
    "x": 256,
    "y": 0,
@@ -221,7 +221,7 @@
   },
   {
    "id": "gkugel_gruen",
-   "name": "Große grüne Kugel",
+   "name": "Große grüne Sphäre",
    "group": "grossKugel",
    "x": 320,
    "y": 0,
@@ -268,7 +268,7 @@
   },
   {
    "id": "gkugel_rot",
-   "name": "Große rote Kugel",
+   "name": "Große rote Sphäre",
    "group": "grossKugel",
    "x": 416,
    "y": 0,
@@ -315,7 +315,7 @@
   },
   {
    "id": "gkugel_blau",
-   "name": "Große blaue Kugel",
+   "name": "Große blaue Sphäre",
    "group": "grossKugel",
    "x": 512,
    "y": 0,
@@ -362,7 +362,7 @@
   },
   {
    "id": "prisma",
-   "name": "Große Prismakugel",
+   "name": "Große Prismasphäre",
    "group": "grossKugel",
    "x": 608,
    "y": 0,
@@ -405,7 +405,7 @@
   },
   {
    "id": "perle",
-   "name": "Große Blasskugel",
+   "name": "Große Blasssphäre",
    "group": "grossKugel",
    "x": 704,
    "y": 0,

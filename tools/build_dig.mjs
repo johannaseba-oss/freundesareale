@@ -48,10 +48,10 @@ await sharp({ create: { width: 928, height: BASE_H + 3 * FS, channels: 4, backgr
 const box = (x, y, w, h) => { const x0 = Math.floor(x / CELL) * CELL, y0 = Math.floor(y / CELL) * CELL; return [x0, y0, Math.ceil((x + w - x0) / CELL) * CELL, Math.ceil((y + h - y0) / CELL) * CELL]; };
 const G = (id, name, b, group, stone) => ({ id, name, box: box(...b), group, stone });
 const LIST = [
-  G('kugel_gruen', 'Kleine grüne Kugel', [4, 4, 56, 56], 'kugel'), G('kugel_rot', 'Kleine rote Kugel', [68, 4, 56, 56], 'kugel'), G('kugel_blau', 'Kleine blaue Kugel', [132, 4, 56, 56], 'kugel'),
-  G('prisma_klein', 'Kleine Prismakugel', [194, 4, 60, 56], 'kugel'), G('perle_klein', 'Kleine Blasskugel', [258, 2, 60, 60], 'kugel'),
-  G('gkugel_gruen', 'Große grüne Kugel', [328, 8, 80, 80], 'grossKugel'), G('gkugel_rot', 'Große rote Kugel', [424, 8, 80, 80], 'grossKugel'), G('gkugel_blau', 'Große blaue Kugel', [520, 8, 80, 80], 'grossKugel'),
-  G('prisma', 'Große Prismakugel', [612, 8, 86, 84], 'grossKugel'), G('perle', 'Große Blasskugel', [706, 2, 92, 92], 'grossKugel'),
+  G('kugel_gruen', 'Kleine grüne Sphäre', [4, 4, 56, 56], 'kugel'), G('kugel_rot', 'Kleine rote Sphäre', [68, 4, 56, 56], 'kugel'), G('kugel_blau', 'Kleine blaue Sphäre', [132, 4, 56, 56], 'kugel'),
+  G('prisma_klein', 'Kleine Prismasphäre', [194, 4, 60, 56], 'kugel'), G('perle_klein', 'Kleine Blasssphäre', [258, 2, 60, 60], 'kugel'),
+  G('gkugel_gruen', 'Große grüne Sphäre', [328, 8, 80, 80], 'grossKugel'), G('gkugel_rot', 'Große rote Sphäre', [424, 8, 80, 80], 'grossKugel'), G('gkugel_blau', 'Große blaue Sphäre', [520, 8, 80, 80], 'grossKugel'),
+  G('prisma', 'Große Prismasphäre', [612, 8, 86, 84], 'grossKugel'), G('perle', 'Große Blasssphäre', [706, 2, 92, 92], 'grossKugel'),
   ...FOSSILE.map(([id, name], i) => G(id, name, [(i % FW) * FS, BASE_H + Math.floor(i / FW) * FS, FS, FS], 'fossil')),
   G('mond1', 'Mondstein', [288, 96, 128, 128], 'stein', 'moon-stone'), G('mond2', 'Mondstein', [550, 106, 122, 114], 'stein', 'moon-stone'),
   G('sonne1', 'Sonnenstein', [678, 98, 120, 122], 'stein', 'sun-stone'), G('sonne2', 'Sonnenstein', [804, 102, 122, 120], 'stein', 'sun-stone'),

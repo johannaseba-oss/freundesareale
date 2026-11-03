@@ -66,6 +66,14 @@ export function migrate(s) {
     for (const [a, b] of [['Schildfossil', 'Panzerfossil'], ['Schalenfossil', 'Schildfossil'], ['Dinofossil', 'Paddelfossil']]) if (I[a]) { I[b] = (I[b] || 0) + I[a]; delete I[a]; }
     s.dig.namesV = 1;
   }
+  if (s.dig?.inventory && s.dig.namesV < 2) { // Kugeln heißen jetzt Sphären
+    const I = s.dig.inventory;
+    for (const a of Object.keys(I)) {
+      const b = a.replace(/(grüne|rote|blaue) Kugel/, '$1 Sphäre').replace('Prismakugel', 'Prismasphäre').replace('Blasskugel', 'Blasssphäre');
+      if (b !== a) { I[b] = (I[b] || 0) + I[a]; delete I[a]; }
+    }
+    s.dig.namesV = 2;
+  }
   if (s.defense && s.defense.unlockedBase == null) s.defense.unlockedBase = (s.defense.cleared || 0) + 1;
   if (s.route && !s.route.best) { // Umstellung auf „ein Level in einem Durchgang schaffen“: schon offene Level bleiben offen
     const W = s.route.waves || {}, old = (n) => 50 + (n - 1) * 2;
