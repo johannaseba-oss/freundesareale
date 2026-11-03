@@ -319,7 +319,19 @@ function onField(e) {
   // eigenes Pokémon (ohne gewählte Karte): ziehen = auf ein anderes Feld verschieben; antippen = im Chaos zurück auf die Hand
   const own = !ui.sel && game.units.find((u) => u.col === c[0] && u.row === c[1] && u.hp > 0);
   if (own) { dragUnit(e, own); return; }
-  if (ui.sel) useCard(ui.sel, c);
+  if (ui.sel) {
+    // Finger halten oder ziehen zeigt die Reichweite, Loslassen setzt das Pokémon
+    const card = ui.sel; ui.hover = c;
+    const move = (m) => { ui.hover = cellAt(m.clientX, m.clientY); };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up);
+      if (!ui) return;
+      const cell = ev.type === 'pointerup' ? cellAt(ev.clientX, ev.clientY) : null;
+      ui.hover = null;
+      if (cell && ui.sel === card) useCard(card, cell);
+    };
+    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  }
 }
 function dragUnit(e, u) {
   const sx = e.clientX, sy = e.clientY;
@@ -422,7 +434,8 @@ function buildCards() {
     // Karte: Typen als farbige Leiste mit Namen, Porträt, Fähigkeit/Rolle als Wort, Kosten
     const types = species(c.dex).types, ab = abilityOf(c.dex);
     const el = h('button.d-card.r-' + c.role,
-      h('span.d-card-types', types.map((t) => h('i', { style: { background: typeColor(t) } }, t))),
+      // Typen; der Typ der Attacke ist mit ⚔ markiert (auch wenn er nicht zum Pokémon gehört)
+      (() => { const at = moveOf(bdata(c.dex).move)?.type, list = types.includes(at) ? types : [...types, at]; return h('span.d-card-types', list.map((t) => h('i' + (t === at ? '.atk' : ''), { style: { background: typeColor(t) } }, t === at ? '⚔' + t : t))); })(),
       h('img', { src: portraitUrl(c.dex, 'Normal', c.shiny), alt: '', draggable: false }),
       h('span.d-card-ab.r-' + c.role, ab ? ab.name : specialsOf(c.dex)[0]?.name || ROLE_SHORT[c.role]),
       h('span.d-card-cost', c.once ? '1×' : String(c.cost)),
@@ -448,7 +461,7 @@ function updateCards() {
   if (ui.infoKey !== ik) {
     ui.infoKey = ik;
     const c = shown;
-    ui.info.replaceChildren(...(c ? [h('b', c.src.nick || species(c.dex).name), h('span.type-chips.inline', species(c.dex).types.map((t) => typeChip(t))), h('small', `${D().roles[c.role].icon} ${abilityText(c.dex)} · ${moveInfo(c.dex)}`)] : [h('small', 'Tippe eine Karte an, dann ein Feld.')]));
+    ui.info.replaceChildren(...(c ? [h('b', c.src.nick || species(c.dex).name), h('span.type-chips.inline', species(c.dex).types.map((t) => typeChip(t))), h('span.d-atk', '⚔ ', moveOf(bdata(c.dex).move)?.name, ' ', typeChip(moveOf(bdata(c.dex).move)?.type)), h('small', `${D().roles[c.role].icon} ${abilityText(c.dex)} · ${moveInfo(c.dex)}`)] : [h('small', 'Tippe eine Karte an, dann ein Feld.')]));
   }
   for (const { c, el } of ui.cardEls) {
     const left = Math.max(0, c.readyAt - game.t);
@@ -534,6 +547,16 @@ function draw(dt) {
       }
     } else U.hintFor = null;
     for (const u of game.units) if (U.sel && game.canUpgrade(U.sel, u)) { const p = 1 + Math.sin(now / 150) * 2; x.strokeRect(U.ox + u.col * T + 2 - p, U.oy + u.row * T + 2 - p, T - 4 + p * 2, T - 4 + p * 2); }
+    // Karte gewählt, Finger noch nicht auf dem Feld: Reichweite am ersten freien Feld der vordersten Reihe zeigen
+    if (!U.hover && U.sel) {
+      let spot = null;
+      for (let r = 0; r < G.rows && !spot; r++) for (const c of [2, 1, 3, 0, 4]) if (game.canPlace(c, r)) { spot = [c, r]; break; }
+      if (spot) {
+        const { attack, area } = game.previewCells(U.sel.dex, U.sel.role, spot[0], spot[1]);
+        x.fillStyle = 'rgba(120,200,255,.22)'; for (const [a, b] of area) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
+        x.fillStyle = 'rgba(255,120,80,.24)'; for (const [a, b] of attack) x.fillRect(U.ox + a * T + 1, U.oy + b * T + 1, T - 2, T - 2);
+      }
+    }
     if (U.hover) {
       // Reichweiten-Vorschau: wohin das Pokémon von hier aus angreift (rot) bzw. wohin seine Effekte reichen (blau)
       const pv = U.sel ? { dex: U.sel.dex, role: U.sel.role } : U.moving ? { dex: U.moving.dex, role: U.moving.role } : null;

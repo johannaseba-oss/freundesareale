@@ -563,6 +563,22 @@
       "chance": 0.2,
       "seconds": 5
     },
+    "123": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "141": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
     "167": {
       "type": "cone",
       "name": "Fadenschuss",
@@ -592,6 +608,14 @@
       "chance": 0.25,
       "seconds": 4
     },
+    "212": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
     "225": {
       "type": "cone",
       "name": "Eiswolke",
@@ -616,24 +640,26 @@
     "261": {
       "type": "cone",
       "name": "Brüller",
-      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – wirft getroffene Gegner 2 Felder zurück und senkt ihren Angriff",
       "range": 2,
       "mult": 0.8,
       "status": "atkDown",
       "chance": 1,
       "seconds": 5,
-      "factor": 0.5
+      "factor": 0.5,
+      "knockback": 2
     },
     "262": {
       "type": "cone",
       "name": "Brüller",
-      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – wirft getroffene Gegner 2 Felder zurück und senkt ihren Angriff",
       "range": 2,
       "mult": 0.8,
       "status": "atkDown",
       "chance": 1,
       "seconds": 5,
-      "factor": 0.5
+      "factor": 0.5,
+      "knockback": 2
     },
     "266": {
       "type": "shield",
@@ -657,13 +683,14 @@
     "303": {
       "type": "cone",
       "name": "Brüller",
-      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – wirft getroffene Gegner 2 Felder zurück und senkt ihren Angriff",
       "range": 2,
       "mult": 0.8,
       "status": "atkDown",
       "chance": 1,
       "seconds": 5,
-      "factor": 0.5
+      "factor": 0.5,
+      "knockback": 2
     },
     "310": {
       "type": "cone",
@@ -704,35 +731,38 @@
     "403": {
       "type": "cone",
       "name": "Brüller",
-      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – wirft getroffene Gegner 2 Felder zurück und senkt ihren Angriff",
       "range": 2,
       "mult": 0.8,
       "status": "atkDown",
       "chance": 1,
       "seconds": 5,
-      "factor": 0.5
+      "factor": 0.5,
+      "knockback": 2
     },
     "404": {
       "type": "cone",
       "name": "Brüller",
-      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – wirft getroffene Gegner 2 Felder zurück und senkt ihren Angriff",
       "range": 2,
       "mult": 0.8,
       "status": "atkDown",
       "chance": 1,
       "seconds": 5,
-      "factor": 0.5
+      "factor": 0.5,
+      "knockback": 2
     },
     "405": {
       "type": "cone",
       "name": "Brüller",
-      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – wirft getroffene Gegner 2 Felder zurück und senkt ihren Angriff",
       "range": 2,
       "mult": 0.8,
       "status": "atkDown",
       "chance": 1,
       "seconds": 5,
-      "factor": 0.5
+      "factor": 0.5,
+      "knockback": 2
     },
     "434": {
       "type": "cone",
@@ -785,6 +815,14 @@
       "freezeChance": 0.25,
       "freezeSeconds": 1
     },
+    "475": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
     "479": {
       "type": "cone",
       "name": "Donnerwelle",
@@ -820,6 +858,14 @@
       "name": "Kokon-Panzer",
       "text": "extrem harter Panzer – ein Schild gegen Gegner",
       "hpMult": 16
+    },
+    "542": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
     },
     "543": {
       "type": "cone",
@@ -926,6 +972,22 @@
       "freezeChance": 0.25,
       "freezeSeconds": 1
     },
+    "624": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "625": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
     "637": {
       "type": "aura",
       "name": "Glutaura",
@@ -934,6 +996,14 @@
       "mult": 0.45,
       "burnSeconds": 3,
       "burnPct": 0.025
+    },
+    "647": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
     },
     "665": {
       "type": "shield",
@@ -968,24 +1038,65 @@
       "chance": 0.2,
       "seconds": 5
     },
+    "679": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "680": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "681": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
     "715": {
       "type": "cone",
       "name": "Brüller",
-      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – senkt den Angriff getroffener Gegner stark",
+      "text": "Flächenattacke geradeaus, schräg links und schräg rechts – wirft getroffene Gegner 2 Felder zurück und senkt ihren Angriff",
       "range": 2,
       "mult": 0.8,
       "status": "atkDown",
       "chance": 1,
       "seconds": 5,
-      "factor": 0.5
+      "factor": 0.5,
+      "knockback": 2
     },
     "865": {
-      "type": "cone",
-      "name": "Breithieb",
-      "text": "trifft die 3 Felder vor sich und die 3 dahinter",
-      "range": 2,
-      "width": 3,
-      "mult": 1
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "888": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "900": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
     },
     "909": {
       "type": "beam",
@@ -1023,6 +1134,22 @@
       "cdMult": 0.5
     },
     "937": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "983": {
+      "type": "dash",
+      "name": "Blitzhieb",
+      "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",
+      "range": 3,
+      "mult": 1.1,
+      "cdMult": 0.5
+    },
+    "1006": {
       "type": "dash",
       "name": "Blitzhieb",
       "text": "extrem schneller Nahkampf: stürmt bis zu 3 Felder vor und kehrt zurück",

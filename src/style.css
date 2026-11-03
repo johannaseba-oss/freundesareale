@@ -1064,4 +1064,5 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 @keyframes rv-glow { 50% { filter: brightness(1.35) drop-shadow(0 0 8px #fff8b0); } }
 .rv-result { position: absolute; left: 0; right: 0; bottom: 8%; display: flex; flex-direction: column; align-items: center; gap: 10px; color: var(--ink); }
 .rv-result h2 { margin: 0; }
-
+.d-card-types i.atk { flex: 1.6; font-weight: 800; box-shadow: inset 0 -2px 0 #fff; }
+.d-atk { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; }

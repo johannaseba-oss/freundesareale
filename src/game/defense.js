@@ -277,11 +277,20 @@ export class Defense {
       let range = ab?.type === 'beam' ? ab.length + 0.3 : ab?.type === 'dash' ? ab.range + 0.3 : ab?.type === 'boomerang' ? ab.range : ab?.type === 'cone' ? ab.range + 0.3 : ab?.type === 'switch' ? R.fernkampf.range : rule ? rule.range : R[role].range;
       if (ab?.type === 'backline') range += ab.rangeBonus || 0;
       const lat = rule?.width ? rule.width / 2 : 0.5;
-      each((e) => { const a = aim(u, e); return a.lat < (ab?.type === 'cone' ? Math.max(0.5, a.fwd + 0.5) : lat) && a.fwd >= -0.3 && a.fwd <= range && (u.dir || e.y < u.y + 0.3); }, attack);
+      each((e) => { const a = aim(u, e); return a.lat < (ab?.type === 'cone' ? (ab.width ? ab.width / 2 : Math.max(0.5, a.fwd + 0.5)) : lat) && a.fwd >= -0.3 && a.fwd <= range && (u.dir || e.y < u.y + 0.3); }, attack);
     }
     if (this.cr && (ab?.type === 'sleep' || ab?.type === 'confuse')) each(box(D().chaos.statusArea.area), area);
     if (ab?.type === 'heal') each((e) => dist(e, u) <= ab.radius, area, false);
     if (ab?.type === 'aura') each(box(1), area, false);
+    // Sonderattacken: Boden und Betäubung zeigen, wohin sie reichen
+    for (const q of specialsOf(dex)) {
+      if (q.kind === 'stun') each((e) => { const a = aim(u, e); return a.lat < 0.5 && a.fwd > 0 && a.fwd <= q.range; }, area);
+      if (q.kind === 'terrain') {
+        const [dx, dy] = u.dir ? [u.dir, 0] : [0, -1];
+        if (q.shape === 'line') for (let n = 1; n < 12; n++) area.push([col + dx * n, row + dy * n]);
+        else for (const s of [-1, 0, 1]) area.push([col + dx + dy * s, row + dy + dx * s]);
+      }
+    }
     const TK = D().telekinesis;
     if (TK?.enabled && (role === 'nahkampf' || role === 'fernkampf') && species(dex).types.includes('Psycho') && !TK.except?.includes(ab?.type)) { attack.length = 0; each(() => true, attack); }
     return { attack, area };
@@ -740,7 +749,7 @@ export class Defense {
         const r = this.damage(u, u.level, target, (R.nahkampf.damageMult || 1) * (ab.mult || 1)); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit);
       } else if (ab?.type === 'cone') { // Flächenattacke: geradeaus, schräg links und schräg rechts
         this.events.push(ab.width ? { type: 'cloud', u, range: ab.range, width: ab.width, moveType: mv.type } : { type: 'cone', u, range: ab.range, moveType: mv.type, status: ab.status });
-        for (const e of this.enemies) { const a = aim(u, e); if (e.hp > 0 && a.fwd > -0.3 && a.fwd <= ab.range + 0.3 && a.lat < (ab.width ? ab.width / 2 : Math.max(0.5, a.fwd + 0.5))) { const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); this.coneStatus(e, ab, u); } }
+        for (const e of this.enemies) { const a = aim(u, e); if (e.hp > 0 && a.fwd > -0.3 && a.fwd <= ab.range + 0.3 && a.lat < (ab.width ? ab.width / 2 : Math.max(0.5, a.fwd + 0.5))) { if (ab.knockback) e.kb = ab.knockback; const r = this.damage(u, u.level, e, ab.mult || 1); this.hurtEnemy(e, r.dmg, r.eff, u, r.mv, r.crit); this.coneStatus(e, ab, u); } }
       } else if (ab?.type === 'switch') {
         if (close) { const r = this.damage(u, u.level, target, ab.meleeMult); this.hurtEnemy(target, r.dmg, r.eff, u, r.mv, r.crit); this.events.push({ type: 'switchMelee', u }); }
         else this.projectiles.push({ x: x0, y: y0, vx: dx * 6, vy: dy * 6, dist: 0, from: u, type: mv.type, range: 99, left: 1, hits: new Set(), mult: ab.rangedMult });
@@ -785,6 +794,8 @@ export class Defense {
         if (e.hp <= 0) { e.hurtT = this.t; this.events.push({ type: 'defeat', e }); if (st.from.hp > 0) this.reward(st.from, e); died = true; break; }
       }
       if (died) continue;
+      // Brüller: wird zurückgeworfen
+      if (e.kb > 0) { const m = Math.min(e.kb, 7 * dt); e.y = Math.max(-0.3, e.y - m); e.kb -= m; e.eating = false; continue; }
       // schläft (Schlafpuder): bleibt stehen und greift nicht an
       if (this.t < (e.sleepUntil || 0)) { e.eating = false; continue; }
       // verwirrt: dreht um, greift Gegner hinter sich an oder trifft sich selbst
