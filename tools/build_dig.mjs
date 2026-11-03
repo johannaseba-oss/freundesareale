@@ -17,7 +17,32 @@ for (let i = 0; i < TILES.length; i++) {
 parts.push({ input: await sharp(IN + 'vorlage.webp').extract({ left: 0, top: 0, width: 120, height: 120 }).resize(CELL, CELL, { kernel: 'nearest' }).modulate({ brightness: 0.55, saturation: 0.5 }).png().toBuffer(), left: TILES.length * CELL, top: 0 });
 await sheet.composite(parts).png().toFile(OUT + 'tiles.png');
 
-fs.copyFileSync(IN + 'items.png', OUT + 'items.png');
+// Fossilien: eigene Bilder, weißer Hintergrund raus, verpixelt und unten an das Item-Blatt gehängt (je 128 px = 4 Felder)
+const FOSSILE = [['helix', 'Helixfossil'], ['dom', 'Domfossil'], ['bernstein', 'Altbernstein'], ['wurzel', 'Wurzelfossil'], ['klaue', 'Klauenfossil'], ['kopf', 'Kopffossil'], ['schild', 'Schildfossil'], ['schale', 'Schalenfossil'], ['feder', 'Federfossil'], ['kiefer', 'Kieferfossil'], ['flosse', 'Flossenfossil'], ['vogel', 'Vogelfossil'], ['drache', 'Drachenfossil'], ['dino', 'Dinofossil'], ['fisch', 'Fischfossil']];
+const BASE_H = 1120, FS = 128, FW = 7;
+async function fossilPic(id) {
+  const { data, info } = await sharp(IN + 'fossile/' + id + '.png').ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const w = info.width, h = info.height, seen = new Uint8Array(w * h), st = [];
+  for (let x = 0; x < w; x++) st.push(x, (h - 1) * w + x);
+  for (let y = 0; y < h; y++) st.push(y * w, y * w + w - 1);
+  while (st.length) {
+    const p = st.pop();
+    if (seen[p] || !(data[p * 4 + 3] < 60 || (data[p * 4] > 225 && data[p * 4 + 1] > 225 && data[p * 4 + 2] > 225))) continue;
+    seen[p] = 1; data[p * 4 + 3] = 0;
+    const x = p % w;
+    if (x > 0) st.push(p - 1);
+    if (x < w - 1) st.push(p + 1);
+    if (p >= w) st.push(p - w);
+    if (p < w * (h - 1)) st.push(p + w);
+  }
+  const small = await sharp(data, { raw: { width: w, height: h, channels: 4 } }).trim({ threshold: 1 }).resize(FS / 2, FS / 2, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } }).raw().toBuffer();
+  for (let i = 3; i < small.length; i += 4) small[i] = small[i] < 110 ? 0 : 255;
+  return sharp(small, { raw: { width: FS / 2, height: FS / 2, channels: 4 } }).resize(FS, FS, { kernel: 'nearest' }).png().toBuffer();
+}
+const extra = [];
+for (let i = 0; i < FOSSILE.length; i++) extra.push({ input: await fossilPic(FOSSILE[i][0]), left: (i % FW) * FS, top: BASE_H + Math.floor(i / FW) * FS });
+const base = await sharp(IN + 'items.png').ensureAlpha().toBuffer();
+await sharp({ create: { width: 928, height: BASE_H + 3 * FS, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: base, left: 0, top: 0 }, ...extra]).png().toFile(OUT + 'items.png');
 
 // Fundstücke: id, Name, Ausschnitt (x, y, Breite, Höhe auf dem Raster), Gruppe; stone = echter Entwicklungsstein statt Münzen
 const box = (x, y, w, h) => { const x0 = Math.floor(x / CELL) * CELL, y0 = Math.floor(y / CELL) * CELL; return [x0, y0, Math.ceil((x + w - x0) / CELL) * CELL, Math.ceil((y + h - y0) / CELL) * CELL]; };
@@ -27,10 +52,7 @@ const LIST = [
   G('prisma_klein', 'Kleine Prismakugel', [194, 4, 60, 56], 'kugel'), G('perle_klein', 'Kleine Blasskugel', [258, 2, 60, 60], 'kugel'),
   G('gkugel_gruen', 'Große grüne Kugel', [328, 8, 80, 80], 'grossKugel'), G('gkugel_rot', 'Große rote Kugel', [424, 8, 80, 80], 'grossKugel'), G('gkugel_blau', 'Große blaue Kugel', [520, 8, 80, 80], 'grossKugel'),
   G('prisma', 'Große Prismakugel', [612, 8, 86, 84], 'grossKugel'), G('perle', 'Große Blasskugel', [706, 2, 92, 92], 'grossKugel'),
-  G('dom', 'Domfossil', [2, 100, 154, 118], 'fossil'), G('helix1', 'Helixfossil', [162, 98, 123, 122], 'fossil'), G('helix2', 'Helixfossil', [418, 100, 124, 122], 'fossil'),
-  G('klaue1', 'Klauenfossil', [0, 224, 156, 158], 'fossil'), G('klaue2', 'Klauenfossil', [162, 224, 158, 156], 'fossil'), G('klaue3', 'Klauenfossil', [324, 226, 156, 158], 'fossil'), G('klaue4', 'Klauenfossil', [482, 226, 156, 158], 'fossil'),
-  G('schaedel', 'Kopffossil', [642, 224, 124, 118], 'fossil'), G('panzer', 'Schildfossil', [786, 226, 124, 126], 'fossil'),
-  G('wurzel1', 'Wurzelfossil', [2, 386, 124, 156], 'fossil'), G('wurzel2', 'Wurzelfossil', [130, 386, 156, 124], 'fossil'), G('wurzel3', 'Wurzelfossil', [290, 386, 124, 156], 'fossil'), G('wurzel4', 'Wurzelfossil', [418, 386, 156, 124], 'fossil'),
+  ...FOSSILE.map(([id, name], i) => G(id, name, [(i % FW) * FS, BASE_H + Math.floor(i / FW) * FS, FS, FS], 'fossil')),
   G('mond1', 'Mondstein', [288, 96, 128, 128], 'stein', 'moon-stone'), G('mond2', 'Mondstein', [550, 106, 122, 114], 'stein', 'moon-stone'),
   G('sonne1', 'Sonnenstein', [678, 98, 120, 122], 'stein', 'sun-stone'), G('sonne2', 'Sonnenstein', [804, 102, 122, 120], 'stein', 'sun-stone'),
   G('feuer', 'Feuerstein', [644, 354, 86, 92], 'stein', 'fire-stone'), G('wasser', 'Wasserstein', [738, 354, 92, 90], 'stein', 'water-stone'), G('donner', 'Donnerstein', [832, 352, 94, 94], 'stein', 'thunder-stone'),
@@ -40,7 +62,7 @@ const LIST = [
   G('stern', 'Sternenstück', [8, 552, 80, 80], 'schatz'), G('knochen1', 'Dicker Knochen', [98, 566, 188, 52], 'schatz'), G('knochen2', 'Dicker Knochen', [118, 642, 52, 188], 'schatz'),
   G('eisenkugel', 'Eisenkugel', [290, 546, 92, 92], 'schatz'), G('heiss', 'Heißbrocken', [390, 550, 116, 90], 'schatz'), G('glatt', 'Glattbrocken', [554, 592, 116, 106], 'schatz'), G('eis', 'Eisbrocken', [546, 704, 126, 110], 'schatz'),
   G('stachel', 'Stachelkern', [674, 556, 92, 84], 'schatz'), G('oval', 'Ovaler Stein', [776, 548, 80, 90], 'schatz'), G('ewig', 'Ewigstein', [678, 640, 118, 62], 'schatz'),
-  G('glanz', 'Glanzsplitter', [24, 654, 48, 68], 'schatz'), G('lehm', 'Lichtlehm', [194, 654, 120, 94], 'schatz'), G('urzeit', 'Urzeitfossil', [330, 646, 108, 118], 'fossil'), G('feucht', 'Nassbrocken', [452, 640, 90, 78], 'schatz'),
+  G('glanz', 'Glanzsplitter', [24, 654, 48, 68], 'schatz'), G('lehm', 'Lichtlehm', [194, 654, 120, 94], 'schatz'), G('hart', 'Harter Stein', [330, 646, 108, 118], 'schatz'), G('feucht', 'Nassbrocken', [452, 640, 90, 78], 'schatz'),
   G('sternbruch', 'Sternbruch', [4, 740, 88, 88], 'schatz'), G('kiesel', 'Kieselkern', [194, 770, 60, 60], 'schatz'), G('herz', 'Herzschuppe', [256, 786, 48, 44], 'schatz'),
   G('scherbe_gruen', 'Grüne Scherbe', [804, 644, 120, 88], 'scherbe'), G('scherbe_rot', 'Rote Scherbe', [676, 708, 84, 88], 'scherbe'), G('scherbe_gelb', 'Gelbe Scherbe', [804, 740, 112, 88], 'scherbe'), G('scherbe_blau', 'Blaue Scherbe', [836, 836, 90, 88], 'scherbe'),
 ];
@@ -48,7 +70,7 @@ const GEMS = [['Käfer', 2, 836], ['Unlicht', 130, 836], ['Drache', 258, 836], [
 for (const [t, x, y] of GEMS) LIST.push(G('juwel_' + t.toLowerCase().replace('ä', 'ae'), t + '-Juwel', [x, y, 120, 90], 'juwel'));
 
 // Belegte Felder aus den Bildpunkten: ein Feld zählt, wenn genug Pixel des Fundstücks darin liegen
-const { data, info } = await sharp(IN + 'items.png').ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+const { data, info } = await sharp(OUT + 'items.png').ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 const items = LIST.map(({ id, name, box: [x, y, w, h], group, stone }) => {
   const cells = [];
   for (let cy = 0; cy < h / CELL; cy++) for (let cx = 0; cx < w / CELL; cx++) {

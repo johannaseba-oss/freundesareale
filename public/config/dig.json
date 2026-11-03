@@ -1,5 +1,5 @@
 {
- "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level). groups: revealShare = eigener Freilege-Anteil dieser Gruppe statt des allgemeinen (Fossilien: komplett freilegen).",
+ "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level). groups: revealShare = eigener Freilege-Anteil dieser Gruppe statt des allgemeinen (Fossilien: komplett freilegen). Fossilien, deren Pokémon es im Spiel noch nicht gibt, kommen nicht vor. fossilCombos = zwei Fossil-Hälften ergeben zusammen ein Pokémon.",
  "cols": 10,
  "rows": 14,
  "depth": [
@@ -451,94 +451,78 @@
    ]
   },
   {
+   "id": "helix",
+   "name": "Helixfossil",
+   "group": "fossil",
+   "x": 0,
+   "y": 1120,
+   "w": 4,
+   "h": 4,
+   "cells": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     2,
+     3
+    ]
+   ]
+  },
+  {
    "id": "dom",
    "name": "Domfossil",
    "group": "fossil",
-   "x": 0,
-   "y": 96,
-   "w": 5,
-   "h": 4,
-   "cells": [
-    [
-     0,
-     0
-    ],
-    [
-     1,
-     0
-    ],
-    [
-     2,
-     0
-    ],
-    [
-     3,
-     0
-    ],
-    [
-     4,
-     0
-    ],
-    [
-     0,
-     1
-    ],
-    [
-     1,
-     1
-    ],
-    [
-     2,
-     1
-    ],
-    [
-     3,
-     1
-    ],
-    [
-     4,
-     1
-    ],
-    [
-     0,
-     2
-    ],
-    [
-     1,
-     2
-    ],
-    [
-     2,
-     2
-    ],
-    [
-     3,
-     2
-    ],
-    [
-     4,
-     2
-    ],
-    [
-     1,
-     3
-    ],
-    [
-     2,
-     3
-    ],
-    [
-     3,
-     3
-    ]
-   ]
-  },
-  {
-   "id": "helix1",
-   "name": "Helixfossil",
-   "group": "fossil",
-   "x": 160,
-   "y": 96,
+   "x": 128,
+   "y": 1120,
    "w": 4,
    "h": 4,
    "cells": [
@@ -601,11 +585,11 @@
    ]
   },
   {
-   "id": "helix2",
-   "name": "Helixfossil",
+   "id": "bernstein",
+   "name": "Altbernstein",
    "group": "fossil",
-   "x": 416,
-   "y": 96,
+   "x": 256,
+   "y": 1120,
    "w": 4,
    "h": 4,
    "cells": [
@@ -668,13 +652,80 @@
    ]
   },
   {
-   "id": "klaue1",
+   "id": "wurzel",
+   "name": "Wurzelfossil",
+   "group": "fossil",
+   "x": 384,
+   "y": 1120,
+   "w": 4,
+   "h": 4,
+   "cells": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     0,
+     3
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "klaue",
    "name": "Klauenfossil",
    "group": "fossil",
-   "x": 0,
-   "y": 224,
-   "w": 5,
-   "h": 5,
+   "x": 512,
+   "y": 1120,
+   "w": 4,
+   "h": 4,
    "cells": [
     [
      0,
@@ -709,10 +760,6 @@
      1
     ],
     [
-     4,
-     1
-    ],
-    [
      0,
      2
     ],
@@ -721,274 +768,33 @@
      2
     ],
     [
-     3,
-     2
-    ],
-    [
-     4,
+     2,
      2
     ],
     [
      3,
+     2
+    ],
+    [
+     0,
      3
     ],
     [
-     4,
+     1,
      3
     ],
     [
      2,
-     4
-    ],
-    [
-     3,
-     4
+     3
     ]
    ]
   },
   {
-   "id": "klaue2",
-   "name": "Klauenfossil",
-   "group": "fossil",
-   "x": 160,
-   "y": 224,
-   "w": 5,
-   "h": 5,
-   "cells": [
-    [
-     2,
-     0
-    ],
-    [
-     3,
-     0
-    ],
-    [
-     4,
-     0
-    ],
-    [
-     2,
-     1
-    ],
-    [
-     3,
-     1
-    ],
-    [
-     4,
-     1
-    ],
-    [
-     0,
-     2
-    ],
-    [
-     3,
-     2
-    ],
-    [
-     4,
-     2
-    ],
-    [
-     0,
-     3
-    ],
-    [
-     1,
-     3
-    ],
-    [
-     2,
-     3
-    ],
-    [
-     3,
-     3
-    ],
-    [
-     4,
-     3
-    ],
-    [
-     1,
-     4
-    ],
-    [
-     2,
-     4
-    ],
-    [
-     3,
-     4
-    ]
-   ]
-  },
-  {
-   "id": "klaue3",
-   "name": "Klauenfossil",
-   "group": "fossil",
-   "x": 320,
-   "y": 224,
-   "w": 5,
-   "h": 5,
-   "cells": [
-    [
-     1,
-     0
-    ],
-    [
-     2,
-     0
-    ],
-    [
-     0,
-     1
-    ],
-    [
-     1,
-     1
-    ],
-    [
-     0,
-     2
-    ],
-    [
-     1,
-     2
-    ],
-    [
-     3,
-     2
-    ],
-    [
-     4,
-     2
-    ],
-    [
-     0,
-     3
-    ],
-    [
-     1,
-     3
-    ],
-    [
-     2,
-     3
-    ],
-    [
-     3,
-     3
-    ],
-    [
-     4,
-     3
-    ],
-    [
-     1,
-     4
-    ],
-    [
-     2,
-     4
-    ],
-    [
-     3,
-     4
-    ],
-    [
-     4,
-     4
-    ]
-   ]
-  },
-  {
-   "id": "klaue4",
-   "name": "Klauenfossil",
-   "group": "fossil",
-   "x": 480,
-   "y": 224,
-   "w": 5,
-   "h": 5,
-   "cells": [
-    [
-     1,
-     0
-    ],
-    [
-     2,
-     0
-    ],
-    [
-     3,
-     0
-    ],
-    [
-     0,
-     1
-    ],
-    [
-     1,
-     1
-    ],
-    [
-     2,
-     1
-    ],
-    [
-     3,
-     1
-    ],
-    [
-     4,
-     1
-    ],
-    [
-     0,
-     2
-    ],
-    [
-     1,
-     2
-    ],
-    [
-     4,
-     2
-    ],
-    [
-     0,
-     3
-    ],
-    [
-     1,
-     3
-    ],
-    [
-     2,
-     3
-    ],
-    [
-     0,
-     4
-    ],
-    [
-     1,
-     4
-    ],
-    [
-     2,
-     4
-    ]
-   ]
-  },
-  {
-   "id": "schaedel",
+   "id": "kopf",
    "name": "Kopffossil",
    "group": "fossil",
    "x": 640,
-   "y": 224,
+   "y": 1120,
    "w": 4,
    "h": 4,
    "cells": [
@@ -1047,18 +853,26 @@
     [
      2,
      3
+    ],
+    [
+     3,
+     3
     ]
    ]
   },
   {
-   "id": "panzer",
+   "id": "schild",
    "name": "Schildfossil",
    "group": "fossil",
    "x": 768,
-   "y": 224,
-   "w": 5,
+   "y": 1120,
+   "w": 4,
    "h": 4,
    "cells": [
+    [
+     0,
+     0
+    ],
     [
      1,
      0
@@ -1070,6 +884,10 @@
     [
      3,
      0
+    ],
+    [
+     0,
+     1
     ],
     [
      1,
@@ -1100,8 +918,8 @@
      2
     ],
     [
-     4,
-     2
+     0,
+     3
     ],
     [
      1,
@@ -1118,15 +936,19 @@
    ]
   },
   {
-   "id": "wurzel1",
-   "name": "Wurzelfossil",
+   "id": "schale",
+   "name": "Schalenfossil",
    "group": "fossil",
    "x": 0,
-   "y": 384,
+   "y": 1248,
    "w": 4,
-   "h": 5,
+   "h": 4,
    "cells": [
     [
+     1,
+     0
+    ],
+    [
      2,
      0
     ],
@@ -1135,6 +957,10 @@
      0
     ],
     [
+     0,
+     1
+    ],
+    [
      1,
      1
     ],
@@ -1147,6 +973,10 @@
      1
     ],
     [
+     0,
+     2
+    ],
+    [
      1,
      2
     ],
@@ -1159,100 +989,29 @@
      2
     ],
     [
-     0,
-     3
-    ],
-    [
      1,
      3
     ],
     [
      2,
      3
-    ],
-    [
-     0,
-     4
-    ],
-    [
-     1,
-     4
     ]
    ]
   },
   {
-   "id": "wurzel2",
-   "name": "Wurzelfossil",
+   "id": "feder",
+   "name": "Federfossil",
    "group": "fossil",
    "x": 128,
-   "y": 384,
-   "w": 5,
-   "h": 4,
-   "cells": [
-    [
-     0,
-     0
-    ],
-    [
-     1,
-     0
-    ],
-    [
-     0,
-     1
-    ],
-    [
-     1,
-     1
-    ],
-    [
-     2,
-     1
-    ],
-    [
-     3,
-     1
-    ],
-    [
-     1,
-     2
-    ],
-    [
-     2,
-     2
-    ],
-    [
-     3,
-     2
-    ],
-    [
-     4,
-     2
-    ],
-    [
-     2,
-     3
-    ],
-    [
-     3,
-     3
-    ],
-    [
-     4,
-     3
-    ]
-   ]
-  },
-  {
-   "id": "wurzel3",
-   "name": "Wurzelfossil",
-   "group": "fossil",
-   "x": 288,
-   "y": 384,
+   "y": 1248,
    "w": 4,
-   "h": 5,
+   "h": 4,
    "cells": [
     [
+     1,
+     0
+    ],
+    [
      2,
      0
     ],
@@ -1261,6 +1020,10 @@
      0
     ],
     [
+     0,
+     1
+    ],
+    [
      1,
      1
     ],
@@ -1285,6 +1048,10 @@
      2
     ],
     [
+     3,
+     2
+    ],
+    [
      0,
      3
     ],
@@ -1295,24 +1062,16 @@
     [
      2,
      3
-    ],
-    [
-     0,
-     4
-    ],
-    [
-     1,
-     4
     ]
    ]
   },
   {
-   "id": "wurzel4",
-   "name": "Wurzelfossil",
+   "id": "kiefer",
+   "name": "Kieferfossil",
    "group": "fossil",
-   "x": 416,
-   "y": 384,
-   "w": 5,
+   "x": 256,
+   "y": 1248,
+   "w": 4,
    "h": 4,
    "cells": [
     [
@@ -1328,6 +1087,10 @@
      0
     ],
     [
+     3,
+     0
+    ],
+    [
      0,
      1
     ],
@@ -1344,6 +1107,10 @@
      1
     ],
     [
+     0,
+     2
+    ],
+    [
      1,
      2
     ],
@@ -1356,15 +1123,346 @@
      2
     ],
     [
-     4,
+     0,
+     3
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "flosse",
+   "name": "Flossenfossil",
+   "group": "fossil",
+   "x": 384,
+   "y": 1248,
+   "w": 4,
+   "h": 4,
+   "cells": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     2,
      2
     ],
     [
      3,
+     2
+    ],
+    [
+     0,
      3
     ],
     [
-     4,
+     1,
+     3
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "vogel",
+   "name": "Vogelfossil",
+   "group": "fossil",
+   "x": 512,
+   "y": 1248,
+   "w": 4,
+   "h": 4,
+   "cells": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "drache",
+   "name": "Drachenfossil",
+   "group": "fossil",
+   "x": 640,
+   "y": 1248,
+   "w": 4,
+   "h": 4,
+   "cells": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     2,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "dino",
+   "name": "Dinofossil",
+   "group": "fossil",
+   "x": 768,
+   "y": 1248,
+   "w": 4,
+   "h": 4,
+   "cells": [
+    [
+     0,
+     0
+    ],
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     3,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
+     3
+    ]
+   ]
+  },
+  {
+   "id": "fisch",
+   "name": "Fischfossil",
+   "group": "fossil",
+   "x": 0,
+   "y": 1376,
+   "w": 4,
+   "h": 4,
+   "cells": [
+    [
+     1,
+     0
+    ],
+    [
+     2,
+     0
+    ],
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     2,
+     1
+    ],
+    [
+     3,
+     1
+    ],
+    [
+     0,
+     2
+    ],
+    [
+     1,
+     2
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     3,
+     2
+    ],
+    [
+     0,
+     3
+    ],
+    [
+     1,
+     3
+    ],
+    [
+     2,
+     3
+    ],
+    [
+     3,
      3
     ]
    ]
@@ -2608,9 +2706,9 @@
    ]
   },
   {
-   "id": "urzeit",
-   "name": "Urzeitfossil",
-   "group": "fossil",
+   "id": "hart",
+   "name": "Harter Stein",
+   "group": "schatz",
    "x": 320,
    "y": 640,
    "w": 4,
@@ -3877,11 +3975,14 @@
   "Domfossil": [
    140
   ],
-  "Klauenfossil": [
-   347
+  "Altbernstein": [
+   142
   ],
   "Wurzelfossil": [
    345
+  ],
+  "Klauenfossil": [
+   347
   ],
   "Kopffossil": [
    408
@@ -3889,15 +3990,17 @@
   "Schildfossil": [
    410
   ],
-  "Urzeitfossil": [
-   142,
-   566,
-   696,
-   698,
-   880,
-   881,
-   882,
-   883
+  "Schalenfossil": [
+   564
+  ],
+  "Federfossil": [
+   566
+  ],
+  "Kieferfossil": [
+   696
+  ],
+  "Flossenfossil": [
+   698
   ]
  },
  "fossilBall": "hyperball",
@@ -3957,5 +4060,27 @@
    "to": 699,
    "level": 39
   }
- }
+ },
+ "fossilCombos": [
+  {
+   "a": "Vogelfossil",
+   "b": "Drachenfossil",
+   "dex": 880
+  },
+  {
+   "a": "Vogelfossil",
+   "b": "Dinofossil",
+   "dex": 881
+  },
+  {
+   "a": "Fischfossil",
+   "b": "Drachenfossil",
+   "dex": 882
+  },
+  {
+   "a": "Fischfossil",
+   "b": "Dinofossil",
+   "dex": 883
+  }
+ ]
 }

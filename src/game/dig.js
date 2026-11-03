@@ -12,10 +12,13 @@ function pickItem(rnd) {
   let r = rnd() * tot, group = G[0][0];
   for (const [k, g] of G) { if (r < g.weight) { group = k; break; } r -= g.weight; }
   // erst der Name, dann eine der Bildvarianten: mehrere Lagen desselben Fundstücks machen es nicht häufiger
-  const list = D().items.filter((i) => i.group === group), names = [...new Set(list.map((i) => i.name))];
+  const list = D().items.filter((i) => i.group === group && (i.group !== 'fossil' || D().fossils[i.name]?.some((d) => species(d)) || combosOf(i.name).length > 0)), names = [...new Set(list.map((i) => i.name))];
   const name = names[Math.floor(rnd() * names.length)], same = list.filter((i) => i.name === name);
   return same[Math.floor(rnd() * same.length)];
 }
+
+// Fossil-Hälften: welche Kombinationen sind mit diesem Fossil möglich?
+export const combosOf = (name) => (D().fossilCombos || []).filter((c) => (c.a === name || c.b === name) && species(c.dex));
 
 export function newSite(rnd = Math.random) {
   const { cols, rows, depth: [lo, hi] } = D(), mid = Math.round((lo + hi) / 2) - 1;
@@ -121,4 +124,11 @@ export function levelEvolutions(s) {
     if (!s.dexOwned.includes(p.dex)) s.dexOwned.push(p.dex);
   }
   return out;
+}
+// Zwei Fossil-Hälften zusammensetzen
+export function combine(s, t, combo) {
+  const I = s.dig?.inventory || {};
+  if (!(I[combo.a] > 0) || !(I[combo.b] > 0)) return { ok: false };
+  for (const n of [combo.a, combo.b]) if (!--I[n]) delete I[n];
+  return { ok: true, pokemon: addCaught(s, t, combo.dex, D().fossilBall, { fromFossil: true }) };
 }

@@ -1012,6 +1012,9 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .fp-end .btn:not(.primary) { color: var(--ink); }
 
 /* Ausgrabung */
+.dig-combos { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.dig-combos .btn { display: flex; align-items: center; gap: 8px; text-align: left; font-size: 13px; }
+.dig-combos img { width: 36px; height: 36px; image-rendering: pixelated; }
 .dig .fp-end > :not(.dig-radar):not(.dig-start):not(.row):not(.dig-list), .dig-left .dig-info { background: rgba(20, 12, 8, .78); padding: 4px 12px; border-radius: 8px; }
 .dig-revive { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
 .dig-slot .btn { font-size: 11px; padding: 2px 6px; }
