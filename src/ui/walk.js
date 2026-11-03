@@ -27,7 +27,7 @@ export function renderWalkSetup(el, back) {
   const mons = (app.state.pokemon || []).filter((p) => canBattle(p.dex)).sort((a, b) => !!b.fav - !!a.fav || maxSteps(b) - maxSteps(a) || speedOf(b).value - speedOf(a).value);
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
-    h('div.bs-head', h('h2', '🐾 Spaziergang')),
+    h('div.bs-head', h('h2', 'Spaziergang')),
     h('p.note', 'Zeichne auf der Karte eine Runde vom Startplatz aus und wieder zurück. Ausdauer = wie weit, Tempo = wie schnell. Wilde Pokémon laufen umher – weiche ihnen aus oder kämpfe. Gekämpft wird wie im Hauptspiel – mit den Attacken, die dein Pokémon auf seinem Level kann.'),
     mons.length ? h('div.bs-list', mons.map((p) => {
       const done = walkedToday(app.state, p.uid, now()), sp = speedOf(p);

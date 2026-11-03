@@ -36,7 +36,7 @@ export function renderDigSetup(el, back) {
   };
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
-    h('div.bs-head', h('h2', '⛏ Ausgrabung')),
+    h('div.bs-head', h('h2', 'Ausgrabung')),
     h('button.btn.primary.big.dig-setup-go', { disabled: left <= 0, onclick: () => startDig(again) }, 'Ausgraben'),
     h('div.dig-count', h('b', `${left} von ${max}`), h('span', 'Ausgrabungen heute übrig')),
     h('p.note', `Jedes Boden- oder Gesteins-Pokémon mit mindestens ${P.minSatisfaction} % Zufriedenheit gräbt einmal am Tag.`),

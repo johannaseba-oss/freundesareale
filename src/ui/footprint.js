@@ -20,8 +20,8 @@ export function renderFootprintSetup(el, back) {
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
     h('img.fp-banner', { src: ART + 'tile.webp', alt: '' }),
-    h('button.mode-card', { onclick: () => start(FP.classicRound, again) }, h('b', '🐾 Fußabdruck raten'), h('small', `${F().rounds} Fußabdrücke: Wem gehört er? Erst nur Namen, dann kommen Porträts und Sprites als Hinweise.`), best('classic')),
-    h('button.mode-card', { onclick: () => start(FP.guardRound, again) }, h('b', '🚧 Türsteher'), h('small', 'Nur Namen, keine Hinweise – dafür eine schwarze Liste oder eine Gästeliste. Lass nur herein, wer darf!'), best('guard'))));
+    h('button.mode-card', { onclick: () => start(FP.classicRound, again) }, h('b', 'Fußabdruck raten'), h('small', `${F().rounds} Fußabdrücke: Wem gehört er? Erst nur Namen, dann kommen Porträts und Sprites als Hinweise.`), best('classic')),
+    h('button.mode-card', { onclick: () => start(FP.guardRound, again) }, h('b', 'Türsteher'), h('small', 'Nur Namen, keine Hinweise – dafür eine schwarze Liste oder eine Gästeliste. Lass nur herein, wer darf!'), best('guard'))));
 }
 
 function start(makeRound, onClose) {

@@ -48,7 +48,7 @@ export function renderRouteSetup(el, back) {
   const sortBtn = (id, label) => h('button.btn.small' + (sortBy === id ? '.primary' : ''), { onclick: () => { sortBy = id; renderRouteSetup(el, back); } }, label);
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: () => { chosen = null; pickSel = null; renderRouteSetup(el, back); } }, '‹ Level'),
-    h('div.bs-head', h('h2', `🛤 Level ${chosen.n} · ${chosen.name}`), picker.count),
+    h('div.bs-head', h('h2', `Level ${chosen.n} · ${chosen.name}`), picker.count),
     h('div.d-theme', h('b', 'Gegner: '), h('span.type-chips.inline', chosen.types.map((t) => typeChip(t))), h('small', ` · ${chosen.waves} Wellen`)),
     h('p.note', `✦ = empfohlen (verschiedene Angriffsformen, stark gegen diese Gegner). Antippen zum Tauschen, ☆ markiert Favoriten. Bis zu ${N} Pokémon kommen aufs Feld.`),
     h('div.r-sort', h('small', 'Sortieren:'), sortBtn('level', 'Level'), sortBtn('shape', 'Angriffsform')),
@@ -63,7 +63,7 @@ function renderLevels(el, back) {
   const L = routeLevels(), done = st().cleared || 0, open = A.routeUnlocked(app.state), W = st().best || {};
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
-    h('div.bs-head', h('h2', '🛤 Route'), h('span.bs-count', `${done}/${L.length} geschafft`)),
+    h('div.bs-head', h('h2', 'Route'), h('span.bs-count', `${done}/${L.length} geschafft`)),
     h('p.note', `Wilde Pokémon laufen eine feste Route entlang. Setz deine Pokémon auf die Bauplätze daneben. Besiegte Gegner bringen EP – damit trainierst du deine Pokémon dauerhaft (auch in den Arealen). EP: ${st().ep || 0}`),
     h('div.route-levels', L.map((lv) => {
       const state = lv.n > open ? 'locked' : lv.n <= done ? 'done' : 'next';

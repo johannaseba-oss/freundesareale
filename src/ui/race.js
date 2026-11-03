@@ -37,7 +37,7 @@ export function renderRaceSetup(el, back) {
   const badges = [...R().rewards.places, ...R().rewards.milestones].filter((b) => s.race?.badges?.[b.id]);
   const canvas = h('canvas.rc-stall');
   el.replaceChildren(h('div.bs.rc-main',
-    h('div.rc-top', h('button.btn.small', { onclick: back }, '‹'), h('b', '🏇 Rennen'),
+    h('div.rc-top', h('button.btn.small', { onclick: back }, '‹'), h('b', 'Rennen'),
       h('span.rc-chip' + (entered ? '.ok' : '.todo'), entered ? `🏁 ${name(entered)}` : '🏁 Anmeldung offen', h('small', ` · ⏱ ${fmtDuration(clock.msToStart)}`)),
       h('button.btn.small', { onclick: showHelp }, '?')),
     pending.length ? h('button.btn.primary.big.rc-watch', { onclick: () => watchRace(pending[0]) }, `🏁 Rennen vom ${RC.fmtDay(pending[0])} ansehen`) : null,
@@ -48,7 +48,7 @@ export function renderRaceSetup(el, back) {
 
 // Stall-Szene: Hintergrundbild (Ausschnitt um die Boxen), jedes Pokémon läuft nur in seiner Box herum
 function showHelp() {
-  modal((m, close) => m.append(h('h3', '🏇 Rennen'),
+  modal((m, close) => m.append(h('h3', 'Rennen'),
     h('p', `Jeden Tag um ${R().race.hour} Uhr läuft ein Rennen auf ${R().race.lanes} Bahnen. Melde vorher ein Pokémon aus deinem Stall an – freie Bahnen füllt der Computer auf. Der Ausgang ist reiner Zufall und zeigt sich erst ganz am Ende.`),
     h('p', 'Tippe auf eine leere Box, um ein Pokémon einziehen zu lassen, oder auf ein Pokémon für sein Profil. Jedes Pokémon hat eigene Werte: ★ gefüllt = erreicht, hell = noch möglich, schwarz = da geht nichts mehr. Pro Tag kann jeder Wert nur ein Stück wachsen.'),
     h('div.row', h('button.btn', { onclick: close }, 'OK'))));

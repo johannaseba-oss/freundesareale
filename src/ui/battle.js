@@ -75,14 +75,14 @@ export function renderBattleSetup() {
   // Modus-Auswahl: PokeDefense oder Arena
   if (mode === 'menu') {
     el.replaceChildren(h('div.bs', h('div.bs-head', h('h2', 'Kampf'), h('button.btn.small.gold', { onclick: () => openItemShop() }, '🛒 Item-Shop')),
-      h('button.mode-card.chaos-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/chaos/tile.webp)` }, onclick: () => openChaos() }, h('b', '🎲 Chaos-Modus'), h('small', 'Endlose Wellen, Pokébälle statt Sterne – jede große Welle andere Gegner. Wie weit kommst du?'), app.state.defense?.chaosBest ? h('small.chaos-best', `Dein Rekord: Welle ${app.state.defense.chaosBest}`) : null),
-      h('button.mode-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/footprint/tile.webp)` }, onclick: () => { mode = 'footprint'; renderBattleSetup(); } }, h('b', '🐾 Fußabdrücke'), h('small', 'Wem gehört der Fußabdruck? Rate zehnmal und hol dir Rang SS.')),
-      h('button.mode-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/dig/tile.webp)` }, onclick: () => { mode = 'dig'; renderBattleSetup(); } }, h('b', '⛏ Ausgrabung'), h('small', 'Grabe Schätze aus, bevor die Stelle einbricht. Hacke oder Hammer?')),
-      h('button.mode-card', { onclick: () => { mode = 'route'; renderBattleSetup(); } }, h('b', '🛤 Route'), h('small', 'Tower Defense mit fester Strecke: Pokémon auf Bauplätze setzen, EP verdienen und dauerhaft trainieren.')),
-      h('button.mode-card.race-card', { onclick: () => { mode = 'race'; renderBattleSetup(); } }, h('b', '🏇 Rennen'), h('small', `Pferde-Pokémon im Stall pflegen und trainieren – jeden Tag um ${CFG.race.race.hour} Uhr ein Rennen auf 5 Bahnen.`), raceNote()),
-      h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', '★ PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
-      h('button.mode-card', { onclick: () => { mode = 'arena'; step = 'opponent'; renderBattleSetup(); } }, h('b', '⚔ Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.')),
-      h('button.mode-card', { onclick: () => { mode = 'walk'; renderBattleSetup(); } }, h('b', '🐾 Spaziergang'), h('small', 'Route auf der Karte einzeichnen, wilden Pokémon ausweichen oder sie klassisch bekämpfen – Attacken kosten Münzen.'))));
+      h('button.mode-card.chaos-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/chaos/tile.webp)` }, onclick: () => openChaos() }, h('b', 'Chaos-Modus'), h('small', 'Endlose Wellen, Pokébälle statt Sterne – jede große Welle andere Gegner. Wie weit kommst du?'), app.state.defense?.chaosBest ? h('small.chaos-best', `Dein Rekord: Welle ${app.state.defense.chaosBest}`) : null),
+      h('button.mode-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/footprint/tile.webp)` }, onclick: () => { mode = 'footprint'; renderBattleSetup(); } }, h('b', 'Fußabdrücke'), h('small', 'Wem gehört der Fußabdruck? Rate zehnmal und hol dir Rang SS.')),
+      h('button.mode-card.fp-card-tile', { style: { backgroundImage: `url(${import.meta.env.BASE_URL}art/dig/tile.webp)` }, onclick: () => { mode = 'dig'; renderBattleSetup(); } }, h('b', 'Ausgrabung'), h('small', 'Grabe Schätze aus, bevor die Stelle einbricht. Hacke oder Hammer?')),
+      h('button.mode-card', { onclick: () => { mode = 'route'; renderBattleSetup(); } }, h('b', 'Route'), h('small', 'Tower Defense mit fester Strecke: Pokémon auf Bauplätze setzen, EP verdienen und dauerhaft trainieren.')),
+      h('button.mode-card.race-card', { onclick: () => { mode = 'race'; renderBattleSetup(); } }, h('b', 'Rennen'), h('small', `Pferde-Pokémon im Stall pflegen und trainieren – jeden Tag um ${CFG.race.race.hour} Uhr ein Rennen auf 5 Bahnen.`), raceNote()),
+      h('button.mode-card', { onclick: () => { mode = 'defense'; renderBattleSetup(); } }, h('b', 'PokeDefense'), h('small', 'Wehre 5 Gegnerwellen ab: Sterne sammeln, 6 Pokémon geschickt aufs Feld setzen.')),
+      h('button.mode-card', { onclick: () => { mode = 'arena'; step = 'opponent'; renderBattleSetup(); } }, h('b', 'Arena'), h('small', 'Echtzeitkampf gegen Computergegner mit drei Verteidigern pro Seite.')),
+      h('button.mode-card', { onclick: () => { mode = 'walk'; renderBattleSetup(); } }, h('b', 'Spaziergang'), h('small', 'Route auf der Karte einzeichnen, wilden Pokémon ausweichen oder sie klassisch bekämpfen – Attacken kosten Münzen.'))));
     return;
   }
   if (mode === 'defense') { renderDefenseSetup(el, () => { mode = 'menu'; renderBattleSetup(); }); return; }
@@ -99,7 +99,7 @@ export function renderBattleSetup() {
   if (step === 'opponent') {
     el.replaceChildren(h('div.bs',
       back(() => { mode = 'menu'; renderBattleSetup(); }),
-      h('div.bs-head', h('h2', '⚔ Arena – Gegner')),
+      h('div.bs-head', h('h2', 'Arena – Gegner')),
       h('div.bs-list', B().opponents.map((o) => h('button.bs-row.opp', { onclick: () => { chosenOpp = o; step = 'team'; renderBattleSetup(); el.scrollTop = 0; } },
         trainerCanvas(o.trainer, 1),
         h('div.bs-row-text', h('b', oppName(o)), h('small', o.level),

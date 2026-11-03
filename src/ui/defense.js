@@ -93,7 +93,7 @@ function renderRoadmap(el, back) {
   const prog = (n, short) => short ? `${Math.min(W[n - 1] || 0, A.defenseNeed(n - 1))}/${A.defenseNeed(n - 1)} Wellen` : `Schaffe zuerst alle ${A.defenseNeed(n - 1)} Wellen von Level ${n - 1} in einem Durchgang (bisher bestenfalls ${W[n - 1] || 0}).`;
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
-    h('div.bs-head', h('h2', '★ PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
+    h('div.bs-head', h('h2', 'PokeDefense'), h('span.bs-count' + (done >= L.length ? '.full' : ''), `${done}/${L.length} geschafft`)),
     h('p.note', 'Tippe auf das leuchtende Level. Die Punkte zeigen die Typen der Gegner.'),
     roadMap(L, done, (lv) => { chosen = lv; renderDefenseSetup(el, back); el.scrollTop = 0; }, open, prog)));
 }
@@ -143,7 +143,7 @@ function startChaos() {
   const best = app.state.defense?.chaosBest, sus = suspended();
   modal((m, close) => {
     const bwrap = h('div.cb-menu', h('small', 'Rekorde aller Trainer:innen'), boardEl(null)); loadChaosBoard(true).then((list) => { if (list) bwrap.lastChild.replaceWith(boardEl(list, { myBest: app.state.defense?.chaosBest || 0, max: 12 })); });
-    m.append(h('h3', '🎲 Chaos-Modus'), bwrap,
+    m.append(h('h3', 'Chaos-Modus'), bwrap,
       h('p.note', 'Statt Sternen fallen Pokébälle! Jeder Ball enthält ein zufälliges Pokémon, das du genau einmal einsetzen kannst – danach kommen andere. Einsetzen kostet nichts.'),
       h('p.note', `Endlose Wellen: Mit jeder großen Welle wechseln die Gegner-Typen – mit ein paar Ausnahmen.${best ? ` Rekord: Welle ${best}.` : ''}`),
       ...(sus ? [h('button.btn.primary.big.chaos-resume', { onclick: () => { close(); resumeChaos(); } }, '▶ Pausierte Runde fortsetzen', h('small', suspendedLabel(sus)))] : []),
