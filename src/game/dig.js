@@ -40,9 +40,7 @@ export function newSite(rnd = Math.random) {
     const shape = IRON[Math.floor(rnd() * IRON.length)], w = Math.max(...shape.map((c) => c[0])) + 1, h = Math.max(...shape.map((c) => c[1])) + 1, at = place(w, h, shape);
     if (at) shape.forEach(([a, b]) => iron.add(key(at.x + a, at.y + b)));
   }
-  // Radar: nur eine Schätzung der Anzahl, nie der Ort
-  const low = Math.max(1, items.length - between([0, 2 * D().radarSpread], rnd));
-  return { cell, items, iron, health: D().health, over: false, radar: [low, low + 2 * D().radarSpread] };
+  return { cell, items, iron, health: D().health, over: false };
 }
 
 export const isIron = (site, x, y) => site.iron.has(y * D().cols + x);

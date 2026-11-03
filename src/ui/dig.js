@@ -36,8 +36,7 @@ export function startDig(onClose) {
   const fx = [], marks = [];
   const btnImg = { hacke: h('img', { alt: 'Hacke' }), hammer: h('img', { alt: 'Hammer' }) };
   const info = h('div.dig-info');
-  const radarText = () => `${site.radar[0]}–${site.radar[1]}`;
-  const updateInfo = () => { info.textContent = `📡 ${radarText()} · ${site.items.filter((e) => e.got).length} gefunden`; };
+  const updateInfo = () => { info.textContent = `${site.items.filter((e) => e.got).length}/${site.items.length} gefunden`; };
   const setTool = (id) => {
     tool = id;
     btnImg.hacke.src = ART + (id === 'hacke' ? 'hacke_an.png' : 'hacke_aus.png');
@@ -47,13 +46,12 @@ export function startDig(onClose) {
   document.body.append(root); document.body.classList.add('in-battle'); setMusic('track:' + D().music.track, D().music.volume);
   setTool('hacke');
 
-  // Radar zuerst: nur wie viele, nicht wo
+  // Radar zuerst: Anzahl der Fundstücke
   root.replaceChildren(h('div.fp-end',
     h('div.dig-radar'),
-    h('h2', 'Radarschätzung'),
-    h('p.dig-num', `${radarText()} Fundstücke`),
-    h('p', 'Wo sie liegen, verrät das Radar nicht.'),
-    h('div.row', h('button.btn.primary.big', { onclick: () => { sound('tool'); play(); } }, 'Los graben!'), h('button.btn', { onclick: leave }, 'Zurück'))));
+    h('h2', 'Radar'),
+    h('p.dig-num', `${site.items.length} ${site.items.length === 1 ? 'Fundstück' : 'Fundstücke'}`),
+    h('div.dig-start', h('button.btn.primary', { onclick: () => { sound('tool'); play(); } }, 'Graben'), h('button.btn', { onclick: leave }, 'Zurück'))));
 
   function leave() { cancelAnimationFrame(raf); root.remove(); document.body.classList.remove('in-battle'); setMusic('menu'); onClose(); }
 

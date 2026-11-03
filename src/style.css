@@ -1028,6 +1028,8 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .dig-radar { width: 150px; height: 150px; border-radius: 50%; border: 4px solid #7de38f; background: radial-gradient(circle, transparent 32%, rgba(125,227,143,.35) 33%, transparent 34%, transparent 65%, rgba(125,227,143,.35) 66%, transparent 67%), #0f2a16; position: relative; overflow: hidden; }
 .dig-radar::after { content: ''; position: absolute; inset: 0; background: conic-gradient(rgba(125,227,143,.75), transparent 28%); animation: dig-sweep 1.6s linear infinite; }
 @keyframes dig-sweep { to { transform: rotate(360deg); } }
+.dig-start { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: min(100%, 300px); }
+.dig-start .btn:not(.primary) { color: var(--ink); }
 .dig-num { font-size: 28px; font-weight: 800; color: #7de38f; margin: 0; }
 .dig-list { display: flex; flex-direction: column; gap: 8px; width: min(100%, 340px); max-height: 50vh; overflow: auto; }
 .dig-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.12); border-radius: 10px; padding: 6px 10px; text-align: left; }

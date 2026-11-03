@@ -1,5 +1,5 @@
 {
- "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. radarSpread = so weit kann die Radarschätzung nach unten und oben danebenliegen (Spanne = 2 × radarSpread). ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt.",
+ "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt.",
  "cols": 10,
  "rows": 14,
  "depth": [
@@ -3865,7 +3865,6 @@
    ]
   }
  ],
- "radarSpread": 1,
  "music": {
   "track": "underground",
   "volume": 0.35
