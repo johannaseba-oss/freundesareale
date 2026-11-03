@@ -106,7 +106,8 @@ export function useDig(s, t) {
 export const fossilOf = (name) => D().fossils[name] || null;
 export function revive(s, t, name, rnd = Math.random) {
   const list = fossilOf(name)?.filter((d) => species(d));
-  if (!list?.length || !(s.dig?.inventory?.[name] > 0)) return { ok: false };
+  if (!list?.length || !(s.dig?.inventory?.[name] > 0) || s.coins < D().revive.cost) return { ok: false };
+  s.coins -= D().revive.cost;
   if (!--s.dig.inventory[name]) delete s.dig.inventory[name];
   const p = addCaught(s, t, list[Math.floor(rnd() * list.length)], D().fossilBall, { fromFossil: true });
   return { ok: true, pokemon: p };
@@ -128,7 +129,8 @@ export function levelEvolutions(s) {
 // Zwei Fossil-Hälften zusammensetzen
 export function combine(s, t, combo) {
   const I = s.dig?.inventory || {};
-  if (!(I[combo.a] > 0) || !(I[combo.b] > 0)) return { ok: false };
+  if (!(I[combo.a] > 0) || !(I[combo.b] > 0) || s.coins < D().revive.cost) return { ok: false };
+  s.coins -= D().revive.cost;
   for (const n of [combo.a, combo.b]) if (!--I[n]) delete I[n];
   return { ok: true, pokemon: addCaught(s, t, combo.dex, D().fossilBall, { fromFossil: true }) };
 }

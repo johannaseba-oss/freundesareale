@@ -8,6 +8,7 @@ import { portraitUrl } from '../gfx/sprites.js';
 import { h, confirmDialog, modal } from './dom.js';
 import { setMusic, playFile } from '../audio.js';
 import { haptic } from '../haptics.js';
+import { startRevive } from './revive.js';
 
 const D = () => CFG.dig;
 const ART = `${import.meta.env.BASE_URL}art/dig/`, CELL = 32, WALL = 56, SAND = 6, IRON = 7, HARD = 8;
@@ -23,19 +24,13 @@ function itemPic(it) {
 
 export function renderDigSetup(el, back) {
   const inv = DG.inventory(app.state), again = () => renderDigSetup(el, back), left = DG.digsLeft(app.state, now()), max = DG.digsMax(app.state), P = D().perDay;
-  const revive = (name) => hatch(app.act((s, t) => DG.revive(s, t, name), true), name);
+  const revive = (name, it) => startRevive([itemPic(it)], (s, t) => DG.revive(s, t, name), again);
   const combine = (name) => {
-    const I = app.state.dig?.inventory || {};
+    const I = app.state.dig?.inventory || {}, pic = (n) => itemPic(D().items.find((i) => i.name === n));
     modal((m, close) => m.append(h('h3', `${name} zusammensetzen`), h('div.dig-combos', DG.combosOf(name).map((c) => {
       const other = c.a === name ? c.b : c.a;
-      return h('button.btn', { disabled: !(I[other] > 0), onclick: () => { close(); hatch(app.act((s, t) => DG.combine(s, t, c), true), `${c.a} und ${c.b}`); } }, h('img', { src: portraitUrl(c.dex), alt: '' }), h('span', `+ ${other} = ${species(c.dex).name}`));
+      return h('button.btn', { disabled: !(I[other] > 0), onclick: () => { close(); startRevive([pic(c.a), pic(c.b)], (s, t) => DG.combine(s, t, c), again); } }, h('img', { src: portraitUrl(c.dex), alt: '' }), h('span', `+ ${other} = ${species(c.dex).name}`));
     })), h('button.btn', { onclick: close }, 'Schließen')));
-  };
-  const hatch = (r, name) => {
-    if (!r?.ok) return;
-    sound('found'); haptic('strong');
-    modal((m, close) => m.append(h('div.dig-revive', h('img.portrait.big', { src: portraitUrl(r.pokemon.dex, 'Joyous', r.pokemon.shiny), alt: '' }), h('h3', `${species(r.pokemon.dex).name}!`), h('p', `${species(r.pokemon.dex).name} ist erwacht.`), h('button.btn.primary', { onclick: close }, 'Toll!'))));
-    again();
   };
   el.replaceChildren(h('div.bs',
     h('button.btn.small.mode-back', { onclick: back }, '‹ Zurück'),
@@ -43,7 +38,7 @@ export function renderDigSetup(el, back) {
     h('button.btn.primary.big.dig-setup-go', { disabled: left <= 0, onclick: () => startDig(again) }, 'Ausgraben'),
     h('p.note', `Heute noch ${left} von ${max} – jedes Boden- oder Gesteins-Pokémon mit mindestens ${P.minSatisfaction} % Zufriedenheit gräbt einmal am Tag.`),
     h('h3', `🎒 Inventar (${inv.reduce((n, e) => n + e.count, 0)})`),
-    inv.length ? h('div.dig-inv', inv.map((e) => h('div.dig-slot', h('span.n', `×${e.count}`), itemPic(e.it), h('span', e.it.name), DG.fossilOf(e.it.name) ? h('button.btn.small.gold', { onclick: () => revive(e.it.name) }, 'Wiederbeleben') : DG.combosOf(e.it.name).length ? h('button.btn.small.gold', { onclick: () => combine(e.it.name) }, 'Zusammensetzen') : '')))  : h('p.note', 'Noch leer – alles, was du ausgräbst, landet hier.')));
+    inv.length ? h('div.dig-inv', inv.map((e) => h('div.dig-slot', h('span.n', `×${e.count}`), itemPic(e.it), h('span', e.it.name), DG.fossilOf(e.it.name) ? h('button.btn.small.gold', { onclick: () => revive(e.it.name, e.it) }, 'Wiederbeleben') : DG.combosOf(e.it.name).length ? h('button.btn.small.gold', { onclick: () => combine(e.it.name) }, 'Zusammensetzen') : '')))  : h('p.note', 'Noch leer – alles, was du ausgräbst, landet hier.')));
 }
 
 export function startDig(onClose) {
