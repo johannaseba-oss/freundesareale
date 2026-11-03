@@ -189,11 +189,15 @@ export function releasePokemon(s, uids) {
   const coins = gone.length * (CFG.balance.release?.coins || 0);
   s.coins += coins; s.stats.released = (s.stats.released || 0) + gone.length;
   s.candies ||= {};
-  for (const p of gone) { const fam = species(p.dex)?.family; if (fam != null) s.candies[fam] = (s.candies[fam] || 0) + CFG.balance.candy.perRelease; }
+  for (const p of gone) { const fam = species(p.dex)?.family; if (fam != null) s.candies[fam] = (s.candies[fam] || 0) + candyForRelease(p.dex); }
   return { ok: true, count: gone.length, coins, gone: gone.map((p) => ({ uid: p.uid, dex: p.dex, ball: p.ball })) };
 }
 // Bonbons: gehören zur Entwicklungsfamilie und heißen nach deren Grundform
 export const candyName = (dex) => { const f = species(dex)?.family, list = CFG.dex.filter((q) => q.family === f); return list.reduce((a, q) => (q.stage < a.stage || (q.stage === a.stage && q.dex < a.dex) ? q : a), list[0])?.name || ''; };
+// Bonbons je weggeschicktem Pokémon und Kosten der nächsten Entwicklung, beides nach Entwicklungsstufe
+const stageIdx = (dex, list) => Math.max(0, Math.min(list.length - 1, (species(dex)?.stage || 1) - 1));
+export const candyForRelease = (dex) => { const L = CFG.balance.candy.perRelease; return Array.isArray(L) ? L[stageIdx(dex, L)] : L; };
+export const evolveCostOf = (dex) => { const L = CFG.balance.candy.evolveCost; return Array.isArray(L) ? L[stageIdx(dex, L)] : L; };
 export const candiesOf = (s, dex) => s.candies?.[species(dex)?.family] || 0;
 // mögliche Bonbon-Entwicklungen eines Pokémon (keine bei Arten mit Steinentwicklung)
 export function candyTargets(p) {
@@ -203,7 +207,7 @@ export function candyTargets(p) {
   return [...new Set([...list, ...(CFG.balance.candy.extra?.[p.dex] || [])])].filter((d) => species(d));
 }
 export function candyEvolve(s, uid, to) {
-  const p = s.pokemon.find((x) => x.uid === uid), cost = CFG.balance.candy.evolveCost;
+  const p = s.pokemon.find((x) => x.uid === uid), cost = p && evolveCostOf(p.dex);
   if (!p || !candyTargets(p).includes(to)) return fail();
   const fam = species(p.dex).family;
   if ((s.candies?.[fam] || 0) < cost) return fail(`Dafür brauchst du ${cost} ${candyName(p.dex)}-Bonbons.`);

@@ -286,7 +286,7 @@ export function openSheet(p) {
 
 // Bonbons: Anzahl der Familie und, wo möglich, Entwicklung für evolveCost Bonbons
 function candyRow(p) {
-  const st = app.state, cost = CFG.balance.candy.evolveCost, have = A.candiesOf(st, p.dex), targets = A.candyTargets(p);
+  const st = app.state, cost = A.evolveCostOf(p.dex), have = A.candiesOf(st, p.dex), targets = A.candyTargets(p);
   if (!have && !targets.length) return null;
   return h('div.candy-row', h('span', `🍬 ${have} ${A.candyName(p.dex)}-Bonbons`), targets.map((to) => h('button.btn.small' + (have >= cost ? '.gold' : ''), { disabled: have < cost, onclick: () => {
     const r = app.act((s) => A.candyEvolve(s, p.uid, to), true);

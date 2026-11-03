@@ -135,7 +135,33 @@
     "_hinweis": "Wochen-Pool: jeden Montag wird festgelegt, welches Pokémon in welchem Ball steckt. Im Automaten liegen immer machineCapacity Bälle; nach jeder Ziehung fällt sofort ein neuer von oben nach (erst aus dem Wochen-Pool, danach neu erzeugt – der Automat wird nie leer). psychic = Psycho-Blick sehr glücklicher Psycho-Pokémon.",
     "drawCost": 2000,
     "_excluded": "Diese Pokémon gibt es weder am Pokéball-Automaten noch am Spielautomaten (Fossil-Pokémon: nur über die Ausgrabung).",
-    "excluded": [138,139,140,141,142,345,346,347,348,408,409,410,411,564,565,566,567,696,697,698,699,880,881,882,883],
+    "excluded": [
+      138,
+      139,
+      140,
+      141,
+      142,
+      345,
+      346,
+      347,
+      348,
+      408,
+      409,
+      410,
+      411,
+      564,
+      565,
+      566,
+      567,
+      696,
+      697,
+      698,
+      699,
+      880,
+      881,
+      882,
+      883
+    ],
     "freeDrawEveryHours": 2,
     "ballsPerWeek": 120,
     "machineCapacity": 50,
@@ -269,10 +295,27 @@
     "coins": 50
   },
   "candy": {
-    "_hinweis": "Bonbons: je weggeschicktem Pokémon perRelease Bonbons seiner Entwicklungsfamilie. evolveCost = Bonbons je Entwicklungsstufe. Arten mit Steinentwicklung entwickeln sich nicht mit Bonbons. extra = Entwicklungen, die in den Kampfdaten fehlen (Pokédex-Nr. -> Ziele).",
-    "perRelease": 1,
-    "evolveCost": 10,
-    "extra": { "564": [565], "696": [697], "698": [699] }
+    "_hinweis": "Bonbons: je weggeschicktem Pokémon perRelease[Entwicklungsstufe − 1] Bonbons seiner Familie (Grundform 1, erste Entwicklung 2, zweite 3). evolveCost = Bonbons für die erste bzw. zweite Entwicklung. Arten mit Steinentwicklung entwickeln sich nicht mit Bonbons. extra = Entwicklungen, die in den Kampfdaten fehlen (Pokédex-Nr. -> Ziele).",
+    "perRelease": [
+      1,
+      2,
+      3
+    ],
+    "evolveCost": [
+      20,
+      40
+    ],
+    "extra": {
+      "564": [
+        565
+      ],
+      "696": [
+        697
+      ],
+      "698": [
+        699
+      ]
+    }
   },
   "shiny": {
     "_hinweis": "Schillernde Pokémon (andere Farben, ✨). chance = Chance je neu gezogenem/gewonnenem Pokémon (Hauptspiele: 1/4096), eggChance = Chance beim Schlüpfen aus einem Ei (Hauptspiele mit Masuda-Methode: 6/4096).",
