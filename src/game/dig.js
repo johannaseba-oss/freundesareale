@@ -50,6 +50,15 @@ export function newSite(rnd = Math.random) {
     const shape = IRON[Math.floor(rnd() * IRON.length)], w = Math.max(...shape.map((c) => c[0])) + 1, h = Math.max(...shape.map((c) => c[1])) + 1, at = place(w, h, shape);
     if (at) shape.forEach(([a, b]) => { iron.add(key(at.x + a, at.y + b)); floor[at.y + b][at.x + a] = H; });
   }
+  // Löcher: stellenweise fehlen schon Schichten; Fundstücke und Eisen bleiben dabei zugedeckt
+  const keep = Array.from({ length: rows }, () => Array(cols).fill(0));
+  for (const e of items) for (let b = 0; b < e.it.h; b++) for (let a = 0; a < e.it.w; a++) keep[e.y + b][e.x + a] = Math.max(keep[e.y + b][e.x + a], e.depth + 1);
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (iron.has(key(x, y))) keep[y][x] = Math.max(keep[y][x], H + 1);
+  const H0 = D().holes;
+  for (let n = between(H0.count, rnd); n > 0; n--) {
+    const cx = rnd() * cols, cy = rnd() * rows, rad = H0.radius[0] + rnd() * (H0.radius[1] - H0.radius[0]), drop = H0.drop[Math.floor(rnd() * H0.drop.length)];
+    for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) if (Math.hypot((x + 0.5 - cx) * (1 + rnd() * 0.25), y + 0.5 - cy) <= rad) cell[y][x] = Math.min(cell[y][x], Math.max(keep[y][x], total - drop));
+  }
   return { cell, floor, items, iron, health: D().health, over: false };
 }
 

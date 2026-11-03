@@ -1,5 +1,5 @@
 {
- "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. Schichten von oben: dunkler Fels, hellbraun, hellgrau, ganz unten ganz dunkel. layerHits = Abtrag, bis eine Schicht durch ist. levelChance = je Gruppe die Häufigkeit, unter der 1., 2. oder 3. Schicht zu liegen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level). groups: revealShare = eigener Freilege-Anteil dieser Gruppe statt des allgemeinen (Fossilien: komplett freilegen). Fossilien, deren Pokémon es im Spiel noch nicht gibt, kommen nicht vor. fossilCombos = zwei Fossil-Hälften ergeben zusammen ein Pokémon. revive = Wiederbelebungsmaschine: cost = Münzen (erst am Ende bezahlt), perCircle = Prozent je geschlossenem Kreis, decayDelay = Sekunden ohne Bewegung, bis der Wert sinkt, decayPerSecond = Prozent pro Sekunde, centerX/centerY = Mitte der Maschine im Bild, minRadius = so weit vom Mittelpunkt muss der Finger bleiben (Anteil der Bildbreite).",
+ "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. Schichten von oben: dunkler Fels, hellbraun, hellgrau, ganz unten ganz dunkel. layerHits = Abtrag, bis eine Schicht durch ist. levelChance = je Gruppe die Häufigkeit, unter der 1., 2. oder 3. Schicht zu liegen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level). groups: revealShare = eigener Freilege-Anteil dieser Gruppe statt des allgemeinen (Fossilien: komplett freilegen). Fossilien, deren Pokémon es im Spiel noch nicht gibt, kommen nicht vor. fossilCombos = zwei Fossil-Hälften ergeben zusammen ein Pokémon. revive = Wiederbelebungsmaschine: cost = Münzen (erst am Ende bezahlt), perCircle = Prozent je geschlossenem Kreis, decayDelay = Sekunden ohne Bewegung, bis der Wert sinkt, decayPerSecond = Prozent pro Sekunde, centerX/centerY = Mitte der Maschine im Bild, minRadius = so weit vom Mittelpunkt muss der Finger bleiben (Anteil der Bildbreite). holes = schon offene Stellen zu Beginn: count = Anzahl [min, max], radius = Größe in Feldern [min, max], drop = so viele Stufen fehlen dort (2 = eine Schicht, 6 = bis ganz unten; zufällig aus der Liste). Über Fundstücken und Eisen bleibt immer Erde.",
  "cols": 10,
  "rows": 14,
  "itemCount": [
@@ -11,7 +11,7 @@
   5
  ],
  "revealShare": 0.8,
- "health": 70,
+ "health": 55,
  "tools": {
   "hacke": {
    "name": "Hacke",
@@ -4123,6 +4123,24 @@
    0,
    1,
    9
+  ]
+ },
+ "holes": {
+  "count": [
+   4,
+   9
+  ],
+  "radius": [
+   1,
+   2.6
+  ],
+  "drop": [
+   2,
+   2,
+   2,
+   4,
+   4,
+   6
   ]
  }
 }

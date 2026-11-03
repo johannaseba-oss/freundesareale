@@ -967,6 +967,7 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 
 /* Fußabdruck-Minispiel */
 .mode-card.fp-card-tile { min-height: 96px; justify-content: flex-end; background-position: center; background-size: cover; background-repeat: no-repeat; }
+.mode-card.fp-card-tile small { display: none; }
 .mode-card.fp-card-tile b, .mode-card.fp-card-tile small { color: #fff; text-shadow: 0 1px 3px #000, 0 0 6px #000; }
 .fp-banner { width: 100%; border: 3px solid var(--line); border-radius: 14px; display: block; }
 .fp-best { font-weight: 700; color: var(--green-d) !important; }

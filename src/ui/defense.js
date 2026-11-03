@@ -580,10 +580,11 @@ function draw(dt) {
   for (const q of game.terrain || []) {
     const i = groundTile(q.tile);
     if (!i.complete || !i.naturalWidth) continue;
-    x.globalAlpha = Math.min(1, (q.until - game.t) / 0.6) * 0.92;
+    x.imageSmoothingEnabled = q.tile === 'wurzel'; // das Wurzelbild ist größer als ein Feld
+    x.globalAlpha = q.tile === 'wurzel' ? Math.min(1, (q.until - game.t) / 0.6) : Math.min(1, (q.until - game.t) / 0.6) * 0.92;
     x.drawImage(i, U.ox + q.col * T, U.oy + q.row * T, T, T);
   }
-  x.globalAlpha = 1;
+  x.globalAlpha = 1; x.imageSmoothingEnabled = false;
   // eigene Pokémon und Gegner (nach Tiefe)
   const all = [...game.units.map((u) => ({ o: u, mine: true })), ...game.enemies.map((e) => ({ o: e, mine: false }))].sort((a, b) => a.o.y - b.o.y);
   for (const { o, mine } of all) drawMon(x, o, mine, P(o), T, now);
