@@ -64,11 +64,11 @@ export function startDig(onClose) {
     }).observe(board);
     root.replaceChildren(
       board,
-      h('div.dig-bar', info, h('button.btn.small', { onclick: async () => {
+      h('div.dig-foot', h('div.dig-left', info, h('button.btn.small', { onclick: async () => {
         const n = site.items.filter((e) => e.got).length;
         if (await confirmDialog(n ? `Ausgrabung beenden und ${n === 1 ? 'das freigelegte Fundstück' : `die ${n} freigelegten Fundstücke`} einsammeln?` : 'Ausgrabung beenden? Du hast noch nichts freigelegt.', 'Beenden')) finish();
       } }, 'Beenden & einsammeln')),
-      h('div.dig-tools', ['hacke', 'hammer'].map((id) => h('button.dig-tool', { onclick: () => { if (tool !== id) { sound('tool'); haptic('tick'); setTool(id); } } }, btnImg[id]))));
+      h('div.dig-tools', ['hacke', 'hammer'].map((id) => h('button.dig-tool', { onclick: () => { if (tool !== id) { sound('tool'); haptic('tick'); setTool(id); } } }, btnImg[id])))));
     updateInfo();
     raf = requestAnimationFrame(loop);
   }

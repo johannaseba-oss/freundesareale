@@ -1019,12 +1019,12 @@ details.contest summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 .dig { position: fixed; inset: 0; z-index: 39; display: flex; flex-direction: column; background: #2a1712; color: #fff; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
 .dig-board { flex: 1; min-height: 0; display: flex; justify-content: center; align-items: flex-start; }
 .dig-cv { display: block; image-rendering: pixelated; touch-action: none; }
-.dig-bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 13px; }
-.dig-bar .dig-info { flex: 1; }
-.dig-bar .btn { color: var(--ink); flex: none; }
-.dig-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 10px 10px; }
-.dig-tool { padding: 0; border: 0; background: none; cursor: pointer; display: flex; justify-content: center; }
-.dig-tool img { display: block; width: auto; height: 96px; image-rendering: pixelated; }
+.dig-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; padding: 8px 10px 10px; }
+.dig-left { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; font-size: 13px; min-width: 0; }
+.dig-left .btn { color: var(--ink); }
+.dig-tools { display: flex; gap: 8px; flex: none; }
+.dig-tool { padding: 0; border: 0; background: none; cursor: pointer; }
+.dig-tool img { display: block; width: 100px; height: auto; image-rendering: pixelated; }
 .dig-radar { width: 150px; height: 150px; border-radius: 50%; border: 4px solid #7de38f; background: radial-gradient(circle, transparent 32%, rgba(125,227,143,.35) 33%, transparent 34%, transparent 65%, rgba(125,227,143,.35) 66%, transparent 67%), #0f2a16; position: relative; overflow: hidden; }
 .dig-radar::after { content: ''; position: absolute; inset: 0; background: conic-gradient(rgba(125,227,143,.75), transparent 28%); animation: dig-sweep 1.6s linear infinite; }
 @keyframes dig-sweep { to { transform: rotate(360deg); } }

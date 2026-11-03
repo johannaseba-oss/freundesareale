@@ -1,4 +1,4 @@
-// Ausgrabung: Kacheln und Werkzeug-Knöpfe aus den Vorlagen schneiden (assets-input/dig), Fundstücke aus items.png
+// Ausgrabung: Kacheln aus der Vorlage schneiden (assets-input/dig), Fundstücke aus items.png
 // vermessen (Raster 32 px) und in public/config/dig.json eintragen. Aufruf: node tools/build_dig.mjs
 import fs from 'fs';
 import sharp from 'sharp';
@@ -15,13 +15,6 @@ for (let i = 0; i < TILES.length; i++) {
   parts.push({ input, left: i * CELL, top: 0 });
 }
 await sheet.composite(parts).png().toFile(OUT + 'tiles.png');
-
-// Werkzeug-Knöpfe: je ausgewählt und nicht ausgewählt
-const btn = (file, box, out) => sharp(IN + file).extract(box).resize(96, 132, { kernel: 'nearest' }).png().toFile(OUT + out);
-await btn('vorlage.webp', { left: 1625, top: 50, width: 260, height: 380 }, 'hammer_aus.png');
-await btn('vorlage.webp', { left: 1625, top: 590, width: 260, height: 380 }, 'hacke_an.png');
-await btn('klein.webp', { left: 205, top: 54, width: 28, height: 40 }, 'hammer_an.png');
-await btn('klein.webp', { left: 205, top: 110, width: 28, height: 40 }, 'hacke_aus.png');
 
 fs.copyFileSync(IN + 'items.png', OUT + 'items.png');
 
