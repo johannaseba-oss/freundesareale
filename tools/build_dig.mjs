@@ -18,7 +18,7 @@ parts.push({ input: await sharp(IN + 'vorlage.webp').extract({ left: 0, top: 0, 
 await sheet.composite(parts).png().toFile(OUT + 'tiles.png');
 
 // Fossilien: eigene Bilder, weißer Hintergrund raus, verpixelt und unten an das Item-Blatt gehängt (je 128 px = 4 Felder)
-const FOSSILE = [['helix', 'Helixfossil'], ['dom', 'Domfossil'], ['bernstein', 'Altbernstein'], ['wurzel', 'Wurzelfossil'], ['klaue', 'Klauenfossil'], ['kopf', 'Kopffossil'], ['schild', 'Schildfossil'], ['schale', 'Schalenfossil'], ['feder', 'Federfossil'], ['kiefer', 'Kieferfossil'], ['flosse', 'Flossenfossil'], ['vogel', 'Vogelfossil'], ['drache', 'Drachenfossil'], ['dino', 'Dinofossil'], ['fisch', 'Fischfossil']];
+const FOSSILE = [['helix', 'Helixfossil'], ['dom', 'Domfossil'], ['bernstein', 'Altbernstein'], ['wurzel', 'Wurzelfossil'], ['klaue', 'Klauenfossil'], ['kopf', 'Kopffossil'], ['schild', 'Panzerfossil'], ['schale', 'Schildfossil'], ['feder', 'Federfossil'], ['kiefer', 'Kieferfossil'], ['flosse', 'Flossenfossil'], ['vogel', 'Vogelfossil'], ['drache', 'Drachenfossil'], ['dino', 'Paddelfossil'], ['fisch', 'Fischfossil']];
 const BASE_H = 1120, FS = 128, FW = 7;
 async function fossilPic(id) {
   const { data, info } = await sharp(IN + 'fossile/' + id + '.png').ensureAlpha().raw().toBuffer({ resolveWithObject: true });

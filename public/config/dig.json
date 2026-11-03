@@ -862,7 +862,7 @@
   },
   {
    "id": "schild",
-   "name": "Schildfossil",
+   "name": "Panzerfossil",
    "group": "fossil",
    "x": 768,
    "y": 1120,
@@ -937,7 +937,7 @@
   },
   {
    "id": "schale",
-   "name": "Schalenfossil",
+   "name": "Schildfossil",
    "group": "fossil",
    "x": 0,
    "y": 1248,
@@ -1331,7 +1331,7 @@
   },
   {
    "id": "dino",
-   "name": "Dinofossil",
+   "name": "Paddelfossil",
    "group": "fossil",
    "x": 768,
    "y": 1248,
@@ -3987,10 +3987,10 @@
   "Kopffossil": [
    408
   ],
-  "Schildfossil": [
+  "Panzerfossil": [
    410
   ],
-  "Schalenfossil": [
+  "Schildfossil": [
    564
   ],
   "Federfossil": [
@@ -4069,7 +4069,7 @@
   },
   {
    "a": "Vogelfossil",
-   "b": "Dinofossil",
+   "b": "Paddelfossil",
    "dex": 881
   },
   {
@@ -4079,7 +4079,7 @@
   },
   {
    "a": "Fischfossil",
-   "b": "Dinofossil",
+   "b": "Paddelfossil",
    "dex": 883
   }
  ]

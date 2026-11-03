@@ -60,6 +60,12 @@ export function migrate(s) {
     seen.add(p.uid);
   }
   if (s.route && s.route.unlockedBase == null) s.route.unlockedBase = (s.route.cleared || 0) + 1; // bisher offene Level bleiben offen
+  // Fossil-Namen korrigiert: alte Einträge im Inventar umbenennen (Reihenfolge wichtig, Schild wurde zu Panzer)
+  if (s.dig?.inventory && !s.dig.namesV) {
+    const I = s.dig.inventory;
+    for (const [a, b] of [['Schildfossil', 'Panzerfossil'], ['Schalenfossil', 'Schildfossil'], ['Dinofossil', 'Paddelfossil']]) if (I[a]) { I[b] = (I[b] || 0) + I[a]; delete I[a]; }
+    s.dig.namesV = 1;
+  }
   if (s.defense && s.defense.unlockedBase == null) s.defense.unlockedBase = (s.defense.cleared || 0) + 1;
   if (s.route && !s.route.best) { // Umstellung auf „ein Level in einem Durchgang schaffen“: schon offene Level bleiben offen
     const W = s.route.waves || {}, old = (n) => 50 + (n - 1) * 2;
