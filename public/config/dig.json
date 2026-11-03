@@ -1,5 +1,5 @@
 {
- "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine.",
+ "_hinweis": "Ausgrabung (Kampf-Menü): Erdschichten freilegen, bevor die Stelle einbricht. cols/rows = Feldgröße. depth = Schichtdicke [min, max] je Feld. patches = Anzahl Flecken, die die Schichten formen. itemCount = Fundstücke je Stelle [min, max]. ironCount = Eisenblöcke, die sich nicht abbauen lassen [min, max]. revealShare = Anteil eines Fundstücks, der freiliegen muss, damit man es erhält. health = Stabilität der Stelle. tools: hit = Abtrag am getroffenen Feld, side = Abtrag an den Nachbarfeldern, diagonal = auch diagonale Nachbarn, damage = Stabilitätsverlust je Schlag. groups: weight = Häufigkeit. music = Musikstück (public/audio) mit Lautstärke-Faktor. sounds = Geräusche (public/audio/sfx). items wird von tools/build_dig.mjs erzeugt. fossils = welches Pokémon aus welchem Fossil schlüpft (bei mehreren zufällig). perDay = je Pokémon dieser Typen mit mindestens minSatisfaction % Zufriedenheit eine Ausgrabung pro Tag. walls = Felswände, je Ausgrabung zufällig eine. levelEvolutions = Fossil-Pokémon entwickeln sich dauerhaft, sobald sie dieses Level erreichen (Pokédex-Nr. -> to, level).",
  "cols": 10,
  "rows": 14,
  "depth": [
@@ -3914,5 +3914,47 @@
   "wand_dunkel.png",
   "wand_orange.png",
   "wand_tuerkis.png"
- ]
+ ],
+ "levelEvolutions": {
+  "138": {
+   "to": 139,
+   "level": 40
+  },
+  "140": {
+   "to": 141,
+   "level": 40
+  },
+  "345": {
+   "to": 346,
+   "level": 40
+  },
+  "347": {
+   "to": 348,
+   "level": 40
+  },
+  "408": {
+   "to": 409,
+   "level": 30
+  },
+  "410": {
+   "to": 411,
+   "level": 30
+  },
+  "564": {
+   "to": 565,
+   "level": 37
+  },
+  "566": {
+   "to": 567,
+   "level": 37
+  },
+  "696": {
+   "to": 697,
+   "level": 39
+  },
+  "698": {
+   "to": 699,
+   "level": 39
+  }
+ }
 }

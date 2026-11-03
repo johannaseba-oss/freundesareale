@@ -1,6 +1,7 @@
 // Ausgrabung (public/config/dig.json): zufällige Erdschichten, darunter Fundstücke und Eisen. Jeder Schlag trägt Erde ab und schwächt die Stelle.
 import { CFG, species } from '../config.js';
 import { addCaught } from './actions.js';
+import { staminaOf } from './contest.js';
 import { dayKey } from '../time.js';
 
 const D = () => CFG.dig;
@@ -106,4 +107,18 @@ export function revive(s, t, name, rnd = Math.random) {
   if (!--s.dig.inventory[name]) delete s.dig.inventory[name];
   const p = addCaught(s, t, list[Math.floor(rnd() * list.length)], D().fossilBall, { fromFossil: true });
   return { ok: true, pokemon: p };
+}
+
+// Fossil-Pokémon entwickeln sich dauerhaft beim Erreichen ihres Levels; liefert die Entwicklungen zum Anzeigen
+export function levelEvolutions(s) {
+  const out = [];
+  for (const p of s.pokemon) {
+    const e = D().levelEvolutions[p.dex];
+    if (!e || p.level < e.level || !species(e.to)) continue;
+    out.push({ p, from: p.dex, to: e.to });
+    p.dex = e.to;
+    p.stamina = staminaOf(p.dex);
+    if (!s.dexOwned.includes(p.dex)) s.dexOwned.push(p.dex);
+  }
+  return out;
 }
