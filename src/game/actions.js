@@ -7,7 +7,7 @@ import { capacityOf, residents, rollGender, ensureBattleData, newUid } from './s
 import { modsFor } from './bonuses.js';
 import { coinRatePerHour, cycleCoins } from './sim.js';
 import { dispenseBall, canForesee, revealActive } from './gacha.js';
-import { trainContest } from './contest.js';
+import { trainContest, staminaOf } from './contest.js';
 import { inheritStats } from './eggs.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
@@ -188,7 +188,31 @@ export function releasePokemon(s, uids) {
   if (s.defense?.team) s.defense.team = s.defense.team.filter((u) => !ids.has(u));
   const coins = gone.length * (CFG.balance.release?.coins || 0);
   s.coins += coins; s.stats.released = (s.stats.released || 0) + gone.length;
+  s.candies ||= {};
+  for (const p of gone) { const fam = species(p.dex)?.family; if (fam != null) s.candies[fam] = (s.candies[fam] || 0) + CFG.balance.candy.perRelease; }
   return { ok: true, count: gone.length, coins, gone: gone.map((p) => ({ uid: p.uid, dex: p.dex, ball: p.ball })) };
+}
+// Bonbons: gehören zur Entwicklungsfamilie und heißen nach deren Grundform
+export const candyName = (dex) => { const f = species(dex)?.family, list = CFG.dex.filter((q) => q.family === f); return list.reduce((a, q) => (q.stage < a.stage || (q.stage === a.stage && q.dex < a.dex) ? q : a), list[0])?.name || ''; };
+export const candiesOf = (s, dex) => s.candies?.[species(dex)?.family] || 0;
+// mögliche Bonbon-Entwicklungen eines Pokémon (keine bei Arten mit Steinentwicklung)
+export function candyTargets(p) {
+  const evos = CFG.battleData.pokemon[p.dex]?.evos || [];
+  if (evos.some((e) => e.stone)) return [];
+  const list = evos.filter((e) => !e.gender || e.gender === p.gender).map((e) => e.to);
+  return [...new Set([...list, ...(CFG.balance.candy.extra?.[p.dex] || [])])].filter((d) => species(d));
+}
+export function candyEvolve(s, uid, to) {
+  const p = s.pokemon.find((x) => x.uid === uid), cost = CFG.balance.candy.evolveCost;
+  if (!p || !candyTargets(p).includes(to)) return fail();
+  const fam = species(p.dex).family;
+  if ((s.candies?.[fam] || 0) < cost) return fail(`Dafür brauchst du ${cost} ${candyName(p.dex)}-Bonbons.`);
+  s.candies[fam] -= cost;
+  const from = p.dex;
+  p.dex = to;
+  p.stamina = staminaOf(p.dex);
+  if (!s.dexOwned.includes(to)) s.dexOwned.push(to);
+  return { ok: true, from, to };
 }
 // Favorit (p.fav): steht in allen Auswahllisten und Minispielen oben
 export function toggleFav(s, uid) {

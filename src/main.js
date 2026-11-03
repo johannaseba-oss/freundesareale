@@ -1,4 +1,3 @@
-import { levelEvolutions } from './game/dig.js';
 import './style.css';
 import { loadConfig, species, CFG } from './config.js';
 import { createBackend } from './backend/index.js';
@@ -8,7 +7,7 @@ import { hashString } from './rng.js';
 import { newGame, migrate } from './game/state.js';
 import { SaveManager } from './save.js';
 import { haptic } from './haptics.js';
-import { setMusic, resumeMusic, sfx } from './audio.js';
+import { setMusic, resumeMusic } from './audio.js';
 import * as A from './game/actions.js';
 import { showAuth, hideAuth } from './ui/auth.js';
 import { $, h, toast, confirmDialog } from './ui/dom.js';
@@ -204,9 +203,8 @@ function tick() {
   // Erfolge automatisch freischalten
   const fresh = checkAchievements(app.state, now());
   if (fresh.length) { for (const a of fresh) toast('🏆 Erfolg: ' + a.name); app.saver.markDirty(); }
-  for (const e of levelEvolutions(app.state)) { toast(`${species(e.from).name} hat sich zu ${species(e.to).name} entwickelt!`); sfx.evolve(); haptic('strong'); app.saver.markDirty(); }
   for (const p of app.state.pokemon) {
-    if (p.levelUps) { toast(`${species(p.dex).name} ist jetzt Level ${p.level}!`); p.levelUps = 0; app.saver.markDirty(); }
+    if (p.levelUps) { p.levelUps = 0; app.saver.markDirty(); } // Level zählen nur im Routenspiel: keine Meldung
   }
   app.refresh();
 }

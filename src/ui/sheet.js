@@ -3,6 +3,7 @@ import { CFG, species, areaById, isHairy, coverOf } from '../config.js';
 import { openGrooming } from './groom.js';
 import { app } from '../app.js';
 import { haptic } from '../haptics.js';
+import { sfx } from '../audio.js';
 import { itemById, itemSprite, heldOf, takeItem } from '../game/items.js';
 import { now, fmtDuration } from '../time.js';
 import * as A from '../game/actions.js';
@@ -267,6 +268,7 @@ export function openSheet(p) {
     head, stage,
     h('div.info', lSat.el, lHun.el, hairy ? lCln.el : null, lCoin.el, lFav.el), extra,
     h('div.row.actions', feedLabel, ...berryBtns),
+    candyRow(p),
     hairy ? h('div.row', h('button.btn.groom-btn', { onclick: () => {
       if ((p.cleanliness ?? 0) >= 97) return toast(`${nameOf(p)} ist schon ganz sauber.`);
       closeSheet();
@@ -280,4 +282,17 @@ export function openSheet(p) {
   current.update();
   app.views.add(current.update);
   current.raf = requestAnimationFrame(drawStage);
+}
+
+// Bonbons: Anzahl der Familie und, wo möglich, Entwicklung für evolveCost Bonbons
+function candyRow(p) {
+  const st = app.state, cost = CFG.balance.candy.evolveCost, have = A.candiesOf(st, p.dex), targets = A.candyTargets(p);
+  if (!have && !targets.length) return null;
+  return h('div.candy-row', h('span', `🍬 ${have} ${A.candyName(p.dex)}-Bonbons`), targets.map((to) => h('button.btn.small' + (have >= cost ? '.gold' : ''), { disabled: have < cost, onclick: () => {
+    const r = app.act((s) => A.candyEvolve(s, p.uid, to), true);
+    if (r.ok === false) return;
+    sfx.evolve(); haptic('strong');
+    toast(`${species(r.from).name} hat sich zu ${species(r.to).name} entwickelt!`);
+    closeSheet(); openSheet(p);
+  } }, `Zu ${species(to).name} entwickeln (${have}/${cost})`)));
 }

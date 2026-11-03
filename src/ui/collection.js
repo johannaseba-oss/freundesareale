@@ -31,7 +31,7 @@ export function render(force = false) {
   const chip = (id, label) => h('button.chip' + (filter === id ? '.on' : ''), { onclick: () => { filter = id; render(true); } }, label);
   root.replaceChildren(
     h('div.coll-head', h('b', `${s.pokemon.length} Pokémon`), h('small.effects', ` · ${owned} von ${CFG.dex.length} Arten`)),
-    release ? h('div.coll-head.rel-head', h('b', '📤 Wegschicken'), h('small.effects', ` · ${CFG.balance.release.coins} Münzen je Pokémon · ★ und Spitznamen gesperrt`))
+    release ? h('div.coll-head.rel-head', h('b', '📤 Wegschicken'), h('small.effects', ` · ${CFG.balance.release.coins} Münzen und ${CFG.balance.candy.perRelease} Bonbon je Pokémon · ★ und Spitznamen gesperrt`))
       : h('div.coll-head', chip('alle', 'Alle'), chip('frei', 'Ohne Areal'), chip('wohnt', 'In Arealen'), h('button.chip', { onclick: openAchievements }, '🏆 Erfolge'), h('button.chip.rel-chip', { onclick: () => { release = new Set(); render(true); } }, '📤 Wegschicken')),
     list.length ? h('div.grid', list.map((p) => {
       const sp = species(p.dex);
@@ -66,7 +66,7 @@ async function sendAway() {
   release = null;
   flyAway(r.gone, from);
   sfx.coin(); haptic('medium');
-  toast(`${r.count} Pokémon sind in die Freiheit gezogen – +${r.coins} Münzen!`);
+  toast(`${r.count} Pokémon sind in die Freiheit gezogen – +${r.coins} Münzen und Bonbons!`);
   render(true);
 }
 // für jedes weggeschickte Pokémon fliegt ein Pokéball davon
