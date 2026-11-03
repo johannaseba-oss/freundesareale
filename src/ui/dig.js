@@ -50,8 +50,9 @@ export function startDig(onClose) {
   const updateInfo = () => { info.textContent = `${site.items.filter((e) => e.got).length}/${site.items.length} gefunden`; };
   const setTool = (id) => {
     tool = id;
-    btnImg.hacke.src = ART + (id === 'hacke' ? 'hacke_an.png' : 'hacke_aus.png');
-    btnImg.hammer.src = ART + (id === 'hammer' ? 'hammer_an.png' : 'hammer_aus.png');
+    // _aus = gedrückte Variante: zeigt das aktive Werkzeug
+    btnImg.hacke.src = ART + (id === 'hacke' ? 'hacke_aus.png' : 'hacke_an.png');
+    btnImg.hammer.src = ART + (id === 'hammer' ? 'hammer_aus.png' : 'hammer_an.png');
   };
   const wall = pic(D().walls[Math.floor(Math.random() * D().walls.length)]);
   const root = h('div.dig', { style: { backgroundImage: `url(${wall.src})` } });
