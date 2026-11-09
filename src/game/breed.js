@@ -10,6 +10,8 @@ const B = () => CFG.breed;
 const fail = (msg) => ({ ok: false, msg });
 
 export const boxMons = (s, i) => s.pokemon.filter((p) => p.breed === i);
+// Eier eines Paares im Brutkasten
+export const eggsOf = (s, i) => (s.breed?.eggs || []).filter((e) => e.box === i).length;
 export const canBreed = (p) => !!p.gender && !p.stall && p.breed == null;
 // passt zusammen: Männchen und Weibchen derselben Entwicklungsfamilie, nicht Elternteil und eigenes Kind
 export const compatible = (m, f) => m.gender === 'm' && f.gender === 'w' && species(m.dex)?.family === species(f.dex)?.family && !m.parents?.includes(f.uid) && !f.parents?.includes(m.uid);
@@ -61,9 +63,9 @@ export function tick(s, t) {
     if (pair.length !== 2 || !box) continue;
     while (box.nextEggAt <= t) {
       hatchDue(box.nextEggAt); // was bis dahin geschlüpft ist, macht im Brutkasten Platz
-      if (s.breed.eggs.length >= C.incubator) { box.nextEggAt = t + C.eggEveryHours * HOUR; break; } // Brutkasten voll: neu warten
+      if (eggsOf(s, i) >= C.eggsPerPair) { box.nextEggAt = t + C.eggEveryHours * HOUR; break; } // dieses Paar hat genug Eier: neu warten
       const at = box.nextEggAt, mom = female(pair) || pair[0];
-      s.breed.eggs.push({ id: hashString(`zucht|${i}|${at}|${pair.map((p) => p.uid).join('-')}`), dex: baseOf(mom.dex), parents: pair.map((p) => p.uid), laidAt: at, hatchAt: at + C.hatchHours * HOUR });
+      s.breed.eggs.push({ id: hashString(`zucht|${i}|${at}|${pair.map((p) => p.uid).join('-')}`), box: i, dex: baseOf(mom.dex), parents: pair.map((p) => p.uid), laidAt: at, hatchAt: at + C.hatchHours * HOUR });
       box.nextEggAt = at + C.eggEveryHours * HOUR;
     }
   }

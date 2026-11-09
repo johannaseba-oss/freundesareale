@@ -1,18 +1,48 @@
 {
-  "_hinweis": "Zucht (Kampf-Menü): In jede Box kommt ein Paar aus einem männlichen und einem weiblichen Pokémon. Alle eggEveryHours Stunden legt ein Paar ein Ei, solange im Brutkasten Platz ist (incubator = so viele Eier gleichzeitig). Ein Ei schlüpft nach hatchHours Stunden von selbst; heraus kommt die Grundform der Familie des Weibchens. shinyChance = Chance auf ein schillerndes Pokémon je Ei. Stall-Bild und Boxen (Bildpixel x1, y1, x2, y2) wie beim Rennen.",
+  "_hinweis": "Zucht (Kampf-Menü): In jede Box kommt ein Paar aus einem männlichen und einem weiblichen Pokémon. Alle eggEveryHours Stunden legt ein Paar ein Ei, bis ein Paar eggsPerPair Eier gleichzeitig im Brutkasten hat. Ein Ei schlüpft nach hatchHours Stunden von selbst; heraus kommt die Grundform der Familie des Weibchens. shinyChance = Chance auf ein schillerndes Pokémon je Ei. Stall-Bild und Boxen (Bildpixel x1, y1, x2, y2) wie beim Rennen.",
   "image": "art/race/stall.png",
   "imageW": 891,
   "boxes": [
-    [122, 625, 295, 790],
-    [360, 625, 533, 790],
-    [600, 625, 770, 790],
-    [122, 975, 295, 1140],
-    [360, 975, 533, 1140],
-    [600, 975, 770, 1140]
+    [
+      122,
+      625,
+      295,
+      790
+    ],
+    [
+      360,
+      625,
+      533,
+      790
+    ],
+    [
+      600,
+      625,
+      770,
+      790
+    ],
+    [
+      122,
+      975,
+      295,
+      1140
+    ],
+    [
+      360,
+      975,
+      533,
+      1140
+    ],
+    [
+      600,
+      975,
+      770,
+      1140
+    ]
   ],
   "spriteScale": 3.4,
   "eggEveryHours": 6,
   "hatchHours": 8,
-  "incubator": 10,
-  "shinyChance": 0.0078125
+  "shinyChance": 0.0078125,
+  "eggsPerPair": 10
 }

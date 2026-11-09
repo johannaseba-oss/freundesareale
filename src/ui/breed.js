@@ -25,7 +25,7 @@ export function renderBreedSetup(el, back) {
   el.replaceChildren(h('div.bs.rc-main',
     h('div.rc-top', h('button.btn.small', { onclick: back }, '‹'), h('b', 'Zucht')),
     h('div.rc-stall-wrap', canvas),
-    h('h3.br-head', `Brutkasten ${eggs.length}/${C().incubator}`),
+    h('h3.br-head', `Brutkasten: ${eggs.length} ${eggs.length === 1 ? 'Ei' : 'Eier'}`),
     eggList));
   start(canvas);
   if (BR.newHatches(s).length) showHatches();
@@ -82,7 +82,7 @@ function start(canvas) {
     S.boxes.forEach((b, i) => {
       const box = app.state.breed?.boxes?.[i];
       if (!box || BR.boxMons(app.state, i).length !== 2) return;
-      const full = (app.state.breed.eggs || []).length >= S.incubator, label = full ? 'Brutkasten voll' : `🥚 ${fmtDuration(Math.max(0, box.nextEggAt - now()))}`;
+      const n = BR.eggsOf(app.state, i), label = n >= S.eggsPerPair ? `🥚 ${n}/${S.eggsPerPair} voll` : `🥚 ${n}/${S.eggsPerPair} · ${fmtDuration(Math.max(0, box.nextEggAt - now()))}`;
       c.strokeText(label, (b[0] + b[2]) / 2, b[3] + 52); c.fillText(label, (b[0] + b[2]) / 2, b[3] + 52);
     });
     c.textAlign = 'left';
