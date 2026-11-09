@@ -321,7 +321,7 @@ export function hatchFrom(s, egg, t, shinyChance) {
     uid: newUid(s, t), dex: egg.dex, ball: 'pokeball', fromEgg: true, caughtAt: t, area: null,
     level: 1, xp: 0, fullness: N.fullness, satisfaction: N.satisfaction, affection: N.affection,
     gender: rollGender(egg.dex), cleanliness: isHairy(egg.dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
-    ivs, evs, shiny: rollShiny(egg.dex, shinyChance),
+    ivs, evs, shiny: rollShiny(egg.dex, shinyChance), parents: egg.parents,
   };
   ensureBattleData(p);
   s.pokemon.push(p);

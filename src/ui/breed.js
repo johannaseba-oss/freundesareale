@@ -92,25 +92,18 @@ function start(canvas) {
 }
 const dirOf = (dx, dy) => ({ 0: 2, 1: 1, 2: 0, 3: 7, 4: 6, '-4': 6, '-3': 5, '-2': 4, '-1': 3 })[Math.round(Math.atan2(dy, dx) / (Math.PI / 4))];
 
-// Paar wählen: erst ein Männchen, dann ein Weibchen
+// Paar wählen: alle passenden Paare direkt zur Auswahl
 function pickPair(i) {
-  const list = (g) => app.state.pokemon.filter((p) => BR.canBreed(p) && p.gender === g).sort((a, b) => !!b.fav - !!a.fav || a.dex - b.dex);
-  let m = null;
-  modal((md, close) => {
-    const render = () => {
-      const g = m ? 'w' : 'm', mons = list(g);
-      md.replaceChildren(h('h3', m ? `Weibchen für ${name(m)} ♂` : 'Männchen wählen'),
-        mons.length ? h('div.bs-list', mons.map((p) => h('button.bs-row', { onclick: () => {
-          if (!m) { m = p; render(); return; }
-          const r = app.act((s, t) => BR.setPair(s, i, m, p, t), true);
-          if (r.ok === false) return;
-          haptic('medium'); close(); toast(`${name(m)} und ${name(p)} ziehen in die Box.`); refresh();
-        } }, h('img.rk-por', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }), h('div.bs-row-text', h('b', `${name(p)} ${sym(p)}`, p.shiny ? ' ✨' : ''), h('small', `Lv. ${p.level}${p.area ? ' · zieht aus dem Areal aus' : ''}`)))))
-          : h('p.note', m ? 'Du hast kein freies Weibchen.' : 'Du hast kein freies Männchen.'),
-        h('div.row', m ? h('button.btn', { onclick: () => { m = null; render(); } }, 'Zurück') : '', h('button.btn', { onclick: close }, 'Schließen')));
-    };
-    render();
-  });
+  const pairs = BR.suggestPairs(app.state);
+  const pic = (p) => h('img.rk-por', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' });
+  modal((md, close) => md.append(h('h3', 'Paar wählen'),
+    pairs.length ? h('div.bs-list', pairs.slice(0, 80).map(([m, f]) => h('button.bs-row.br-pair', { onclick: () => {
+      const r = app.act((s, t) => BR.setPair(s, i, m, f, t), true);
+      if (r.ok === false) return;
+      haptic('medium'); close(); toast(`${name(m)} und ${name(f)} ziehen in die Box.`); refresh();
+    } }, pic(m), pic(f), h('div.bs-row-text', h('b', `${name(m)} ♂${m.shiny ? ' ✨' : ''} + ${name(f)} ♀${f.shiny ? ' ✨' : ''}`), h('small', [m, f].some((p) => p.area) ? 'zieht aus dem Areal aus' : 'aus dem Beutel')))))
+      : h('p.note', 'Kein passendes Paar: Du brauchst ein Männchen und ein Weibchen derselben Familie, die nicht Elternteil und Kind sind.'),
+    h('div.row', h('button.btn', { onclick: close }, 'Schließen'))));
 }
 function openBox(i) {
   const pair = BR.boxMons(app.state, i);
