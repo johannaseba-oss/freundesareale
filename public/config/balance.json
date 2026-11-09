@@ -100,7 +100,9 @@
     "affectionDecayPerDay": 0,
     "_habitat": "Arealpassung: pro Stunde ändert sich die Zufriedenheit um habitatPerHour x Passung (+1 passt gut, -1 passt schlecht). 0.15 = ca. +-3.6 pro Tag.",
     "habitatPerHour": 0.15,
-    "_feeding": "Gefüttert wird mit Beeren (berries[].hunger = wie viel Hunger eine Beere stillt)."
+    "_feeding": "Gefüttert wird mit Beeren (berries[].hunger = wie viel Hunger eine Beere stillt).",
+    "contentFloor": 60,
+    "_contentFloor": "Satt (nicht unter hungryBelow) und – falls es Sauberkeit hat – sauber (nicht unter grooming.dirtyBelow): Zufriedenheit fällt nie unter contentFloor %. Darüber hinaus helfen Streicheln und ein passendes Areal."
   },
   "level": {
     "_hinweis": "Level = 1 + volle Tage, die das Pokémon in einem für seinen Typ geeigneten Areal gelebt hat (mind. ein Typ passt), plus Route-Training. max = Höchstlevel (null = kein Limit). In ungeeigneten Arealen und im Beutel gibt es keinen Levelfortschritt.",
@@ -133,7 +135,7 @@
   ],
   "gacha": {
     "_hinweis": "Wochen-Pool: jeden Montag wird festgelegt, welches Pokémon in welchem Ball steckt. Im Automaten liegen immer machineCapacity Bälle; nach jeder Ziehung fällt sofort ein neuer von oben nach (erst aus dem Wochen-Pool, danach neu erzeugt – der Automat wird nie leer). psychic = Psycho-Blick sehr glücklicher Psycho-Pokémon.",
-    "drawCost": 2000,
+    "drawCost": 1000,
     "_excluded": "Diese Pokémon gibt es weder am Pokéball-Automaten noch am Spielautomaten (Fossil-Pokémon: nur über die Ausgrabung).",
     "excluded": [
       138,
@@ -272,7 +274,7 @@
     ]
   },
   "eggs": {
-    "_hinweis": "Eier: zwei Pokémon derselben Entwicklungsfamilie und desselben Geschlechts, die gemeinsam in einem Areal leben. Nach minDays gemeinsamen Tagen wird einmal pro weiterem Tag mit chancePerDay gewürfelt. Aus dem Ei schlüpft die Grundform der Familie.",
+    "_hinweis": "Eier gibt es nur noch über die Zucht (config/breed.json). Diese Werte gelten für die Vererbung (IVs/EVs).",
     "minDays": 3,
     "chancePerDay": 0.3,
     "hatchHours": 12,
@@ -321,5 +323,9 @@
     "_hinweis": "Schillernde Pokémon (andere Farben, ✨). chance = Chance je neu gezogenem/gewonnenem Pokémon (Hauptspiele: 1/4096), eggChance = Chance beim Schlüpfen aus einem Ei (Hauptspiele mit Masuda-Methode: 6/4096).",
     "chance": 0.000244140625,
     "eggChance": 0.00146484375
+  },
+  "pokeloot": {
+    "url": "https://johannaseba-oss.github.io/turmbeute/",
+    "_hinweis": "PokeLoot (eigenes Spiel) wird im Minispiel-Menü eingebettet."
   }
 }

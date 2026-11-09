@@ -10,7 +10,6 @@ import { allMods, modsFor } from './bonuses.js';
 import { habitatFit, suitsArea } from './habitat.js';
 import { mood, socialClimate } from './mood.js';
 import { mulberry32, weightedPick } from '../rng.js';
-import { simulateEggs } from './eggs.js';
 
 const clamp = (v) => Math.max(0, Math.min(100, v));
 const tierFactor = (table, value) => (table.find((t) => value >= t.min) || table[table.length - 1]).factor;
@@ -59,6 +58,9 @@ function stepPokemon(p, t, dtH, m, fit, social, suits) {
     p.cleanliness = clamp(p.cleanliness - G.cleanPerHour * dtH);
     p.satisfaction = clamp(p.satisfaction + G.effectPerHour * ((p.cleanliness - 50) / 50) * dtH);
   }
+  // satt und sauber: Zufriedenheit bleibt mindestens bei contentFloor
+  const clean = p.cleanliness == null || !isHairy(p.dex) || p.cleanliness >= CFG.grooming.dirtyBelow;
+  if (n.contentFloor && p.fullness >= n.hungryBelow && clean) p.satisfaction = Math.max(p.satisfaction, n.contentFloor);
   if (suits) { p.levelMs = (p.levelMs || 0) + dtH * HOUR; updateLevel(p); }
   if (n.affectionDecayPerDay) p.affection = clamp(p.affection - (n.affectionDecayPerDay / 24) * dtH);
 
@@ -111,7 +113,6 @@ export function simulate(s, nowMs) {
   const suits = new Map(living.map((p) => [p.uid, suitsArea(p.dex, p.area)]));
   const socials = new Map(living.map((p) => [p.uid, socialClimate(p, living.filter((q) => q.area === p.area))]));
   spawnGroundBerries(s, nowMs);
-  simulateEggs(s, nowMs, nowMs - t);
   while (t < nowMs) {
     const dt = Math.min(step, nowMs - t);
     t += dt;

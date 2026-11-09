@@ -28,7 +28,7 @@ const SAFE = { top: 110, bottom: 110, side: 24 };
 
 // Pixel-Ei (8×10), einmal gezeichnet
 let eggCv = null;
-function eggCanvas() {
+export function eggCanvas() {
   if (eggCv) return eggCv;
   const rows = ['..1111..', '.122221.', '12232221', '12222221', '12222321', '13222221', '12223221', '12222221', '.122221.', '..1111..'];
   const col = { 1: '#6b5444', 2: '#fff6e0', 3: '#8fcf6a' };

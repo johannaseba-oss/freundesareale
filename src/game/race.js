@@ -59,6 +59,7 @@ export function toStall(s, p) {
   if (p.stall) return { ok: true };
   const used = new Set(stallMons(s).map((m) => m.box)), box = R().stall.boxes.findIndex((_, i) => !used.has(i));
   if (box < 0) return fail('Der Stall ist voll.');
+  if (p.breed != null) { const i = p.breed; for (const q of s.pokemon) if (q.breed === i) q.breed = undefined; if (s.breed) delete s.breed.boxes[i]; } // Zuchtpaar wird getrennt
   p.area = null; p.stall = true; p.box = box;
   initProfile(p);
   return { ok: true };

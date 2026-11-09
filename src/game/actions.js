@@ -176,7 +176,7 @@ export function buyRouteSlot(s, n) {
 }
 export function routeCleared(s, n) { s.route ||= { ep: 0, cleared: 0 }; const first = n > (s.route.cleared || 0); s.route.cleared = Math.max(s.route.cleared || 0, n); return { ok: true, first }; }
 // Pokémon aus dem Beutel wegschicken: je balance.release.coins Münzen; Favoriten, Spitznamen und Areal-Bewohner sind ausgenommen
-export const canRelease = (p) => !p.area && !p.fav && !p.nick && !p.stall;
+export const canRelease = (p) => !p.area && !p.fav && !p.nick && !p.stall && p.breed == null;
 export function releasePokemon(s, uids) {
   const set = new Set(uids), gone = s.pokemon.filter((p) => set.has(p.uid) && canRelease(p));
   if (!gone.length) return fail('Keine Pokémon zum Wegschicken ausgewählt.');
@@ -252,6 +252,7 @@ export function assign(s, p, areaId) {
   }
   p.area = areaId || null;
   if (areaId && p.stall) { p.stall = undefined; p.box = undefined; } // zieht aus dem Stall aus
+  if (areaId && p.breed != null) { const i = p.breed; for (const q of s.pokemon) if (q.breed === i) q.breed = undefined; if (s.breed) delete s.breed.boxes[i]; } // Zuchtpaar wird getrennt
   return { ok: true };
 }
 
@@ -309,20 +310,24 @@ export function hatchEgg(s, eggId, t) {
   if (i < 0) return fail();
   const egg = s.eggs.list[i];
   if (t < egg.hatchAt) return fail('Das Ei braucht noch etwas Zeit.');
-  const { ivs, evs } = inheritStats(s, egg);
   s.eggs.list.splice(i, 1);
+  return { ok: true, pokemon: hatchFrom(s, egg, t, CFG.balance.shiny?.eggChance) };
+}
+// aus einem Ei ein neues Pokémon im Beutel machen (Werte von den Eltern)
+export function hatchFrom(s, egg, t, shinyChance) {
+  const { ivs, evs } = inheritStats(s, egg);
   const N = CFG.balance.newPokemon;
   const p = {
     uid: newUid(s, t), dex: egg.dex, ball: 'pokeball', fromEgg: true, caughtAt: t, area: null,
     level: 1, xp: 0, fullness: N.fullness, satisfaction: N.satisfaction, affection: N.affection,
     gender: rollGender(egg.dex), cleanliness: isHairy(egg.dex) ? CFG.grooming.startCleanliness : undefined, coinProgress: 0, coinsReady: 0, berryProgress: 0, berriesReady: {}, effects: [], pet: { day: '', amount: 0 },
-    ivs, evs, shiny: rollShiny(egg.dex, CFG.balance.shiny?.eggChance),
+    ivs, evs, shiny: rollShiny(egg.dex, shinyChance),
   };
   ensureBattleData(p);
   s.pokemon.push(p);
   if (!s.dexOwned.includes(p.dex)) s.dexOwned.push(p.dex);
   s.stats.eggsHatched = (s.stats.eggsHatched || 0) + 1;
-  return { ok: true, pokemon: p };
+  return p;
 }
 
 export function setNick(s, p, name) {

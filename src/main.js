@@ -1,3 +1,4 @@
+import { tick as breedTick } from './game/breed.js';
 import './style.css';
 import { loadConfig, species, CFG } from './config.js';
 import { createBackend } from './backend/index.js';
@@ -203,6 +204,9 @@ function tick() {
   // Erfolge automatisch freischalten
   const fresh = checkAchievements(app.state, now());
   if (fresh.length) { for (const a of fresh) toast('🏆 Erfolg: ' + a.name); app.saver.markDirty(); }
+  // Zucht: Eier legen und schlüpfen lassen, auch wenn der Modus nicht offen ist
+  const hatched = breedTick(app.state, now());
+  if (hatched.length) { toast(`🐣 ${hatched.length} ${hatched.length === 1 ? "Pokémon ist" : "Pokémon sind"} in der Zucht geschlüpft!`); app.saver.markDirty(); }
   for (const p of app.state.pokemon) {
     if (p.levelUps) { p.levelUps = 0; app.saver.markDirty(); } // Level zählen nur im Routenspiel: keine Meldung
   }

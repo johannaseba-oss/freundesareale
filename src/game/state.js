@@ -50,6 +50,8 @@ export function migrate(s) {
   s.defense ||= { team: [] };
   s.achievements ||= {};
   s.eggs ||= { pairs: {}, list: [] };
+  s.breed ||= { boxes: {}, eggs: [] };
+  if (s.eggs.list.length) { s.breed.eggs.push(...s.eggs.list.map(({ id, dex, parents, laidAt, hatchAt }) => ({ id, dex, parents, laidAt, hatchAt }))); s.eggs.list = []; s.eggs.pairs = {}; } // Eier gibt es nur noch in der Zucht
   s.dexOwned = [...new Set([...(s.dexOwned || []), ...s.pokemon.map((p) => p.dex)])];
   for (const k of ['battlesWon', 'battlesPlayed', 'grooms', 'eggsHatched']) s.stats[k] ||= 0;
   s.stats.beaten ||= {};
