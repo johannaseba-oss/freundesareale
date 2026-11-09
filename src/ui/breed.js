@@ -119,9 +119,11 @@ function showHatches() {
     const render = () => {
       const list = BR.newHatches(app.state);
       if (!list.length) { close(); refresh(); return; }
-      md.replaceChildren(h('h3', `Geschlüpft: ${list.length}`),
-        h('div.br-hatch', list.map((p) => h('button.br-mon' + (sel.has(p.uid) ? '.on' : ''), { onclick: () => { if (sel.has(p.uid)) sel.delete(p.uid); else sel.add(p.uid); haptic('tick'); render(); } },
-          h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }), h('small', `${species(p.dex).name} ${p.gender ? sym(p) : ''}${p.shiny ? ' ✨' : ''}`)))),
+      const shinies = list.filter((p) => p.shiny).length;
+      md.replaceChildren(h('h3', `Geschlüpft: ${list.length}`, shinies ? h('span.br-shinies', ` ★ ${shinies} schillernd`) : ''),
+        // Schillernde zuerst, mit Stern im Porträt
+        h('div.br-hatch', list.slice().sort((x, y) => !!y.shiny - !!x.shiny).map((p) => h('button.br-mon' + (sel.has(p.uid) ? '.on' : '') + (p.shiny ? '.shiny' : ''), { onclick: () => { if (sel.has(p.uid)) sel.delete(p.uid); else sel.add(p.uid); haptic('tick'); render(); } },
+          h('span.br-por', h('img', { src: portraitUrl(p.dex, 'Normal', p.shiny), alt: '' }), p.shiny ? h('span.br-star', { title: 'Schillernd' }, '★') : ''), h('small', `${species(p.dex).name} ${p.gender ? sym(p) : ''}`)))),
         h('div.row', h('button.btn.small', { onclick: () => { if (sel.size === list.length) sel.clear(); else list.forEach((p) => sel.add(p.uid)); render(); } }, sel.size === list.length ? 'Keine auswählen' : 'Alle auswählen')),
         h('div.row',
           h('button.btn', { disabled: !sel.size, onclick: () => {
